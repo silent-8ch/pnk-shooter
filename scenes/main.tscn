@@ -1,0 +1,23 @@
+[gd_scene load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://scripts/main.gd" id="1"]
+[ext_resource type="PackedScene" path="res://scenes/game.tscn" id="2"]
+[ext_resource type="PackedScene" path="res://scenes/lobby.tscn" id="3"]
+[ext_resource type="PackedScene" path="res://scenes/ship_select.tscn" id="4"]
+[ext_resource type="PackedScene" path="res://scenes/main_menu.tscn" id="5"]
+[ext_resource type="PackedScene" path="res://scenes/pause_menu.tscn" id="6"]
+
+[node name="Main" type="Node"]
+script = ExtResource("1")
+
+[node name="Game" parent="." instance=ExtResource("2")]
+
+[node name="Lobby" parent="." instance=ExtResource("3")]
+visible = false
+
+[node name="ShipSelect" parent="." instance=ExtResource("4")]
+visible = false
+
+[node name="MainMenu" parent="." instance=ExtResource("5")]
+
+[node name="PauseMenu" parent="." instance=ExtResource("6")]
