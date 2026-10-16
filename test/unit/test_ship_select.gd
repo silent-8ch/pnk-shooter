@@ -129,3 +129,11 @@ func test_reopening_screen_drops_unconfirmed_picks() -> void:
 	assert_eq(screen.get_highlighted(), Ships.selected)
 	assert_eq(screen.get_palette(0), 0)
 	assert_true(_palette_buttons()[0].button_pressed)
+
+
+func test_palette_buttons_pass_drags_to_scroll() -> void:
+	var scroll := screen.get_node("%PaletteGrid").get_parent()
+	assert_is(scroll, ScrollContainer)
+	assert_gt(scroll.scroll_deadzone, 0)
+	for b in _palette_buttons():
+		assert_eq(b.mouse_filter, Control.MOUSE_FILTER_PASS, b.name)

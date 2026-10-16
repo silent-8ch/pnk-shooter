@@ -77,6 +77,7 @@ func _build_palette_buttons() -> void:
 		button.custom_minimum_size = Vector2(0, 64)
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		button.focus_mode = Control.FOCUS_NONE
+		button.mouse_filter = Control.MOUSE_FILTER_PASS  # let drags scroll the grid
 
 		var vbox := VBoxContainer.new()
 		vbox.set_anchors_preset(Control.PRESET_FULL_RECT)

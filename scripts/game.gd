@@ -5,9 +5,10 @@ extends Node2D
 const PlayerScene := preload("res://scenes/player.tscn")
 const EnemyScene := preload("res://scenes/enemy.tscn")
 const BulletScene := preload("res://scenes/bullet.tscn")
+const EnemyScript := preload("res://scripts/enemy.gd")
 
 const ARENA := Rect2(0, 0, 540, 960)
-const ENEMY_INTERVAL := 1.2
+const GROUP_INTERVAL := 4.0  # seconds between enemy groups
 const PLAYER_COLORS: Array[Color] = [
 	Color("5ad1ff"), Color("ff7ad9"), Color("8dff7a"), Color("ffd45a"),
 	Color("c08dff"), Color("ff9c5a"), Color("7afff2"), Color("ffffff"),
@@ -23,7 +24,7 @@ const PLAYER_COLORS: Array[Color] = [
 @onready var hp_label: Label = $HUD/HPLabel
 @onready var info_label: Label = $HUD/InfoLabel
 @onready var hud: CanvasLayer = $HUD
-@onready var touch_controls: CanvasLayer = $TouchControls
+@onready var pointer_controls: CanvasLayer = $PointerControls
 
 var score := 0  # replicated by ScoreSync
 var active := false
@@ -38,13 +39,13 @@ func _ready() -> void:
 	bullet_spawner.spawn_function = _spawn_bullet
 	multiplayer.peer_disconnected.connect(_on_peer_disconnected)
 	hud.visible = false
-	touch_controls.visible = false
+	pointer_controls.visible = false
 
 
 func start() -> void:
 	active = true
 	hud.visible = true
-	touch_controls.visible = DisplayServer.is_touchscreen_available() or OS.has_feature("mobile")
+	pointer_controls.visible = true
 	if multiplayer.is_server():
 		score = 0
 		info_label.text = "Hosting at %s" % Net.get_local_ip()
@@ -58,7 +59,7 @@ func stop() -> void:
 	active = false
 	input_enabled = true
 	hud.visible = false
-	touch_controls.visible = false
+	pointer_controls.visible = false
 	for group in [players, enemies, bullets]:
 		for child in group.get_children():
 			child.queue_free()
@@ -78,9 +79,9 @@ func _physics_process(delta: float) -> void:
 	if not active or not multiplayer.is_server():
 		return
 	_enemy_timer += delta
-	if _enemy_timer >= ENEMY_INTERVAL:
+	if _enemy_timer >= GROUP_INTERVAL:
 		_enemy_timer = 0.0
-		enemy_spawner.spawn({"x": randf_range(40.0, ARENA.size.x - 40.0)})
+		spawn_group(randi() % EnemyScript.TYPES.size())
 
 
 # --- Players ---------------------------------------------------------------
@@ -132,9 +133,20 @@ func _on_peer_disconnected(id: int) -> void:
 
 # --- Enemies / bullets (server only callers) --------------------------------
 
+func spawn_group(type: int) -> void:
+	var count := EnemyScript.DIVER_GROUP
+	if type == EnemyScript.WEAVER:
+		count = randi_range(EnemyScript.WEAVER_GROUP_MIN, EnemyScript.WEAVER_GROUP_MAX)
+	var margin := EnemyScript.group_half_width(type, count) + 20.0
+	var center := randf_range(margin, ARENA.size.x - margin)
+	for pos in EnemyScript.group_layout(type, count, center):
+		enemy_spawner.spawn({"x": pos.x, "y": pos.y, "type": type})
+
+
 func _spawn_enemy(data: Dictionary) -> Node:
 	var e := EnemyScene.instantiate()
-	e.position = Vector2(data.x, -40)
+	e.position = Vector2(data.x, data.get("y", EnemyScript.SPAWN_Y))
+	e.type = data.get("type", EnemyScript.WEAVER)
 	return e
 
 

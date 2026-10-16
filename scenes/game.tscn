@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" path="res://scripts/game.gd" id="1"]
 [ext_resource type="Script" path="res://scripts/starfield.gd" id="2"]
-[ext_resource type="Script" path="res://scripts/touch_controls.gd" id="3"]
+[ext_resource type="Script" path="res://scripts/pointer_controls.gd" id="3"]
 
 [sub_resource type="SceneReplicationConfig" id="SceneReplicationConfig_1"]
 properties/0/path = NodePath(".:score")
@@ -71,9 +71,9 @@ theme_override_colors/font_color = Color(1, 1, 1, 0.6)
 theme_override_font_sizes/font_size = 16
 horizontal_alignment = 1
 
-[node name="TouchControls" type="CanvasLayer" parent="."]
+[node name="PointerControls" type="CanvasLayer" parent="."]
 
-[node name="Control" type="Control" parent="TouchControls" groups=["touch_controls"]]
+[node name="Control" type="Control" parent="PointerControls" groups=["pointer_controls"]]
 anchor_right = 1.0
 anchor_bottom = 1.0
 mouse_filter = 2

@@ -78,13 +78,13 @@ func test_load_invalid_index_falls_back() -> void:
 
 # --- Palettes ---
 
-func test_six_named_palettes_factory_first() -> void:
-	assert_eq(Ships.palette_count(), 6)
+func test_twelve_named_palettes_factory_first() -> void:
+	assert_eq(Ships.palette_count(), 12)
 	assert_eq(Ships.get_palette_name(0), "Factory")
 	var names := {}
 	for p in Ships.palette_count():
 		names[Ships.get_palette_name(p)] = true
-	assert_eq(names.size(), 6, "names are unique")
+	assert_eq(names.size(), 12, "names are unique")
 
 
 func test_every_palette_fills_all_slots_of_every_ship() -> void:
@@ -94,10 +94,9 @@ func test_every_palette_fills_all_slots_of_every_ship() -> void:
 			assert_eq(Ships.get_palette_colors(ship, p).size(), slots, "ship %d palette %d" % [ship, p])
 
 
-func test_factory_uses_painted_colors() -> void:
-	for ship in Ships.count():
-		assert_eq(Ships.get_palette_colors(ship, 0), ShipSkin.default_palette(Ships.get_svg(ship)))
-
+func test_factory_is_neutral() -> void:
+	for c in Ships.get_palette_colors(0, 0):
+		assert_lt(c.s, 0.25, "low saturation: %s" % c.to_html(false))
 
 func test_palette_index_clamps() -> void:
 	assert_false(Ships.is_valid_palette(-1))
@@ -153,3 +152,39 @@ func test_load_ignores_bad_palette_entries() -> void:
 	Ships.load_selection(TMP_CFG)
 	assert_eq(Ships.palette_for(0), 0)
 	assert_false(Ships._palette_by_ship.has(7))
+
+
+# --- Export / enemy palettes ----------------------------------------------
+
+func test_ship_svgs_exported_as_raw_files() -> void:
+	# Imported SVGs are left out of exports; palettes need the raw SVG text.
+	for ship in Ships.LIST:
+		var cfg := ConfigFile.new()
+		assert_eq(cfg.load(ship.svg + ".import"), OK)
+		assert_eq(cfg.get_value("remap", "importer"), "keep", ship.svg)
+
+
+func test_enemy_palettes_cover_every_ship() -> void:
+	assert_eq(Ships.ENEMY_PALETTES.size(), Ships.count())
+	for ship in Ships.count():
+		var slots := ShipSkin.slot_count(Ships.get_svg(ship))
+		assert_eq(Ships.ENEMY_PALETTES[ship].colors.size(), slots)
+
+
+func test_enemy_palettes_not_selectable() -> void:
+	for enemy in Ships.ENEMY_PALETTES:
+		for p in Ships.PALETTES:
+			assert_ne(enemy.name, p.name)
+
+
+func test_enemy_texture_cached_and_differs_from_player() -> void:
+	var tex := Ships.get_enemy_texture(0)
+	assert_not_null(tex)
+	assert_same(Ships.get_enemy_texture(0), tex)
+	assert_not_same(tex, Ships.get_texture(0, 0))
+	assert_not_same(tex, Ships.get_enemy_texture(1))
+
+
+func test_scale_for_height() -> void:
+	var tex := Ships.get_texture(0, 0)
+	assert_almost_eq(tex.get_size().y * Ships.scale_for(tex, 36.0).y, 36.0, 0.001)

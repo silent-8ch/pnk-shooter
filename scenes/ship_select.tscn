@@ -52,8 +52,16 @@ theme_override_font_sizes/font_size = 20
 text = "Paint job"
 horizontal_alignment = 1
 
-[node name="PaletteGrid" type="GridContainer" parent="Margin/VBox"]
+[node name="PaletteScroll" type="ScrollContainer" parent="Margin/VBox"]
+custom_minimum_size = Vector2(0, 160)
+size_flags_vertical = 3
+size_flags_stretch_ratio = 6.0
+horizontal_scroll_mode = 0
+scroll_deadzone = 12
+
+[node name="PaletteGrid" type="GridContainer" parent="Margin/VBox/PaletteScroll"]
 unique_name_in_owner = true
+size_flags_horizontal = 3
 theme_override_constants/h_separation = 10
 theme_override_constants/v_separation = 10
 columns = 3

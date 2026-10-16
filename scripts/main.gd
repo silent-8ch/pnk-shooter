@@ -1,6 +1,5 @@
 extends Node
-## Root node: screen flow (menu -> ship select -> lobby -> game), pause menu,
-## and input actions.
+## Root node: screen flow (menu -> ship select -> lobby -> game) and pause menu.
 
 @onready var game: Node2D = $Game
 @onready var main_menu: CanvasLayer = $MainMenu
@@ -10,7 +9,6 @@ extends Node
 
 
 func _ready() -> void:
-	_setup_input_map()
 	Net.game_started.connect(_on_game_started)
 	Net.disconnected.connect(_on_disconnected)
 	main_menu.play_pressed.connect(show_screen.bind(ship_select))
@@ -94,21 +92,3 @@ func _handle_cmdline() -> void:
 			Net.host("Host")
 		elif arg.begins_with("--join="):
 			Net.join(arg.trim_prefix("--join="), "Client")
-
-
-func _setup_input_map() -> void:
-	_add_action("move_left", [KEY_A, KEY_LEFT])
-	_add_action("move_right", [KEY_D, KEY_RIGHT])
-	_add_action("move_up", [KEY_W, KEY_UP])
-	_add_action("move_down", [KEY_S, KEY_DOWN])
-	_add_action("fire", [KEY_SPACE, KEY_Z])
-
-
-func _add_action(action: String, keys: Array) -> void:
-	if InputMap.has_action(action):
-		return
-	InputMap.add_action(action)
-	for k in keys:
-		var ev := InputEventKey.new()
-		ev.physical_keycode = k
-		InputMap.action_add_event(action, ev)

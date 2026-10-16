@@ -52,13 +52,12 @@ func _physics_process(delta: float) -> void:
 
 
 func _gather_input() -> void:
-	var dir := Input.get_vector("move_left", "move_right", "move_up", "move_down")
-	var fire := Input.is_action_pressed("fire")
-	var touch := get_tree().get_first_node_in_group("touch_controls")
-	if touch and touch.is_active():
-		if touch.direction != Vector2.ZERO:
-			dir = touch.direction
-		fire = fire or touch.firing
+	var dir := Vector2.ZERO
+	var fire := false
+	var pointer := get_tree().get_first_node_in_group("pointer_controls")
+	if pointer and pointer.is_active():
+		dir = pointer.direction_from(position, _movement_bounds())
+		fire = pointer.firing
 	var game := get_tree().get_first_node_in_group("game")
 	if game and not game.input_enabled:
 		dir = Vector2.ZERO
@@ -87,13 +86,18 @@ func _simulate(delta: float) -> void:
 		return
 
 	position += input_dir * SPEED * delta
-	var arena: Rect2 = get_parent().get_parent().ARENA
-	position = position.clamp(arena.position + Vector2(20, 20), arena.end - Vector2(20, 20))
+	var bounds := _movement_bounds()
+	position = position.clamp(bounds.position, bounds.end)
 
 	_cooldown -= delta
 	if firing and _cooldown <= 0.0:
 		_cooldown = FIRE_COOLDOWN
 		get_tree().get_first_node_in_group("game").spawn_bullet(position + Vector2(0, -26), color)
+
+
+func _movement_bounds() -> Rect2:
+	var arena: Rect2 = get_parent().get_parent().ARENA
+	return arena.grow(-20)
 
 
 func take_damage(amount: int) -> void:

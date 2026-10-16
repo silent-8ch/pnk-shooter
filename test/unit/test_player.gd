@@ -6,13 +6,6 @@ const PlayerScene := preload("res://scenes/player.tscn")
 var player: Area2D
 
 
-func before_all() -> void:
-	# main.gd registers these at runtime; the player's _process reads them.
-	for action in ["move_left", "move_right", "move_up", "move_down", "fire"]:
-		if not InputMap.has_action(action):
-			InputMap.add_action(action)
-
-
 func _spawn(ship: int, palette: int) -> Area2D:
 	var p: Area2D = PlayerScene.instantiate()
 	p.ship = ship
