@@ -13,8 +13,7 @@ func _wreck(fx_seed: int, parts: Array = []) -> Node2D:
 
 
 func _look(w: Node2D) -> Array:
-	return [w.velocity, w.spin, w.end_scale, w.spark_amount, w.spark_speed,
-		w.spark_ramp, w.flash_radius, w.rings.size(), w.pops.size(), w.smoke_shade]
+	return [w.velocity, w.spin, w.end_scale, w.pops.size(), w.smoke_shade, w.smoke_puff]
 
 
 func test_same_seed_same_look() -> void:
@@ -36,7 +35,6 @@ func test_rolls_within_ranges() -> void:
 		var grows: bool = w.end_scale >= WreckScript.GROW_RANGE.x
 		var r: Vector2 = WreckScript.GROW_RANGE if grows else WreckScript.SHRINK_RANGE
 		assert_between(w.end_scale, r.x, r.y)
-		assert_between(w.rings.size(), 1, 2)
 		assert_between(w.pops.size(), 0, 3)
 
 
@@ -76,7 +74,7 @@ func test_explodes_after_duration() -> void:
 	w._process(WreckScript.DURATION + 0.01)
 	assert_true(w.exploded)
 	assert_false(w.smoke.emitting)
-	assert_eq(w._sparks.size(), 1)
+	assert_eq(_blasts(w).size(), 1)
 
 
 func test_explosion_size_matches_depth() -> void:
@@ -92,9 +90,18 @@ func test_secondary_pops_fire() -> void:
 			continue
 		w._process(WreckScript.DURATION + 0.01)
 		w._process(0.3)
-		assert_eq(w._sparks.size(), 1 + w.pops.size())
+		var blasts := _blasts(w)
+		assert_eq(blasts.size(), 1 + w.pops.size())
+		for i in w.pops.size():
+			assert_eq(blasts[i + 1].position, w.hull.position + w.pops[i].offset)
+			assert_almost_eq(blasts[i + 1].scale.x,
+				WreckScript.BLAST_HEIGHT * w.pops[i].size * w.end_scale / 128.0, 0.0001)
 		return
 	fail_test("no seed produced secondary pops")
+
+
+func _blasts(w: Node2D) -> Array:
+	return w.get_children().filter(func(c): return c is AnimatedSprite2D)
 
 
 func test_freed_after_linger() -> void:
@@ -194,18 +201,18 @@ func test_parts_on_ship_light_mask() -> void:
 		assert_eq(p.node.light_mask, Ships.LIGHT_MASK)
 
 
-func test_sprite_blast_plays_at_explosion_point_scaled_by_depth() -> void:
+func test_only_new_explosion_art_at_blast() -> void:
 	var w := _wreck(3, _parts())
 	w._process(WreckScript.DURATION / 2.0)
-	var frames := []
-	for c in w.get_children():
-		if c is AnimatedSprite2D:
-			frames.append(c.sprite_frames)
-	assert_eq(frames, [], "no blast before exploding")
+	assert_eq(_blasts(w), [], "no blast before exploding")
 	w._process(WreckScript.DURATION)
-	var blasts := w.get_children().filter(func(c): return c is AnimatedSprite2D)
-	assert_eq(blasts.size(), 2)
-	for b in blasts:
-		assert_eq(b.position, w.hull.position)
-	var boom = blasts.filter(func(c): return c.sprite_frames == WreckScript.SpriteEffect.EXPLOSION)[0]
+	var blasts := _blasts(w)
+	assert_eq(blasts.size(), 1)
+	var boom: AnimatedSprite2D = blasts[0]
+	assert_same(boom.sprite_frames, WreckScript.SpriteEffect.EXPLOSION)
+	assert_eq(boom.sprite_frames.resource_path, "res://assets/effects/explosion.tres")
+	assert_eq(boom.position, w.hull.position)
+	assert_eq(boom.modulate, WreckScript.BLAST_TINT)
 	assert_almost_eq(boom.scale.x, WreckScript.BLAST_HEIGHT * w.end_scale / 128.0, 0.0001)
+	var emitters := w.get_children().filter(func(c): return c is CPUParticles2D and c != w.smoke)
+	assert_eq(emitters, [], "no sparks or embers")

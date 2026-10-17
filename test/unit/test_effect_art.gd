@@ -1,6 +1,6 @@
 extends GutTest
 ## New effect art wired in: engine flames, hit sparks, player-hit flash, and
-## the wreck's sparks, embers, smoke puffs, flash and rings.
+## the wreck's smoke puffs.
 
 const EnemyScene := preload("res://scenes/enemy.tscn")
 const PlayerScene := preload("res://scenes/player.tscn")
@@ -161,21 +161,3 @@ func _wreck(fx_seed: int) -> Node2D:
 func test_wreck_smoke_uses_puff_art() -> void:
 	var w := _wreck(4)
 	assert_true(WreckScript.TRAIL_PUFFS.has(w.smoke.texture))
-
-
-func test_wreck_sparks_and_embers_use_art() -> void:
-	var w := _wreck(4)
-	w._process(WreckScript.DURATION + 0.01)
-	var emitters := w.get_children().filter(func(c): return c is CPUParticles2D and c != w.smoke)
-	var embers := emitters.filter(func(c): return c.texture == WreckScript.EMBER)
-	var sparks := emitters.filter(func(c): return WreckScript.SPARKS.has(c.texture))
-	assert_eq(sparks.size(), 1)
-	assert_eq(embers.size(), 1)
-	assert_true(embers[0].particle_flag_align_y)
-
-
-func test_spark_art_varies_by_seed() -> void:
-	var seen := {}
-	for s in 30:
-		seen[_wreck(s).spark_tex] = true
-	assert_eq(seen.size(), WreckScript.SPARKS.size())
