@@ -208,4 +208,5 @@ func test_sprite_blast_plays_at_explosion_point_scaled_by_depth() -> void:
 	for b in blasts:
 		assert_eq(b.position, w.hull.position)
 	var boom = blasts.filter(func(c): return c.sprite_frames == WreckScript.SpriteEffect.EXPLOSION)[0]
-	assert_almost_eq(boom.scale.x, WreckScript.BLAST_HEIGHT * w.end_scale / 128.0, 0.0001)
+	assert_almost_eq(boom.scale.x, WreckScript.BLAST_HEIGHT * w.end_scale / 120.0, 0.0001)
+	assert_eq(boom.modulate, WreckScript.BLAST_TINT)

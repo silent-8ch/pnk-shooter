@@ -42,6 +42,7 @@ const BREAKOFF_SPEED := Vector2(60, 140)  # kick for parts shed during the veer
 const PIECE_SPIN := Vector2(3, 10)
 const LINGER := 0.8  # time after the explosion before the node is freed
 const BLAST_HEIGHT := 56.0  # hand-drawn explosion size at normal depth
+const BLAST_TINT := Color(1.0, 0.72, 0.3)  # the explosion art is white ink
 const BLAST_SMOKE_HEIGHT := 64.0
 
 ## Fiery spark color ramps; one is picked per explosion.
@@ -204,7 +205,8 @@ func explode() -> void:
 	_burst(Vector2.ZERO, _boom_size)
 	# Hand-drawn blast and smoke puff at the blast point, sized by depth.
 	SpriteEffect.spawn(self, _boom_origin, SpriteEffect.SMOKE, BLAST_SMOKE_HEIGHT * _boom_size)
-	SpriteEffect.spawn(self, _boom_origin, SpriteEffect.EXPLOSION, BLAST_HEIGHT * _boom_size)
+	SpriteEffect.spawn(self, _boom_origin, SpriteEffect.EXPLOSION, BLAST_HEIGHT * _boom_size,
+			BLAST_TINT)
 	queue_redraw()
 
 

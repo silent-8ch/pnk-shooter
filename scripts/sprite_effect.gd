@@ -2,7 +2,7 @@ extends AnimatedSprite2D
 ## Cosmetic one-shot effect; runs locally on every peer and frees itself.
 
 const MUZZLE := preload("res://assets/filler/fx/muzzle.tres")
-const EXPLOSION := preload("res://assets/filler/fx/explosion.tres")
+const EXPLOSION := preload("res://assets/effects/explosion.tres")
 const SMOKE := preload("res://assets/filler/fx/smoke.tres")
 const HIT := preload("res://assets/filler/fx/hit.tres")
 const PLAYER_HIT := preload("res://assets/filler/fx/player_hit.tres")
@@ -13,7 +13,7 @@ static func spawn(parent: Node, at: Vector2, frames: SpriteFrames, height: float
 	var effect := AnimatedSprite2D.new()
 	effect.sprite_frames = frames
 	effect.position = at
-	effect.scale = Vector2.ONE * (height / 128.0)
+	effect.scale = Vector2.ONE * (height / frames.get_frame_texture(&"default", 0).get_height())
 	effect.modulate = tint
 	effect.z_index = 5
 	effect.animation_finished.connect(effect.queue_free)
