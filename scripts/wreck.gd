@@ -11,6 +11,8 @@ extends Node2D
 ## their own world-space motion.
 
 const SpriteEffect := preload("res://scripts/sprite_effect.gd")
+const IMPLOSION_SOUND := preload("res://assets/sfx/implosion.tres")  # random pitch/volume per play
+const EXPLOSION_SOUND := preload("res://assets/sfx/explosion.tres")
 
 const DURATION := 0.8  # veer time before exploding
 const VEER_SPEED := 180.0
@@ -50,6 +52,8 @@ var _boom_time := 0.0
 var _boom_size := 1.0
 var _boom_origin := Vector2.ZERO
 var _rng := RandomNumberGenerator.new()
+var implosion_sound := AudioStreamPlayer.new()  # plays as the enemy dies
+var explosion_sound := AudioStreamPlayer.new()
 
 
 ## parts: ShipParts pieces of `texture` ({texture, offset}); empty = one piece.
@@ -71,6 +75,12 @@ func setup(texture: Texture2D, base_scale: Vector2, fx_seed: int, parts: Array =
 		hull.add_child(sprite)
 	_apply_hull_scale(1.0)
 	_roll_breakoffs(_rng, parts)
+
+	implosion_sound.stream = IMPLOSION_SOUND
+	implosion_sound.autoplay = true
+	add_child(implosion_sound)
+	explosion_sound.stream = EXPLOSION_SOUND
+	add_child(explosion_sound)
 
 
 func _roll_motion(rng: RandomNumberGenerator) -> void:
@@ -139,6 +149,11 @@ func explode() -> void:
 	# Painted blast at the blast point, sized by depth.
 	SpriteEffect.spawn(self, _boom_origin, SpriteEffect.explosion_frames(FIRE_RAMPS[fire_ramp]),
 		BLAST_HEIGHT * _boom_size)
+	# Nearer blasts sound deeper and louder, farther ones higher and quieter.
+	explosion_sound.pitch_scale = clampf(1.0 / sqrt(_boom_size), 0.75, 1.4)
+	explosion_sound.volume_db = clampf(linear_to_db(_boom_size), -8.0, 3.0)
+	if explosion_sound.is_inside_tree():
+		explosion_sound.play()
 
 
 ## Turns a hull part into a loose piece flying away from the hull center.

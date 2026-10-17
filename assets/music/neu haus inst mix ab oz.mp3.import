@@ -1,0 +1,19 @@
+[remap]
+
+importer="mp3"
+type="AudioStreamMP3"
+uid="uid://benjdu6hnkm0o"
+path="res://.godot/imported/neu haus inst mix ab oz.mp3-e8563accddf21ab87004972c17d9f16f.mp3str"
+
+[deps]
+
+source_file="res://assets/music/neu haus inst mix ab oz.mp3"
+dest_files=["res://.godot/imported/neu haus inst mix ab oz.mp3-e8563accddf21ab87004972c17d9f16f.mp3str"]
+
+[params]
+
+loop=true
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

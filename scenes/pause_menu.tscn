@@ -43,6 +43,12 @@ custom_minimum_size = Vector2(0, 64)
 theme_override_font_sizes/font_size = 26
 text = "Leave game"
 
+[node name="MusicToggle" type="CheckButton" parent="Margin/VBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 64)
+theme_override_font_sizes/font_size = 26
+text = "Music"
+
 [node name="QuitButton" type="Button" parent="Margin/VBox"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 64)

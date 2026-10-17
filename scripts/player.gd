@@ -1,10 +1,12 @@
 extends Area2D
 ## A player ship. Simulated on the server; the owning peer sends input.
+## Sized by Depth from its screen y: smaller when flying up toward the vanishing point.
 
 const SPEED := 340.0
 const FIRE_COOLDOWN := 0.5  # min time between shots; each shot needs its own press
 const RESPAWN_TIME := 2.0
 const MAX_HP := 3
+const TOP_Y := 360.0  # highest the ship may fly (stays well below the vanishing point)
 
 @export var peer_id := 1
 @export var player_name := "Player"
@@ -27,7 +29,7 @@ var _respawn_timer := 0.0
 func _ready() -> void:
 	label.text = player_name
 	body.texture = Ships.get_lit_texture(ship, palette)
-	body.scale = Ships.get_scale(ship, palette)
+	_apply_depth()
 	body.light_mask = Ships.LIGHT_MASK
 	area_entered.connect(_on_area_entered)
 
@@ -40,7 +42,14 @@ func is_alive() -> bool:
 	return hp > 0
 
 
+func _apply_depth() -> void:
+	var s := Depth.scale_at(position.y)
+	body.scale = Ships.get_scale(ship, palette) * s
+	$Shape.scale = Vector2.ONE * s
+
+
 func _process(_delta: float) -> void:
+	_apply_depth()
 	body.modulate.a = 1.0 if is_alive() else 0.25
 	if multiplayer.multiplayer_peer == null:
 		return
@@ -114,7 +123,10 @@ func _simulate(delta: float) -> void:
 
 func _movement_bounds() -> Rect2:
 	var arena: Rect2 = get_parent().get_parent().ARENA
-	return arena.grow(-20)
+	var r := arena.grow(-20)
+	r.position.y = maxf(r.position.y, TOP_Y)
+	r.end.y = arena.end.y - 20
+	return r
 
 
 func take_damage(amount: int) -> void:

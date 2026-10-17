@@ -9,13 +9,14 @@ config_version=5
 config/name="PNK Shooter"
 run/main_scene="res://scenes/main.tscn"
 config/features=PackedStringArray("4.6", "GL Compatibility")
-config/icon="res://icon.svg"
+config/icon="res://icon.png"
 config/quit_on_go_back=false
 
 [autoload]
 
 Net="*res://scripts/net.gd"
 Ships="*res://scripts/ships.gd"
+Music="*res://scripts/music.gd"
 
 [display]
 

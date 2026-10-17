@@ -12,6 +12,7 @@ func _spawn(ship: int, palette: int) -> Area2D:
 	p.ship = ship
 	p.palette = palette
 	p.color = Color("ff7ad9")
+	p.position = Vector2(270, Depth.REF_Y)  # full size on the player line
 	add_child_autofree(p)
 	return p
 
@@ -94,6 +95,24 @@ func test_one_press_one_shot() -> void:
 	p._simulate(0.016)
 	p._simulate(1.0)
 	assert_eq(_bullets(p), 1)
+
+
+func test_shot_plays_shoot_sound() -> void:
+	var p := _armed_player()
+	var sound: AudioStreamPlayer = p.get_parent().get_parent().get_node("ShootSound")
+	assert_is(sound.stream, AudioStreamRandomizer)
+	assert_eq(sound.stream.get_stream(0).resource_path, "res://assets/sfx/shoot.wav")
+	assert_false(sound.playing)
+	p._fire_requested = true
+	p._simulate(0.016)
+	assert_true(sound.playing)
+
+
+func test_no_sound_without_shot() -> void:
+	var p := _armed_player()
+	for i in 30:
+		p._simulate(0.1)
+	assert_false(p.get_parent().get_parent().get_node("ShootSound").playing)
 
 
 func test_press_during_cooldown_is_dropped() -> void:

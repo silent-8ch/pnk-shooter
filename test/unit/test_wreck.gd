@@ -217,3 +217,59 @@ func test_lethal_hit_plays_wreck() -> void:
 	var fx := game.get_node("Effects")
 	assert_eq(fx.get_child_count(), 1)
 	assert_is(fx.get_child(0), WreckScript)
+
+
+# --- Sound ------------------------------------------------------------------
+
+func _enemy_in_game() -> Area2D:
+	multiplayer.multiplayer_peer = OfflineMultiplayerPeer.new()
+	var game: Node2D = load("res://scenes/game.tscn").instantiate()
+	add_child_autofree(game)
+	var e: Area2D = EnemyScene.instantiate()
+	game.get_node("Enemies").add_child(e)
+	return e
+
+
+func test_non_lethal_hit_plays_hit_sound() -> void:
+	var e := _enemy_in_game()
+	e.hp = 2
+	var hit: AudioStreamPlayer = e.get_parent().get_parent().get_node("HitSound")
+	assert_eq(hit.stream.get_stream(0).resource_path, "res://assets/sfx/hit.wav")
+	e.take_damage(1)
+	assert_true(hit.playing)
+
+
+func test_lethal_hit_plays_no_hit_sound() -> void:
+	var e := _enemy_in_game()
+	e.hp = 1
+	var hit: AudioStreamPlayer = e.get_parent().get_parent().get_node("HitSound")
+	e.take_damage(1)
+	assert_false(hit.playing)
+
+
+func test_implosion_on_death_explosion_on_blast() -> void:
+	var w := _wreck(1)
+	assert_eq(w.implosion_sound.stream.get_stream(0).resource_path, "res://assets/sfx/implosion.wav")
+	assert_eq(w.explosion_sound.stream.get_stream(0).resource_path, "res://assets/sfx/explosion.wav")
+	assert_true(w.implosion_sound.playing)
+	assert_false(w.explosion_sound.playing)
+	w.explode()
+	assert_true(w.explosion_sound.playing)
+
+
+func test_nearer_explosion_sounds_deeper_and_louder() -> void:
+	var near := _wreck(1)
+	var far := _wreck(2)
+	near.end_scale = 1.6
+	far.end_scale = 0.4
+	near.explode()
+	far.explode()
+	assert_lt(near.explosion_sound.pitch_scale, far.explosion_sound.pitch_scale)
+	assert_gt(near.explosion_sound.volume_db, far.explosion_sound.volume_db)
+
+
+func test_sounds_vary_pitch_and_volume() -> void:
+	for name in ["shoot", "hit", "implosion", "explosion"]:
+		var r: AudioStreamRandomizer = load("res://assets/sfx/%s.tres" % name)
+		assert_gt(r.random_pitch, 1.0, name)
+		assert_gt(r.random_volume_offset_db, 0.0, name)

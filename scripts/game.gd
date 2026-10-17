@@ -28,6 +28,8 @@ const PLAYER_COLORS: Array[Color] = [
 @onready var player_spawner: MultiplayerSpawner = $PlayerSpawner
 @onready var enemy_spawner: MultiplayerSpawner = $EnemySpawner
 @onready var bullet_spawner: MultiplayerSpawner = $BulletSpawner
+@onready var shoot_sound: AudioStreamPlayer = $ShootSound
+@onready var hit_sound: AudioStreamPlayer = $HitSound
 @onready var score_label: Label = $HUD/ScoreLabel
 @onready var hp_label: Label = $HUD/HPLabel
 @onready var info_label: Label = $HUD/InfoLabel
@@ -157,7 +159,8 @@ func spawn_group(type: int) -> void:
 
 func _spawn_enemy(data: Dictionary) -> Node:
 	var e := EnemyScene.instantiate()
-	e.position = Vector2(data.x, data.get("y", EnemyScript.SPAWN_Y))
+	e.world = Vector2(data.x, data.get("y", EnemyScript.SPAWN_Y))
+	e.position = Depth.project(e.world)
 	e.type = data.get("type", EnemyScript.WEAVER)
 	e.group_x = data.get("group_x", -1.0)
 	e.zig_dir = data.get("dir", 1.0)
@@ -181,8 +184,14 @@ func play_wreck(pos: Vector2, type: int, fx_seed: int) -> void:
 	var wreck := WreckScript.new()
 	wreck.position = pos
 	var parts := Ships.get_enemy_parts(ship, fx_seed)
-	wreck.setup(tex, Ships.scale_for(tex, EnemyScript.HEIGHT), fx_seed, parts)
+	wreck.setup(tex, Ships.scale_for(tex, EnemyScript.HEIGHT) * Depth.scale_at(pos.y), fx_seed, parts)
 	effects.add_child(wreck)
+
+
+## Server: a bullet damaged an enemy without destroying it; every peer hears the hit.
+@rpc("authority", "call_local", "unreliable")
+func play_hit() -> void:
+	hit_sound.play()
 
 
 func spawn_bullet(pos: Vector2, color: Color) -> void:
@@ -193,6 +202,7 @@ func _spawn_bullet(data: Dictionary) -> Node:
 	var b := BulletScene.instantiate()
 	b.position = data.pos
 	b.color = data.color
+	shoot_sound.play()  # runs on every peer, so everyone hears every shot
 	return b
 
 

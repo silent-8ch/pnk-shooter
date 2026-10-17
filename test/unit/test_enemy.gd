@@ -55,7 +55,7 @@ func test_diver_uses_ship02_enemy_texture() -> void:
 
 
 func test_enemies_face_down_and_are_smaller_than_players() -> void:
-	var body: Sprite2D = _enemy(EnemyScript.WEAVER).get_node("Body")
+	var body: Sprite2D = _enemy(EnemyScript.WEAVER, Vector2(270, Depth.REF_Y)).get_node("Body")
 	assert_true(body.flip_v)
 	var height := body.texture.get_size().y * body.scale.y
 	assert_almost_eq(height, EnemyScript.HEIGHT, 0.01)
@@ -84,8 +84,8 @@ func test_weaver_drifts_down_and_weaves() -> void:
 	var xs := []
 	for i in 30:
 		e.simulate(0.1)
-		xs.append(e.position.x)
-	assert_gt(e.position.y, 100.0)
+		xs.append(e.world.x)
+	assert_gt(e.world.y, 100.0)
 	assert_gt(xs.max(), 270.0 + 30.0, "weaves right")
 	assert_lt(xs.min(), 270.0 - 30.0, "weaves left")
 	assert_lte(xs.max(), 270.0 + EnemyScript.WEAVE_AMPLITUDE + 0.01)
@@ -95,7 +95,7 @@ func test_weaver_stays_in_arena() -> void:
 	var e := _enemy(EnemyScript.WEAVER, Vector2(25, 100))
 	for i in 30:
 		e.simulate(0.1)
-		assert_gte(e.position.x, 20.0)
+		assert_gte(e.world.x, 20.0)
 
 
 func test_diver_group_zigzags_and_bounces() -> void:
@@ -128,15 +128,15 @@ func test_diver_v_holds_formation() -> void:
 		for e in ships:
 			e.simulate(0.05)
 	for k in ships.size():
-		assert_almost_eq(ships[k].position - ships[0].position, pts[k] - pts[0], Vector2(0.01, 0.01))
-	assert_gt(ships[0].position.y, 100.0, "moved down")
+		assert_almost_eq(ships[k].world - ships[0].world, pts[k] - pts[0], Vector2(0.01, 0.01))
+	assert_gt(ships[0].world.y, 100.0, "moved down")
 
 
 func test_divers_ignore_players() -> void:
 	_player(Vector2(100, 400))
 	var a := _enemy(EnemyScript.DIVER, Vector2(270, 100))
 	a.simulate(0.1)
-	assert_almost_eq(a.position.x, 270.0 + EnemyScript.ZIGZAG_SPEED * 0.1, 0.001)
+	assert_almost_eq(a.world.x, 270.0 + EnemyScript.ZIGZAG_SPEED * 0.1, 0.001)
 
 
 # --- No peer ----------------------------------------------------------------
@@ -207,7 +207,7 @@ func test_weavers_in_group_weave_in_sync() -> void:
 	for i in 10:
 		a.simulate(0.1)
 		b.simulate(0.1)
-	assert_almost_eq(b.position.x - a.position.x, 70.0, 0.001)
+	assert_almost_eq(b.world.x - a.world.x, 70.0, 0.001)
 
 
 # --- Death → wreck ----------------------------------------------------------

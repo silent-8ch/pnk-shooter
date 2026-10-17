@@ -1,8 +1,10 @@
-[gd_scene load_steps=7 format=3]
+[gd_scene load_steps=9 format=3]
 
 [ext_resource type="Script" path="res://scripts/game.gd" id="1"]
 [ext_resource type="Script" path="res://scripts/starfield.gd" id="2"]
 [ext_resource type="Script" path="res://scripts/pointer_controls.gd" id="3"]
+[ext_resource type="AudioStream" path="res://assets/sfx/shoot.tres" id="4"]
+[ext_resource type="AudioStream" path="res://assets/sfx/hit.tres" id="5"]
 
 [sub_resource type="Gradient" id="Gradient_shade"]
 colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 1)
@@ -54,6 +56,14 @@ spawn_path = NodePath("../Enemies")
 
 [node name="BulletSpawner" type="MultiplayerSpawner" parent="."]
 spawn_path = NodePath("../Bullets")
+
+[node name="ShootSound" type="AudioStreamPlayer" parent="."]
+stream = ExtResource("4")
+max_polyphony = 4
+
+[node name="HitSound" type="AudioStreamPlayer" parent="."]
+stream = ExtResource("5")
+max_polyphony = 4
 
 [node name="ScoreSync" type="MultiplayerSynchronizer" parent="."]
 replication_config = SubResource("SceneReplicationConfig_1")
