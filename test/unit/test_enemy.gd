@@ -231,7 +231,7 @@ func test_kill_scores_and_plays_wreck() -> void:
 	assert_true(e.is_queued_for_deletion())
 	assert_eq(game.score, 15)
 	var fx := game.get_node("Effects")
-	assert_eq(fx.get_child_count(), 3, "smoke, explosion, and wreck")
+	assert_eq(fx.get_child_count(), 1, "just the wreck; it plays its own blast")
 	assert_eq(fx.get_child(0).position, Vector2(200, 300))
 
 
@@ -240,12 +240,12 @@ func test_double_hit_plays_one_wreck() -> void:
 	ge[1].take_damage(1)
 	ge[1].take_damage(1)
 	assert_eq(ge[0].score, 10)
-	assert_eq(ge[0].get_node("Effects").get_child_count(), 3)
+	assert_eq(ge[0].get_node("Effects").get_child_count(), 1)
 
 
 func test_ram_plays_wreck_without_score() -> void:
 	var ge := _game_with_enemy(EnemyScript.WEAVER)
 	ge[1].ram()
 	assert_eq(ge[0].score, 0)
-	assert_eq(ge[0].get_node("Effects").get_child_count(), 3)
+	assert_eq(ge[0].get_node("Effects").get_child_count(), 1)
 	assert_true(ge[1].is_queued_for_deletion())

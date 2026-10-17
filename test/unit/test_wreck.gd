@@ -192,3 +192,20 @@ func test_parts_on_ship_light_mask() -> void:
 	w._process(WreckScript.DURATION + 0.01)
 	for p in w.loose:
 		assert_eq(p.node.light_mask, Ships.LIGHT_MASK)
+
+
+func test_sprite_blast_plays_at_explosion_point_scaled_by_depth() -> void:
+	var w := _wreck(3, _parts())
+	w._process(WreckScript.DURATION / 2.0)
+	var frames := []
+	for c in w.get_children():
+		if c is AnimatedSprite2D:
+			frames.append(c.sprite_frames)
+	assert_eq(frames, [], "no blast before exploding")
+	w._process(WreckScript.DURATION)
+	var blasts := w.get_children().filter(func(c): return c is AnimatedSprite2D)
+	assert_eq(blasts.size(), 2)
+	for b in blasts:
+		assert_eq(b.position, w.hull.position)
+	var boom = blasts.filter(func(c): return c.sprite_frames == WreckScript.SpriteEffect.EXPLOSION)[0]
+	assert_almost_eq(boom.scale.x, WreckScript.BLAST_HEIGHT * w.end_scale / 128.0, 0.0001)

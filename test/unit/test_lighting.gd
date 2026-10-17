@@ -6,6 +6,13 @@ const Baker := preload("res://tools/bake_normals.gd")
 const PlayerScene := preload("res://scenes/player.tscn")
 const EnemyScene := preload("res://scenes/enemy.tscn")
 const BulletScene := preload("res://scenes/bullet.tscn")
+
+
+## Bullets drop a muzzle flash into their parent, so give them a freed holder.
+func _holder() -> Node2D:
+	var h := Node2D.new()
+	add_child_autofree(h)
+	return h
 const GameScene := preload("res://scenes/game.tscn")
 
 
@@ -142,7 +149,7 @@ func test_enemy_body_is_lit_on_ship_bit() -> void:
 func test_bullet_light_takes_bullet_color_and_hits_ships_only() -> void:
 	var b: Area2D = BulletScene.instantiate()
 	b.color = Color("8dff7a")
-	add_child_autofree(b)
+	_holder().add_child(b)
 	var light: PointLight2D = b.get_node("Light")
 	assert_eq(light.color, Color("8dff7a"))
 	assert_eq(light.range_item_cull_mask, Ships.LIGHT_MASK)
@@ -157,8 +164,9 @@ func test_bullet_light_takes_bullet_color_and_hits_ships_only() -> void:
 func test_bullet_light_texture_is_shared() -> void:
 	var a: Area2D = BulletScene.instantiate()
 	var b: Area2D = BulletScene.instantiate()
-	add_child_autofree(a)
-	add_child_autofree(b)
+	var h := _holder()
+	h.add_child(a)
+	h.add_child(b)
 	assert_same(a.get_node("Light").texture, b.get_node("Light").texture)
 
 

@@ -173,9 +173,6 @@ func destroy_enemy(enemy: Node2D, award_points: bool) -> void:
 
 @rpc("authority", "call_local", "reliable")
 func play_wreck(pos: Vector2, type: int, fx_seed: int) -> void:
-	var sprite_effect := preload("res://scripts/sprite_effect.gd")
-	sprite_effect.spawn(effects, pos, sprite_effect.SMOKE, 64.0)
-	sprite_effect.spawn(effects, pos, sprite_effect.EXPLOSION, 56.0)
 	var ship: int = EnemyScript.TYPES[clampi(type, 0, EnemyScript.TYPES.size() - 1)].ship
 	var tex := Ships.get_enemy_texture(ship)
 	var wreck := WreckScript.new()
