@@ -179,3 +179,21 @@ func test_spark_art_varies_by_seed() -> void:
 	for s in 30:
 		seen[_wreck(s).spark_tex] = true
 	assert_eq(seen.size(), WreckScript.SPARKS.size())
+
+
+# --- Bullet art -------------------------------------------------------------
+
+func test_bullet_uses_effects_art() -> void:
+	var b: Area2D = load("res://scenes/bullet.tscn").instantiate()
+	var frames: SpriteFrames = b.get_node("Body").sprite_frames
+	assert_eq(frames.resource_path, "res://assets/effects/bullet.tres")
+	assert_eq(frames.get_frame_count("default"), 4)
+	assert_true(frames.get_animation_loop("default"))
+	b.free()
+
+
+func test_bullet_art_is_white_so_color_tints_it() -> void:
+	for i in 4:
+		var svg := FileAccess.get_file_as_string("res://assets/effects/bullet_%02d.svg" % i)
+		assert_string_contains(svg, 'fill="#ffffff"')
+		assert_false(svg.contains('fill="#000000"'), "frame %d" % i)
