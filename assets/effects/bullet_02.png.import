@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://uxg2k6eym6qt"
-path="res://.godot/imported/explosion_02.svg-3f2cc10d11fdcc17b3c954753e196ae0.ctex"
+uid="uid://csemy48ydscpl"
+path="res://.godot/imported/bullet_02.png-b28e4debd98da2247886f9f183455dce.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/filler/fx/explosion_02.svg"
-dest_files=["res://.godot/imported/explosion_02.svg-3f2cc10d11fdcc17b3c954753e196ae0.ctex"]
+source_file="res://assets/effects/bullet_02.png"
+dest_files=["res://.godot/imported/bullet_02.png-b28e4debd98da2247886f9f183455dce.ctex"]
 
 [params]
 
@@ -38,6 +38,3 @@ process/hdr_as_srgb=false
 process/hdr_clamp_exposure=false
 process/size_limit=0
 detect_3d/compress_to=1
-svg/scale=1.0
-editor/scale_with_editor_scale=false
-editor/convert_colors_with_editor_theme=false

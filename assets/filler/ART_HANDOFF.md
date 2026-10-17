@@ -25,9 +25,9 @@ Compatibility renderer.
 | Asset | Where | Notes |
 | --- | --- | --- |
 | Player/enemy ships | `assets/ship01.svg`, `ship02.svg` | Palette-recolored at runtime; normal maps baked |
-| Shot (bullet) | `assets/filler/fx/shot_00..03.svg` | 4 frames, loops |
+| Bullet | `assets/effects/bullet_00..03.svg` | 4 frames, loops |
 | Muzzle flash | `assets/filler/fx/muzzle_00..03.svg` | 4 frames, one shot |
-| Explosion | `assets/filler/fx/explosion_00..05.svg` | 6 frames, plays at the wreck's blast point |
+| Explosion | `assets/effects/explosion_00..03.svg` | 4 frames, plays at the wreck's blast point |
 | Smoke puff (blast) | `assets/filler/fx/smoke_00..05.svg` | 6 frames, rises and fades |
 | 12 filler sprites | `assets/filler/*.svg` | Scout, bomber, asteroids, satellite, mine, pickups, bolts, debris; not used in game yet |
 
@@ -67,7 +67,7 @@ one at random so effects don't look stamped.
 - Soft edges come from shape, not blur: use a few stacked shapes with lower
   opacity.
 - Animated sets also get a SpriteFrames `.tres` next to them, like
-  `fx/explosion.tres` (one-shot sets: `loop: false`).
+  `fx/smoke.tres` (one-shot sets: `loop: false`).
 - Keep each SVG under 5 KB; up to 48 sparks are on screen at once on a phone.
 - Deliver art only. Don't edit the scripts below; they're being changed in
   parallel.

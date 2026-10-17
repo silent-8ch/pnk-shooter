@@ -58,12 +58,11 @@ Godot SpriteFrames resources:
 
 | Resource | Frames | FPS | Playback |
 | --- | --- | --- | --- |
-| shot.tres | 4 | 16 | Loop |
 | muzzle.tres | 4 | 30 | One shot |
-| explosion.tres | 6 | 18 | One shot |
 | smoke.tres | 6 | 10 | One shot |
 
-Player bullets use an AnimatedSprite2D with `shot.tres`. Each replicated bullet
+Player bullets use an AnimatedSprite2D with `res://assets/effects/bullet.tres`;
+wreck blasts use `res://assets/effects/explosion.tres`. Each replicated bullet
 creates a local muzzle flash at its launch position. The muzzle artwork's base
 is near the bottom of its canvas; the spawn offset puts it at the ship's nose.
 Enemy wrecks trigger explosion and smoke on each peer through the existing wreck
