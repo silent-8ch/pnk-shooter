@@ -204,8 +204,8 @@ func test_sprite_blast_plays_at_explosion_point_scaled_by_depth() -> void:
 	assert_eq(frames, [], "no blast before exploding")
 	w._process(WreckScript.DURATION)
 	var blasts := w.get_children().filter(func(c): return c is AnimatedSprite2D)
-	assert_eq(blasts.size(), 2)
-	for b in blasts:
-		assert_eq(b.position, w.hull.position)
-	var boom = blasts.filter(func(c): return c.sprite_frames == WreckScript.SpriteEffect.EXPLOSION)[0]
+	assert_eq(blasts.size(), 1, "explosion only, no smoke cloud")
+	var boom = blasts[0]
+	assert_same(boom.sprite_frames, WreckScript.SpriteEffect.EXPLOSION)
+	assert_eq(boom.position, w.hull.position)
 	assert_almost_eq(boom.scale.x, WreckScript.BLAST_HEIGHT * w.end_scale / 128.0, 0.0001)

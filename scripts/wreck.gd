@@ -42,7 +42,6 @@ const BREAKOFF_SPEED := Vector2(60, 140)  # kick for parts shed during the veer
 const PIECE_SPIN := Vector2(3, 10)
 const LINGER := 0.8  # time after the explosion before the node is freed
 const BLAST_HEIGHT := 56.0  # hand-drawn explosion size at normal depth
-const BLAST_SMOKE_HEIGHT := 64.0
 
 ## Fiery spark color ramps; one is picked per explosion.
 const SPARK_RAMPS: Array = [
@@ -202,8 +201,7 @@ func explode() -> void:
 			var speed := _rng.randf_range(PIECE_SPEED.x, PIECE_SPEED.y) * _boom_size
 			_detach(piece, speed, velocity * 0.3)
 	_burst(Vector2.ZERO, _boom_size)
-	# Hand-drawn blast and smoke puff at the blast point, sized by depth.
-	SpriteEffect.spawn(self, _boom_origin, SpriteEffect.SMOKE, BLAST_SMOKE_HEIGHT * _boom_size)
+	# Hand-drawn blast at the blast point, sized by depth.
 	SpriteEffect.spawn(self, _boom_origin, SpriteEffect.EXPLOSION, BLAST_HEIGHT * _boom_size)
 	queue_redraw()
 
