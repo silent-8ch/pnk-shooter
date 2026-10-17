@@ -34,6 +34,8 @@ var hp := 0
 var _base_x := 0.0
 var _time := 0.0
 
+const EngineFlames := preload("res://scripts/engine_flames.gd")
+
 @onready var body: Sprite2D = $Body
 
 
@@ -48,6 +50,12 @@ func _ready() -> void:
 	# the shared normal map lights correctly upside down; no flipped variant needed.
 	body.flip_v = true
 	body.light_mask = Ships.LIGHT_MASK
+	var engines := EngineFlames.new()
+	add_child(engines)
+	move_child(engines, body.get_index())  # behind the ship
+	var ship: int = TYPES[type].ship
+	var colors: Array = Ships.ENEMY_PALETTES[ship % Ships.ENEMY_PALETTES.size()].colors
+	engines.build(ship, body.scale, colors[Ships.THRUSTER_SLOT - 1], true)
 	area_entered.connect(_on_area_entered)
 
 
@@ -124,6 +132,10 @@ func take_damage(amount: int) -> void:
 	hp -= amount
 	if hp <= 0:
 		_destroy(true)
+		return
+	var game := get_tree().get_first_node_in_group("game")
+	if game:
+		game.play_hit.rpc(position)
 
 
 ## Rammed by a player: destroyed without scoring.

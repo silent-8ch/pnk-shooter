@@ -63,6 +63,7 @@ const ENEMY_PALETTES: Array[Dictionary] = [
 		Color("2b0505"), Color("ff5733"), Color("7a0f0f"), Color("ffb4a2")]},
 ]
 
+const THRUSTER_SLOT := 4
 const ENEMY_PART_VARIANTS := 4  # precomputed crack patterns per enemy ship
 const ENEMY_PART_MAX := 7  # max parts before cracking
 const ENEMY_PART_MIN_AREA := 120  # px at RENDER_SCALE; smaller parts merge
@@ -75,6 +76,7 @@ var _svg_cache := {}  # ship index -> SVG text
 var _texture_cache := {}  # "ship:palette" -> Texture2D
 var _parts_cache := {}  # "ship:variant" -> Array[Dictionary]
 var _analysis_cache := {}  # ship -> ShipParts.analyze() result
+var _thruster_cache := {}  # ship -> get_thrusters() result
 var _lit_cache := {}  # "ship:palette" / "enemy:ship" -> CanvasTexture
 
 
@@ -142,6 +144,15 @@ func get_enemy_parts(index: int, variant: int) -> Array[Dictionary]:
 			parts = ShipParts.pieces(a, ShipParts.crack(a, shards, variant + 1))
 		_parts_cache[key] = parts
 	return _parts_cache[key]
+
+
+## Exhaust points of the ship's thrusters (slot 4), for engine flames:
+## [{pos: Vector2 (px from texture center), width: float (px)}].
+func get_thrusters(index: int) -> Array[Dictionary]:
+	index = clamp_index(index)
+	if not _thruster_cache.has(index):
+		_thruster_cache[index] = ShipParts.slot_anchors(get_svg(index), THRUSTER_SLOT, RENDER_SCALE)
+	return _thruster_cache[index]
 
 
 ## Builds every enemy part variant up front so the first kill doesn't hitch.

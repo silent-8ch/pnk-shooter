@@ -309,3 +309,58 @@ static func pieces(a: Dictionary, comp: PackedInt32Array) -> Array[Dictionary]:
 			"area": area[id],
 		})
 	return out
+
+
+## Where each separate region of `slot` sits: [{pos: Vector2 (bottom center,
+## px from image center), width: float (px)}], left to right. Used to place
+## engine flames under the thrusters.
+static func slot_anchors(svg: String, slot: int, scale: float) -> Array[Dictionary]:
+	var n_slots := maxi(ShipSkin.slot_count(svg), 1)
+	var colors := label_colors(n_slots)
+	var img := Image.new()
+	if img.load_svg_from_string(ShipSkin.apply_palette(svg, colors), scale) != OK:
+		return []
+	img.convert(Image.FORMAT_RGBA8)
+	var w := img.get_width()
+	var h := img.get_height()
+	var data := img.get_data()
+	var slots := _label_slots(data, data, w * h, n_slots)
+	var only := PackedInt32Array()
+	only.resize(w * h)
+	for i in w * h:
+		only[i] = slots[i] if slots[i] == slot else -1
+	var comp := _components(only, w, h)
+	var bounds := {}  # id -> [min_x, max_x, max_y]
+	for i in w * h:
+		var id := comp[i]
+		if id == -1:
+			continue
+		var x := i % w
+		var y := i / w
+		if bounds.has(id):
+			var b: Array = bounds[id]
+			b[0] = mini(b[0], x)
+			b[1] = maxi(b[1], x)
+			b[2] = maxi(b[2], y)
+		else:
+			bounds[id] = [x, x, y]
+	var center := Vector2(w, h) / 2.0
+	var out: Array[Dictionary] = []
+	for id in bounds:
+		var b: Array = bounds[id]
+		var width: float = b[1] - b[0] + 1
+		if width < 3.0:
+			continue  # anti-aliasing specks
+		out.append({"pos": Vector2((b[0] + b[1] + 1) / 2.0, b[2] + 1) - center, "width": width})
+	# A region stacked above a lower one (e.g. a nozzle ring over a nozzle) is
+	# not a separate exhaust: keep only the lowest region in each column.
+	var kept: Array[Dictionary] = []
+	for a in out:
+		var covered := false
+		for o in out:
+			if o != a and o.pos.y > a.pos.y and absf(o.pos.x - a.pos.x) < o.width / 2.0:
+				covered = true
+		if not covered:
+			kept.append(a)
+	kept.sort_custom(func(x, y): return x.pos.x < y.pos.x)
+	return kept

@@ -4,6 +4,8 @@ extends AnimatedSprite2D
 const MUZZLE := preload("res://assets/filler/fx/muzzle.tres")
 const EXPLOSION := preload("res://assets/filler/fx/explosion.tres")
 const SMOKE := preload("res://assets/filler/fx/smoke.tres")
+const HIT := preload("res://assets/filler/fx/hit.tres")
+const PLAYER_HIT := preload("res://assets/filler/fx/player_hit.tres")
 
 
 static func spawn(parent: Node, at: Vector2, frames: SpriteFrames, height: float,

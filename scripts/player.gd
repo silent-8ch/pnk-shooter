@@ -19,7 +19,10 @@ var firing := false
 var _cooldown := 0.0
 var _respawn_timer := 0.0
 
+const EngineFlames := preload("res://scripts/engine_flames.gd")
+
 @onready var body: Sprite2D = $Body
+var engines: Node2D
 @onready var label: Label = $Label
 
 
@@ -28,6 +31,11 @@ func _ready() -> void:
 	body.texture = Ships.get_lit_texture(ship, palette)
 	body.scale = Ships.get_scale(ship, palette)
 	body.light_mask = Ships.LIGHT_MASK
+	engines = EngineFlames.new()
+	add_child(engines)
+	move_child(engines, body.get_index())  # behind the ship
+	var colors := Ships.get_palette_colors(ship, palette)
+	engines.build(ship, body.scale, colors[Ships.THRUSTER_SLOT - 1], false)
 	area_entered.connect(_on_area_entered)
 
 
@@ -41,6 +49,7 @@ func is_alive() -> bool:
 
 func _process(_delta: float) -> void:
 	body.modulate.a = 1.0 if is_alive() else 0.25
+	engines.visible = is_alive()
 	if multiplayer.multiplayer_peer == null:
 		return
 	if is_local():
@@ -105,6 +114,9 @@ func take_damage(amount: int) -> void:
 	if not multiplayer.is_server() or not is_alive():
 		return
 	hp -= amount
+	var game := get_tree().get_first_node_in_group("game")
+	if game:
+		game.play_player_hit.rpc(peer_id)
 	if hp <= 0:
 		hp = 0
 		_respawn_timer = RESPAWN_TIME
