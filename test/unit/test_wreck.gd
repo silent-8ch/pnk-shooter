@@ -183,3 +183,12 @@ func test_freed_loose_parts_are_skipped() -> void:
 	w._process(0.01)
 	assert_engine_error_count(0)
 	assert_push_error_count(0)
+
+
+func test_parts_on_ship_light_mask() -> void:
+	var w := _wreck(3, _parts())
+	for piece in w.hull.get_children():
+		assert_eq(piece.light_mask, Ships.LIGHT_MASK)
+	w._process(WreckScript.DURATION + 0.01)
+	for p in w.loose:
+		assert_eq(p.node.light_mask, Ships.LIGHT_MASK)
