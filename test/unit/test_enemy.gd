@@ -96,29 +96,45 @@ func test_weaver_stays_in_arena() -> void:
 		assert_gte(e.position.x, 20.0)
 
 
-func test_diver_steers_toward_nearest_player() -> void:
-	_player(Vector2(500, 800))
-	_player(Vector2(150, 400))
-	var e := _enemy(EnemyScript.DIVER, Vector2(270, 100))
-	e.simulate(0.1)
-	assert_lt(e.position.x, 270.0, "steers left toward the closer player")
-	assert_almost_eq(e.position.x, 270.0 - EnemyScript.DIVE_STEER_SPEED * 0.1, 0.01)
+func test_diver_group_zigzags_and_bounces() -> void:
+	var lo := EnemyScript.group_half_width(EnemyScript.DIVER, EnemyScript.DIVER_GROUP) + EnemyScript.EDGE_MARGIN
+	var hi := EnemyScript.ARENA_WIDTH - lo
+	var xs := []
+	for i in 200:
+		xs.append(EnemyScript.zigzag_center(270.0, 1.0, i * 0.05))
+	assert_almost_eq(xs.max(), hi, 3.0, "reaches right edge")
+	assert_almost_eq(xs.min(), lo, 3.0, "bounces back to left edge")
+	for x in xs:
+		assert_between(x, lo - 0.001, hi + 0.001)
 
 
-func test_diver_ignores_dead_and_passed_players() -> void:
-	_player(Vector2(100, 400), false)  # dead
-	_player(Vector2(500, 50))  # already above the diver
-	var e := _enemy(EnemyScript.DIVER, Vector2(270, 100))
-	e.simulate(0.1)
-	assert_eq(e.position.x, 270.0)
-	assert_gt(e.position.y, 100.0)
+func test_zigzag_direction() -> void:
+	assert_gt(EnemyScript.zigzag_center(270.0, 1.0, 0.1), 270.0)
+	assert_lt(EnemyScript.zigzag_center(270.0, -1.0, 0.1), 270.0)
+	assert_almost_eq(EnemyScript.zigzag_center(270.0, 1.0, 0.1), 270.0 + EnemyScript.ZIGZAG_SPEED * 0.1, 0.001)
 
 
-func test_diver_no_overshoot() -> void:
-	_player(Vector2(272, 800))
-	var e := _enemy(EnemyScript.DIVER, Vector2(270, 100))
-	e.simulate(0.1)
-	assert_almost_eq(e.position.x, 272.0, 0.001)
+func test_diver_v_holds_formation() -> void:
+	var pts := EnemyScript.group_layout(EnemyScript.DIVER, 3, 200.0)
+	var ships := []
+	for pt in pts:
+		var e := _enemy(EnemyScript.DIVER, pt)
+		e.group_x = 200.0
+		e.zig_dir = -1.0
+		ships.append(e)
+	for i in 120:
+		for e in ships:
+			e.simulate(0.05)
+	for k in ships.size():
+		assert_almost_eq(ships[k].position - ships[0].position, pts[k] - pts[0], Vector2(0.01, 0.01))
+	assert_gt(ships[0].position.y, 100.0, "moved down")
+
+
+func test_divers_ignore_players() -> void:
+	_player(Vector2(100, 400))
+	var a := _enemy(EnemyScript.DIVER, Vector2(270, 100))
+	a.simulate(0.1)
+	assert_almost_eq(a.position.x, 270.0 + EnemyScript.ZIGZAG_SPEED * 0.1, 0.001)
 
 
 # --- No peer ----------------------------------------------------------------
@@ -142,7 +158,6 @@ func test_no_peer_take_damage_ignored() -> void:
 func test_slower_speeds() -> void:
 	assert_eq(EnemyScript.TYPES[EnemyScript.WEAVER].speed, 90.0)
 	assert_eq(EnemyScript.TYPES[EnemyScript.DIVER].speed, 130.0)
-	assert_eq(EnemyScript.DIVE_STEER_SPEED, 70.0)
 
 
 func test_eases_in_from_half_speed() -> void:
@@ -191,3 +206,44 @@ func test_weavers_in_group_weave_in_sync() -> void:
 		a.simulate(0.1)
 		b.simulate(0.1)
 	assert_almost_eq(b.position.x - a.position.x, 70.0, 0.001)
+
+
+# --- Death → wreck ----------------------------------------------------------
+
+func _game_with_enemy(type: int) -> Array:
+	multiplayer.multiplayer_peer = OfflineMultiplayerPeer.new()
+	var game: Node2D = load("res://scenes/game.tscn").instantiate()
+	add_child_autofree(game)
+	var e: Area2D = EnemyScene.instantiate()
+	e.type = type
+	e.position = Vector2(200, 300)
+	game.get_node("Enemies").add_child(e)
+	return [game, e]
+
+
+func test_kill_scores_and_plays_wreck() -> void:
+	var ge := _game_with_enemy(EnemyScript.DIVER)
+	var game: Node2D = ge[0]
+	var e: Area2D = ge[1]
+	e.take_damage(1)
+	assert_true(e.is_queued_for_deletion())
+	assert_eq(game.score, 15)
+	var fx := game.get_node("Effects")
+	assert_eq(fx.get_child_count(), 1)
+	assert_eq(fx.get_child(0).position, Vector2(200, 300))
+
+
+func test_double_hit_plays_one_wreck() -> void:
+	var ge := _game_with_enemy(EnemyScript.WEAVER)
+	ge[1].take_damage(1)
+	ge[1].take_damage(1)
+	assert_eq(ge[0].score, 10)
+	assert_eq(ge[0].get_node("Effects").get_child_count(), 1)
+
+
+func test_ram_plays_wreck_without_score() -> void:
+	var ge := _game_with_enemy(EnemyScript.WEAVER)
+	ge[1].ram()
+	assert_eq(ge[0].score, 0)
+	assert_eq(ge[0].get_node("Effects").get_child_count(), 1)
+	assert_true(ge[1].is_queued_for_deletion())

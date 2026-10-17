@@ -6,6 +6,7 @@ const PlayerScene := preload("res://scenes/player.tscn")
 const EnemyScene := preload("res://scenes/enemy.tscn")
 const BulletScene := preload("res://scenes/bullet.tscn")
 const EnemyScript := preload("res://scripts/enemy.gd")
+const WreckScript := preload("res://scripts/wreck.gd")
 
 const ARENA := Rect2(0, 0, 540, 960)
 const GROUP_INTERVAL := 4.0  # seconds between enemy groups
@@ -17,6 +18,7 @@ const PLAYER_COLORS: Array[Color] = [
 @onready var players: Node2D = $Players
 @onready var enemies: Node2D = $Enemies
 @onready var bullets: Node2D = $Bullets
+@onready var effects: Node2D = $Effects
 @onready var player_spawner: MultiplayerSpawner = $PlayerSpawner
 @onready var enemy_spawner: MultiplayerSpawner = $EnemySpawner
 @onready var bullet_spawner: MultiplayerSpawner = $BulletSpawner
@@ -43,6 +45,7 @@ func _ready() -> void:
 
 
 func start() -> void:
+	Ships.prewarm_enemy_parts()  # avoid a hitch on the first kill
 	active = true
 	hud.visible = true
 	pointer_controls.visible = true
@@ -60,7 +63,7 @@ func stop() -> void:
 	input_enabled = true
 	hud.visible = false
 	pointer_controls.visible = false
-	for group in [players, enemies, bullets]:
+	for group in [players, enemies, bullets, effects]:
 		for child in group.get_children():
 			child.queue_free()
 	score = 0
@@ -139,15 +142,39 @@ func spawn_group(type: int) -> void:
 		count = randi_range(EnemyScript.WEAVER_GROUP_MIN, EnemyScript.WEAVER_GROUP_MAX)
 	var margin := EnemyScript.group_half_width(type, count) + 20.0
 	var center := randf_range(margin, ARENA.size.x - margin)
+	var dir := 1.0 if randf() < 0.5 else -1.0
 	for pos in EnemyScript.group_layout(type, count, center):
-		enemy_spawner.spawn({"x": pos.x, "y": pos.y, "type": type})
+		enemy_spawner.spawn({"x": pos.x, "y": pos.y, "type": type, "group_x": center, "dir": dir})
 
 
 func _spawn_enemy(data: Dictionary) -> Node:
 	var e := EnemyScene.instantiate()
 	e.position = Vector2(data.x, data.get("y", EnemyScript.SPAWN_Y))
 	e.type = data.get("type", EnemyScript.WEAVER)
+	e.group_x = data.get("group_x", -1.0)
+	e.zig_dir = data.get("dir", 1.0)
 	return e
+
+
+## Server: removes an enemy and has every peer play its wreck effect.
+func destroy_enemy(enemy: Node2D, award_points: bool) -> void:
+	if not multiplayer.is_server():
+		return
+	if award_points:
+		add_score(enemy.points())
+	play_wreck.rpc(enemy.position, enemy.type, randi())
+	enemy.queue_free()
+
+
+@rpc("authority", "call_local", "reliable")
+func play_wreck(pos: Vector2, type: int, fx_seed: int) -> void:
+	var ship: int = EnemyScript.TYPES[clampi(type, 0, EnemyScript.TYPES.size() - 1)].ship
+	var tex := Ships.get_enemy_texture(ship)
+	var wreck := WreckScript.new()
+	wreck.position = pos
+	var parts := Ships.get_enemy_parts(ship, fx_seed)
+	wreck.setup(tex, Ships.scale_for(tex, EnemyScript.HEIGHT), fx_seed, parts)
+	effects.add_child(wreck)
 
 
 func spawn_bullet(pos: Vector2, color: Color) -> void:

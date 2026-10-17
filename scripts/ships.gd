@@ -62,12 +62,18 @@ const ENEMY_PALETTES: Array[Dictionary] = [
 		Color("2b0505"), Color("ff5733"), Color("7a0f0f"), Color("ffb4a2")]},
 ]
 
+const ENEMY_PART_VARIANTS := 4  # precomputed crack patterns per enemy ship
+const ENEMY_PART_MAX := 7  # max parts before cracking
+const ENEMY_PART_MIN_AREA := 120  # px at RENDER_SCALE; smaller parts merge
+
 signal selection_changed(index: int)
 
 var selected := 0
 var _palette_by_ship := {}  # ship index -> palette index
 var _svg_cache := {}  # ship index -> SVG text
 var _texture_cache := {}  # "ship:palette" -> Texture2D
+var _parts_cache := {}  # "ship:variant" -> Array[Dictionary]
+var _analysis_cache := {}  # ship -> ShipParts.analyze() result
 
 
 func _ready() -> void:
@@ -112,6 +118,35 @@ func get_enemy_texture(index: int) -> Texture2D:
 	var colors: Array[Color] = []
 	colors.assign(ENEMY_PALETTES[index % ENEMY_PALETTES.size()].colors)
 	return _render_cached("enemy:%d" % index, index, colors)
+
+
+## Pieces of the enemy-palette ship for wreck effects (see ShipParts.split),
+## in the same pixel scale as get_enemy_texture(). `variant` picks one of
+## ENEMY_PART_VARIANTS precomputed crack patterns.
+func get_enemy_parts(index: int, variant: int) -> Array[Dictionary]:
+	index = clamp_index(index)
+	variant = posmod(variant, ENEMY_PART_VARIANTS)
+	var key := "%d:%d" % [index, variant]
+	if not _parts_cache.has(key):
+		if not _analysis_cache.has(index):
+			var colors: Array[Color] = []
+			colors.assign(ENEMY_PALETTES[index % ENEMY_PALETTES.size()].colors)
+			_analysis_cache[index] = ShipParts.analyze(get_svg(index), colors, RENDER_SCALE,
+					ENEMY_PART_MAX, ENEMY_PART_MIN_AREA)
+		var a: Dictionary = _analysis_cache[index]
+		var parts: Array[Dictionary] = []
+		if not a.is_empty():
+			var shards := 1 + variant % 2  # crack one or two of the largest parts
+			parts = ShipParts.pieces(a, ShipParts.crack(a, shards, variant + 1))
+		_parts_cache[key] = parts
+	return _parts_cache[key]
+
+
+## Builds every enemy part variant up front so the first kill doesn't hitch.
+func prewarm_enemy_parts() -> void:
+	for ship in count():
+		for v in ENEMY_PART_VARIANTS:
+			get_enemy_parts(ship, v)
 
 
 func _render_cached(key: String, index: int, colors: Array[Color]) -> Texture2D:

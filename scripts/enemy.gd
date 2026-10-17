@@ -1,7 +1,8 @@
 extends Area2D
 ## Enemy ship. Server-simulated; `type` picks the look and behavior.
 ##   WEAVER (ship 01): weaves side to side as it drifts down; comes in lines.
-##   DIVER  (ship 02): faster, steers toward the nearest living player; comes in Vs.
+##   DIVER  (ship 02): faster; comes in Vs that zigzag down together, bouncing
+##                     off the screen edges while holding formation.
 
 enum { WEAVER, DIVER }
 
@@ -12,7 +13,8 @@ const TYPES: Array[Dictionary] = [
 const HEIGHT := 36.0
 const WEAVE_AMPLITUDE := 60.0
 const WEAVE_FREQUENCY := 2.5  # radians per second
-const DIVE_STEER_SPEED := 70.0  # max horizontal speed while diving
+const ZIGZAG_SPEED := 110.0  # horizontal speed of a diver group
+const EDGE_MARGIN := 20.0
 const ARENA_WIDTH := 540.0
 const EXIT_Y := 1020.0
 const RAMP_TIME := 1.0  # seconds to go from RAMP_START to full speed
@@ -25,6 +27,8 @@ const DIVER_V_OFFSET := Vector2(50, 40)  # each wing is this far out and back
 const SPAWN_Y := -40.0
 
 @export var type := WEAVER
+@export var group_x := -1.0  # group center at spawn; < 0 means this ship's x
+@export var zig_dir := 1.0  # initial horizontal direction of the group
 
 var hp := 0
 var _base_x := 0.0
@@ -64,10 +68,8 @@ func simulate(delta: float) -> void:
 			var x := _base_x + sin(_time * WEAVE_FREQUENCY) * WEAVE_AMPLITUDE
 			position.x = clampf(x, 20.0, ARENA_WIDTH - 20.0)
 		DIVER:
-			var target := _nearest_player()
-			if target:
-				var dx := target.position.x - position.x
-				position.x += clampf(dx, -DIVE_STEER_SPEED * delta, DIVE_STEER_SPEED * delta)
+			var center := group_x if group_x >= 0.0 else _base_x
+			position.x = zigzag_center(center, zig_dir, _time) + (_base_x - center)
 
 
 ## Current falling speed: eases in from RAMP_START over RAMP_TIME.
@@ -100,25 +102,40 @@ static func group_half_width(group_type: int, count: int) -> float:
 	return WEAVER_SPACING * (count - 1) / 2.0 + WEAVE_AMPLITUDE
 
 
-func _nearest_player() -> Node2D:
-	var best: Node2D = null
-	var best_dist := INF
-	for p in get_tree().get_nodes_in_group("player"):
-		if not p.is_alive() or p.position.y < position.y:
-			continue  # only dive at living players still below
-		var d := position.distance_squared_to(p.position)
-		if d < best_dist:
-			best_dist = d
-			best = p
-	return best
+## Group center x after `time` seconds: moves at ZIGZAG_SPEED and bounces
+## between the edges so the whole V stays on screen. Shared by the group, so
+## every ship in it turns at the same moment.
+static func zigzag_center(start_x: float, dir: float, time: float) -> float:
+	var margin := group_half_width(DIVER, DIVER_GROUP) + EDGE_MARGIN
+	var lo := margin
+	var span := ARENA_WIDTH - 2.0 * margin
+	if span <= 0.0:
+		return ARENA_WIDTH / 2.0
+	var m := fposmod(start_x - lo + signf(dir) * ZIGZAG_SPEED * time, 2.0 * span)
+	return lo + (m if m <= span else 2.0 * span - m)
 
 
 func take_damage(amount: int) -> void:
-	if multiplayer.multiplayer_peer == null or not multiplayer.is_server():
+	if multiplayer.multiplayer_peer == null or not multiplayer.is_server() or hp <= 0:
 		return
 	hp -= amount
 	if hp <= 0:
-		get_tree().get_first_node_in_group("game").add_score(points())
+		_destroy(true)
+
+
+## Rammed by a player: destroyed without scoring.
+func ram() -> void:
+	if multiplayer.multiplayer_peer == null or not multiplayer.is_server() or hp <= 0:
+		return
+	hp = 0
+	_destroy(false)
+
+
+func _destroy(award_points: bool) -> void:
+	var game := get_tree().get_first_node_in_group("game")
+	if game:
+		game.destroy_enemy(self, award_points)
+	else:
 		queue_free()
 
 

@@ -114,4 +114,4 @@ func _on_area_entered(area: Area2D) -> void:
 		return
 	if area.is_in_group("enemy"):
 		take_damage(1)
-		area.queue_free()
+		area.ram()
