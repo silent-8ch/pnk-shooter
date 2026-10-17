@@ -41,10 +41,13 @@ func _ready() -> void:
 	type = clampi(type, 0, TYPES.size() - 1)
 	hp = TYPES[type].hp
 	_base_x = position.x
-	var tex := Ships.get_enemy_texture(TYPES[type].ship)
+	var tex := Ships.get_lit_enemy_texture(TYPES[type].ship)
 	body.texture = tex
 	body.scale = Ships.scale_for(tex, HEIGHT)
+	# Godot flips the normal map's Y along with flip_v (checked empirically on 4.6), so
+	# the shared normal map lights correctly upside down; no flipped variant needed.
 	body.flip_v = true
+	body.light_mask = Ships.LIGHT_MASK
 	area_entered.connect(_on_area_entered)
 
 

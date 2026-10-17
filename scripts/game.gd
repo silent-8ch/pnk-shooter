@@ -1,6 +1,11 @@
 extends Node2D
 ## Server-authoritative game world. The host simulates everything; clients
 ## send input and receive state through MultiplayerSpawner/Synchronizer.
+##
+## Lighting: ship bodies sit on Ships.LIGHT_MASK. ShipShade (a SUB PointLight2D covering the
+## arena, very high so it subtracts evenly) dims them to ~45%; bullet lights add color back.
+## Not a DirectionalLight2D: the Compatibility renderer ignores its range_item_cull_mask and
+## would darken everything. Not CanvasModulate either, for the same reason.
 
 const PlayerScene := preload("res://scenes/player.tscn")
 const EnemyScene := preload("res://scenes/enemy.tscn")

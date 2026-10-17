@@ -22,18 +22,19 @@ func before_each() -> void:
 func test_body_uses_ship_and_palette_texture() -> void:
 	var body := player.get_node("Body")
 	assert_is(body, Sprite2D)
-	assert_same(body.texture, Ships.get_texture(0, 0))
+	assert_same(body.texture, Ships.get_lit_texture(0, 0))
+	assert_same(body.texture.diffuse_texture, Ships.get_texture(0, 0))
 
 
 func test_ship_and_palette_pick_texture() -> void:
 	var p := _spawn(1, 2)
-	assert_same(p.get_node("Body").texture, Ships.get_texture(1, 2))
-	assert_not_same(p.get_node("Body").texture, Ships.get_texture(1, 0))
+	assert_same(p.get_node("Body").texture.diffuse_texture, Ships.get_texture(1, 2))
+	assert_not_same(p.get_node("Body").texture.diffuse_texture, Ships.get_texture(1, 0))
 
 
 func test_invalid_indices_fall_back_to_first() -> void:
 	var p := _spawn(99, 99)
-	assert_same(p.get_node("Body").texture, Ships.get_texture(0, 0))
+	assert_same(p.get_node("Body").texture.diffuse_texture, Ships.get_texture(0, 0))
 
 
 func test_every_ship_renders_about_44px_tall() -> void:

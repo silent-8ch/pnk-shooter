@@ -25,8 +25,9 @@ var _respawn_timer := 0.0
 
 func _ready() -> void:
 	label.text = player_name
-	body.texture = Ships.get_texture(ship, palette)
+	body.texture = Ships.get_lit_texture(ship, palette)
 	body.scale = Ships.get_scale(ship, palette)
+	body.light_mask = Ships.LIGHT_MASK
 	area_entered.connect(_on_area_entered)
 
 

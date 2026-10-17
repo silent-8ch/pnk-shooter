@@ -5,10 +5,11 @@ extends Node
 const SHIP_HEIGHT := 44.0  # on-screen height in px, regardless of texture size
 const RENDER_SCALE := 0.2  # SVG -> texture scale, matches the import settings
 const SETTINGS_PATH := "user://settings.cfg"
+const LIGHT_MASK := 2  # light_mask bit for ship bodies; ship lights cull to this bit only
 
 const LIST: Array[Dictionary] = [
-	{"name": "Ship 01", "svg": "res://assets/ship01.svg"},
-	{"name": "Ship 02", "svg": "res://assets/ship02.svg"},
+	{"name": "Ship 01", "svg": "res://assets/ship01.svg", "normal": "res://assets/ship01_normal.png"},
+	{"name": "Ship 02", "svg": "res://assets/ship02.svg", "normal": "res://assets/ship02_normal.png"},
 ]
 
 ## Slot order: 1 outline, 2 hull, 3 glass, 4 thrusters, 5 accents, 6 panels,
@@ -74,6 +75,7 @@ var _svg_cache := {}  # ship index -> SVG text
 var _texture_cache := {}  # "ship:palette" -> Texture2D
 var _parts_cache := {}  # "ship:variant" -> Array[Dictionary]
 var _analysis_cache := {}  # ship -> ShipParts.analyze() result
+var _lit_cache := {}  # "ship:palette" / "enemy:ship" -> CanvasTexture
 
 
 func _ready() -> void:
@@ -147,6 +149,33 @@ func prewarm_enemy_parts() -> void:
 	for ship in count():
 		for v in ENEMY_PART_VARIANTS:
 			get_enemy_parts(ship, v)
+
+
+## get_texture() paired with the ship's baked normal map, for 2D lighting.
+func get_lit_texture(index: int, palette: int = -1) -> CanvasTexture:
+	index = clamp_index(index)
+	palette = palette_for(index) if palette < 0 else clamp_palette(palette)
+	return _lit_cached("%d:%d" % [index, palette], index, get_texture(index, palette))
+
+
+## get_enemy_texture() paired with the ship's baked normal map.
+func get_lit_enemy_texture(index: int) -> CanvasTexture:
+	index = clamp_index(index)
+	return _lit_cached("enemy:%d" % index, index, get_enemy_texture(index))
+
+
+func _lit_cached(key: String, index: int, diffuse: Texture2D) -> CanvasTexture:
+	if not _lit_cache.has(key):
+		var tex := CanvasTexture.new()
+		tex.diffuse_texture = diffuse
+		tex.normal_texture = get_normal_texture(index)
+		_lit_cache[key] = tex
+	return _lit_cache[key]
+
+
+## The ship's baked normal map (tools/bake_normals.gd), same pixel size as its textures.
+func get_normal_texture(index: int) -> Texture2D:
+	return load(LIST[clamp_index(index)].normal)
 
 
 func _render_cached(key: String, index: int, colors: Array[Color]) -> Texture2D:

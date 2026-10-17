@@ -1,5 +1,7 @@
 extends Area2D
 ## Player bullet. Server-simulated; position replicated.
+## Carries a PointLight2D tinted to `color` that lights ship bodies only
+## (Ships.LIGHT_MASK); any bullet using this scene gets the same light.
 
 const SPEED := 700.0
 
@@ -8,6 +10,8 @@ const SPEED := 700.0
 
 func _ready() -> void:
 	$Body.color = color
+	$Light.color = color
+	$Light.range_item_cull_mask = Ships.LIGHT_MASK
 
 
 func _physics_process(delta: float) -> void:

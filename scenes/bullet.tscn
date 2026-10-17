@@ -1,9 +1,21 @@
-[gd_scene load_steps=4 format=3]
+[gd_scene load_steps=6 format=3]
 
 [ext_resource type="Script" path="res://scripts/bullet.gd" id="1"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_1"]
 size = Vector2(4, 14)
+
+[sub_resource type="Gradient" id="Gradient_light"]
+offsets = PackedFloat32Array(0, 0.5, 1)
+colors = PackedColorArray(1, 1, 1, 1, 0.55, 0.55, 0.55, 1, 0, 0, 0, 1)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_light"]
+gradient = SubResource("Gradient_light")
+width = 180
+height = 180
+fill = 1
+fill_from = Vector2(0.5, 0.5)
+fill_to = Vector2(1, 0.5)
 
 [sub_resource type="SceneReplicationConfig" id="SceneReplicationConfig_1"]
 properties/0/path = NodePath(".:position")
@@ -21,6 +33,12 @@ script = ExtResource("1")
 [node name="Body" type="Polygon2D" parent="."]
 color = Color(1, 1, 0.4, 1)
 polygon = PackedVector2Array(-2, -7, 2, -7, 2, 7, -2, 7)
+
+[node name="Light" type="PointLight2D" parent="."]
+color = Color(1, 1, 0.4, 1)
+range_item_cull_mask = 2
+texture = SubResource("GradientTexture2D_light")
+height = 30.0
 
 [node name="Shape" type="CollisionShape2D" parent="."]
 shape = SubResource("RectangleShape2D_1")

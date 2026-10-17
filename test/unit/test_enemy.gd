@@ -44,12 +44,14 @@ func _player(pos: Vector2, alive := true) -> FakePlayer:
 
 func test_weaver_uses_ship01_enemy_texture() -> void:
 	var e := _enemy(EnemyScript.WEAVER)
-	assert_same(e.get_node("Body").texture, Ships.get_enemy_texture(0))
+	assert_same(e.get_node("Body").texture, Ships.get_lit_enemy_texture(0))
+	assert_same(e.get_node("Body").texture.diffuse_texture, Ships.get_enemy_texture(0))
 
 
 func test_diver_uses_ship02_enemy_texture() -> void:
 	var e := _enemy(EnemyScript.DIVER)
-	assert_same(e.get_node("Body").texture, Ships.get_enemy_texture(1))
+	assert_same(e.get_node("Body").texture, Ships.get_lit_enemy_texture(1))
+	assert_same(e.get_node("Body").texture.diffuse_texture, Ships.get_enemy_texture(1))
 
 
 func test_enemies_face_down_and_are_smaller_than_players() -> void:

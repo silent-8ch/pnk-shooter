@@ -1,8 +1,16 @@
-[gd_scene load_steps=5 format=3]
+[gd_scene load_steps=7 format=3]
 
 [ext_resource type="Script" path="res://scripts/game.gd" id="1"]
 [ext_resource type="Script" path="res://scripts/starfield.gd" id="2"]
 [ext_resource type="Script" path="res://scripts/pointer_controls.gd" id="3"]
+
+[sub_resource type="Gradient" id="Gradient_shade"]
+colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 1)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_shade"]
+gradient = SubResource("Gradient_shade")
+width = 16
+height = 16
 
 [sub_resource type="SceneReplicationConfig" id="SceneReplicationConfig_1"]
 properties/0/path = NodePath(".:score")
@@ -20,6 +28,15 @@ color = Color(0.05, 0.06, 0.12, 1)
 
 [node name="Starfield" type="Node2D" parent="."]
 script = ExtResource("2")
+
+[node name="ShipShade" type="PointLight2D" parent="."]
+position = Vector2(270, 480)
+blend_mode = 1
+energy = 0.55
+range_item_cull_mask = 2
+texture = SubResource("GradientTexture2D_shade")
+texture_scale = 80.0
+height = 4096.0
 
 [node name="Players" type="Node2D" parent="."]
 
