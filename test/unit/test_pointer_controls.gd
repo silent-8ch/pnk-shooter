@@ -1,5 +1,5 @@
 extends GutTest
-## Tap/click-to-move pointer controls: target, steering, arrival, fire timing,
+## Tap/click-to-move pointer controls: target, steering, arrival, fire presses,
 ## and touch vs mouse event handling.
 
 const PointerControls := preload("res://scripts/pointer_controls.gd")
@@ -115,8 +115,8 @@ func test_touch_emulated_mouse_ignored() -> void:
 func test_mouse_release_does_not_end_touch() -> void:
 	_touch(true, Vector2(200, 500))
 	_click(false, Vector2(200, 500))
-	pointer._process(1.0)
-	assert_true(pointer.firing)
+	_drag(Vector2(300, 600))
+	assert_eq(pointer.target, Vector2(300, 600) + PointerControls.TOUCH_OFFSET, "touch still held")
 
 
 # --- Steering ---------------------------------------------------------------
@@ -153,23 +153,26 @@ func test_target_clamped_to_bounds() -> void:
 
 # --- Firing -----------------------------------------------------------------
 
-func test_fires_while_held() -> void:
+func test_each_press_counts_once() -> void:
 	_click(true, Vector2(200, 500))
-	pointer._process(1.0)
-	assert_true(pointer.firing)
+	assert_eq(pointer.presses, 1)
+	_mouse_move(Vector2(250, 450))
+	assert_eq(pointer.presses, 1, "holding or dragging is not another press")
+	_click(false, Vector2(250, 450))
+	_click(true, Vector2(250, 450))
+	assert_eq(pointer.presses, 2)
 
 
-func test_quick_tap_fires_for_min_time() -> void:
+func test_second_finger_does_not_press() -> void:
 	_touch(true, Vector2(200, 500))
-	_touch(false, Vector2(200, 500))
-	assert_true(pointer.firing, "still firing right after a quick tap")
-	pointer._process(PointerControls.TAP_FIRE_TIME + 0.01)
-	assert_false(pointer.firing)
+	_touch(true, Vector2(400, 800), 1)
+	assert_eq(pointer.presses, 1)
 
 
-func test_tap_fire_time_covers_player_cooldown() -> void:
-	var player_script := preload("res://scripts/player.gd")
-	assert_gt(PointerControls.TAP_FIRE_TIME, player_script.FIRE_COOLDOWN)
+func test_hidden_press_not_counted() -> void:
+	layer.visible = false
+	_click(true, Vector2(200, 500))
+	assert_eq(pointer.presses, 0)
 
 
 # --- Activation -------------------------------------------------------------
@@ -178,7 +181,6 @@ func test_hiding_layer_resets() -> void:
 	_click(true, Vector2(200, 500))
 	layer.visible = false
 	assert_false(pointer.has_target)
-	assert_false(pointer.firing)
 
 
 func test_hidden_ignores_input() -> void:
@@ -192,5 +194,6 @@ func test_release_while_hidden_still_ends_press() -> void:
 	pointer.visible = false  # inactive without the layer's reset
 	_click(false, Vector2(200, 500))
 	pointer.visible = true
-	pointer._process(1.0)
-	assert_false(pointer.firing)
+	_click(true, Vector2(300, 500))
+	assert_eq(pointer.target, Vector2(300, 500), "a new press is accepted")
+	assert_eq(pointer.presses, 2)

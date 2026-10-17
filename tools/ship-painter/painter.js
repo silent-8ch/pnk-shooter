@@ -98,7 +98,10 @@
   }
 
   // Build editor state from an SVG string. Accepts raw potrace output or a previous export.
-  function parseShip(text, name) {
+  // Shapes with fill="none" (stroke-only art) are locked: never slotted or recolored.
+  // opts.slotByColor: for an unpainted SVG, start with one slot per distinct fill color.
+  function parseShip(text, name, opts) {
+    opts = opts || {};
     if (typeof text !== 'string' || !ROOT_RE.test(text)) throw new Error('Not an SVG document');
     const extracted = extractFills(text);
     const svg = extracted.svg;
@@ -111,9 +114,15 @@
 
     const shapes = found.map(function (s) {
       const slot = parseInt(getAttr(s.attrs, 'data-slot'), 10);
-      return { slot: slot >= 1 ? slot : 1, fill: getAttr(s.attrs, 'fill') };
+      const fill = getAttr(s.attrs, 'fill');
+      const out = { slot: slot >= 1 ? slot : 1, fill: fill };
+      if (fill !== null && fill.trim().toLowerCase() === 'none') out.locked = true;
+      return out;
     });
     const fills = extracted.fills;
+    const unpainted = !(parseInt(getAttr(rootAttrs, 'data-slots'), 10) >= 1) && !fills.length &&
+      found.every(function (s) { return getAttr(s.attrs, 'data-slot') === null; });
+    if (opts.slotByColor && unpainted) slotCount = slotsByColor(shapes);
     shapes.concat(fills).forEach(function (s) { if (s.slot > slotCount) slotCount = s.slot; });
     slotCount = Math.min(slotCount, MAX_SLOTS);
     shapes.concat(fills).forEach(function (s) { if (s.slot > slotCount) s.slot = 1; });
@@ -132,10 +141,23 @@
     return {
       name: suggestName(name),
       svg: svg,
-      shapes: shapes.map(function (s) { return { slot: s.slot }; }),
+      shapes: shapes.map(function (s) { return s.locked ? { slot: s.slot, locked: true } : { slot: s.slot }; }),
       fills: fills.map(function (f) { return { slot: f.slot, d: f.d }; }),
       slots: slots,
     };
+  }
+
+  // Puts each unlocked shape in a slot per distinct hex fill (first seen = slot 1). Returns slot count.
+  function slotsByColor(shapes) {
+    const colors = [];
+    shapes.forEach(function (s) {
+      if (s.locked || !isHexColor(s.fill)) return;
+      const c = s.fill.toLowerCase();
+      let k = colors.indexOf(c);
+      if (k === -1 && colors.length < MAX_SLOTS) { colors.push(c); k = colors.length - 1; }
+      s.slot = k === -1 ? 1 : k + 1;
+    });
+    return Math.max(colors.length, 1);
   }
 
   function clone(state) {
@@ -145,6 +167,7 @@
   function setSlot(state, shapeIndex, slot) {
     if (shapeIndex < 0 || shapeIndex >= state.shapes.length) throw new RangeError('shape index out of range');
     if (slot < 1 || slot > state.slots.length) throw new RangeError('slot out of range');
+    if (state.shapes[shapeIndex].locked) throw new Error('shape ' + shapeIndex + ' has no fill and cannot be slotted');
     state.shapes[shapeIndex].slot = slot;
     return state;
   }
@@ -172,10 +195,10 @@
     return state;
   }
 
-  // Assign every outline shape (not fills) to one slot.
+  // Assign every outline shape (not fills or locked shapes) to one slot.
   function assignAll(state, slot) {
     if (slot < 1 || slot > state.slots.length) throw new RangeError('slot out of range');
-    state.shapes.forEach(function (s) { s.slot = slot; });
+    state.shapes.forEach(function (s) { if (!s.locked) s.slot = slot; });
     return state;
   }
 
@@ -214,7 +237,7 @@
 
   function countBySlot(state) {
     const counts = state.slots.map(function () { return 0; });
-    state.shapes.forEach(function (s) { counts[s.slot - 1] += 1; });
+    state.shapes.forEach(function (s) { if (!s.locked) counts[s.slot - 1] += 1; });
     return counts;
   }
 
@@ -237,9 +260,13 @@
     });
     let i = 0;
     out = out.replace(new RegExp(SHAPE_RE.source, 'g'), function (m, tag, attrs, close) {
-      const slot = state.shapes[i].slot;
-      attrs = setAttr(attrs, 'data-slot', String(slot));
-      attrs = setAttr(attrs, 'fill', opts.solid || state.slots[slot - 1].color);
+      const shape = state.shapes[i];
+      if (shape.locked) {
+        attrs = removeAttr(attrs, 'data-slot');
+      } else {
+        attrs = setAttr(attrs, 'data-slot', String(shape.slot));
+        attrs = setAttr(attrs, 'fill', opts.solid || state.slots[shape.slot - 1].color);
+      }
       attrs = opts.indexAttr ? setAttr(attrs, 'data-idx', String(i)) : removeAttr(attrs, 'data-idx');
       i += 1;
       return '<' + tag + attrs + close + '>';
@@ -264,7 +291,7 @@
       slots: state.slots.map(function (s, i) {
         return { index: i + 1, name: s.name, color: s.color, shapes: counts[i], fills: fillCounts[i] };
       }),
-      shapes: state.shapes.map(function (s) { return s.slot; }),
+      shapes: state.shapes.map(function (s) { return s.locked ? 0 : s.slot; }),
       fills: state.fills.map(function (f) { return f.slot; }),
     };
   }

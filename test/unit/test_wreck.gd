@@ -2,6 +2,17 @@ extends GutTest
 ## Enemy wreck effect: seeded variety, veer + depth scaling, explosion, cleanup.
 
 const WreckScript := preload("res://scripts/wreck.gd")
+const EnemyScene := preload("res://scenes/enemy.tscn")
+
+var _saved_peer: MultiplayerPeer
+
+
+func before_each() -> void:
+	_saved_peer = multiplayer.multiplayer_peer
+
+
+func after_each() -> void:
+	multiplayer.multiplayer_peer = _saved_peer
 
 
 func _wreck(fx_seed: int, parts: Array = []) -> Node2D:
@@ -13,8 +24,7 @@ func _wreck(fx_seed: int, parts: Array = []) -> Node2D:
 
 
 func _look(w: Node2D) -> Array:
-	return [w.velocity, w.spin, w.end_scale, w.spark_amount, w.spark_speed,
-		w.spark_ramp, w.flash_radius, w.rings.size(), w.pops.size(), w.smoke_shade]
+	return [w.velocity, w.spin, w.end_scale, w.fire_ramp]
 
 
 func test_same_seed_same_look() -> void:
@@ -36,8 +46,7 @@ func test_rolls_within_ranges() -> void:
 		var grows: bool = w.end_scale >= WreckScript.GROW_RANGE.x
 		var r: Vector2 = WreckScript.GROW_RANGE if grows else WreckScript.SHRINK_RANGE
 		assert_between(w.end_scale, r.x, r.y)
-		assert_between(w.rings.size(), 1, 2)
-		assert_between(w.pops.size(), 0, 3)
+		assert_between(w.fire_ramp, 0, WreckScript.FIRE_RAMPS.size() - 1)
 
 
 func test_both_grow_and_shrink_happen() -> void:
@@ -63,38 +72,16 @@ func test_veers_spins_and_changes_depth() -> void:
 	assert_false(w.exploded)
 
 
-func test_smoke_trails_in_world_space_and_scales_with_depth() -> void:
-	var w := _wreck(7)
-	assert_false(w.smoke.local_coords)
-	assert_true(w.smoke.emitting)
-	w._process(WreckScript.DURATION * 0.75)
-	assert_almost_eq(w.smoke.scale_amount_max, WreckScript.SMOKE_SCALE.y * w.depth_scale(0.75), 0.001)
-
-
 func test_explodes_after_duration() -> void:
 	var w := _wreck(7)
 	w._process(WreckScript.DURATION + 0.01)
 	assert_true(w.exploded)
-	assert_false(w.smoke.emitting)
-	assert_eq(w._sparks.size(), 1)
 
 
 func test_explosion_size_matches_depth() -> void:
 	var w := _wreck(7)
 	w._process(WreckScript.DURATION + 0.01)
 	assert_eq(w._boom_size, w.end_scale)
-
-
-func test_secondary_pops_fire() -> void:
-	for s in 50:
-		var w := _wreck(s)
-		if w.pops.is_empty():
-			continue
-		w._process(WreckScript.DURATION + 0.01)
-		w._process(0.3)
-		assert_eq(w._sparks.size(), 1 + w.pops.size())
-		return
-	fail_test("no seed produced secondary pops")
 
 
 func test_freed_after_linger() -> void:
@@ -204,8 +191,29 @@ func test_sprite_blast_plays_at_explosion_point_scaled_by_depth() -> void:
 	assert_eq(frames, [], "no blast before exploding")
 	w._process(WreckScript.DURATION)
 	var blasts := w.get_children().filter(func(c): return c is AnimatedSprite2D)
-	assert_eq(blasts.size(), 2)
-	for b in blasts:
-		assert_eq(b.position, w.hull.position)
-	var boom = blasts.filter(func(c): return c.sprite_frames == WreckScript.SpriteEffect.EXPLOSION)[0]
-	assert_almost_eq(boom.scale.x, WreckScript.BLAST_HEIGHT * w.end_scale / 128.0, 0.0001)
+	assert_eq(blasts.size(), 1)
+	var boom: AnimatedSprite2D = blasts[0]
+	assert_eq(boom.position, w.hull.position)
+	var frames_now := WreckScript.SpriteEffect.explosion_frames(WreckScript.FIRE_RAMPS[w.fire_ramp])
+	assert_same(boom.sprite_frames, frames_now)
+	var h := WreckScript.SpriteEffect.frame_height(frames_now)
+	assert_almost_eq(boom.scale.x, WreckScript.BLAST_HEIGHT * w.end_scale / h, 0.0001)
+
+
+func test_fire_ramp_varies_by_seed() -> void:
+	var seen := {}
+	for s in 30:
+		seen[_wreck(s).fire_ramp] = true
+	assert_eq(seen.size(), WreckScript.FIRE_RAMPS.size())
+
+
+func test_lethal_hit_plays_wreck() -> void:
+	multiplayer.multiplayer_peer = OfflineMultiplayerPeer.new()
+	var game: Node2D = load("res://scenes/game.tscn").instantiate()
+	add_child_autofree(game)
+	var e: Area2D = EnemyScene.instantiate()
+	game.get_node("Enemies").add_child(e)
+	e.take_damage(1)
+	var fx := game.get_node("Effects")
+	assert_eq(fx.get_child_count(), 1)
+	assert_is(fx.get_child(0), WreckScript)

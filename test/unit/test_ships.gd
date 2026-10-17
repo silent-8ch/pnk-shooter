@@ -188,3 +188,31 @@ func test_enemy_texture_cached_and_differs_from_player() -> void:
 func test_scale_for_height() -> void:
 	var tex := Ships.get_texture(0, 0)
 	assert_almost_eq(tex.get_size().y * Ships.scale_for(tex, 36.0).y, 36.0, 0.001)
+
+
+# --- Thruster anchors -------------------------------------------------------
+
+func test_every_ship_has_thrusters_in_its_lower_half() -> void:
+	for ship in Ships.count():
+		var t := Ships.get_thrusters(ship)
+		assert_gt(t.size(), 0, "ship %d" % ship)
+		var h: float = Ships.get_texture(ship, 0).get_size().y
+		for a in t:
+			assert_gt(a.pos.y, 0.0, "below center")
+			assert_lte(a.pos.y, h / 2.0 + 1.0, "inside the texture")
+			assert_gte(a.width, 3.0)
+
+
+func test_thrusters_sorted_and_not_stacked() -> void:
+	for ship in Ships.count():
+		var t := Ships.get_thrusters(ship)
+		for i in range(1, t.size()):
+			assert_gt(t[i].pos.x, t[i - 1].pos.x)
+		for a in t:
+			for b in t:
+				if a != b:
+					assert_false(b.pos.y > a.pos.y and absf(b.pos.x - a.pos.x) < b.width / 2.0)
+
+
+func test_thrusters_cached() -> void:
+	assert_same(Ships.get_thrusters(0), Ships.get_thrusters(0))

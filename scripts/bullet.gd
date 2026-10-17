@@ -2,24 +2,33 @@ extends Area2D
 ## Player bullet. Server-simulated; position replicated.
 ## Carries a PointLight2D tinted to `color` that lights ship bodies only
 ## (Ships.LIGHT_MASK); any bullet using this scene gets the same light.
+## The body is the painted bullet animation recolored: slot 1 (outline) stays
+## white, slot 2 (core) takes `color`.
 
-const SPEED := 700.0
-const SpriteEffect := preload("res://scripts/sprite_effect.gd")
+const SPEED := 420.0
+const HEIGHT := 44.0  # on-screen height in px
+const RENDER_SCALE := 1.5  # SVG -> texture, sharper than 1:1 on high-DPI phones
+const FRAMES := preload("res://assets/effects/bullet.tres")
 
 @export var color := Color.YELLOW
 
 
 func _ready() -> void:
-	$Body.modulate = color
+	var frames := frames_for(color)
+	$Body.sprite_frames = frames
+	$Body.scale = Vector2.ONE * (HEIGHT / frames.get_frame_texture(&"default", 0).get_height())
 	$Body.play()
-	SpriteEffect.spawn(get_parent(), position + Vector2(0, 8), SpriteEffect.MUZZLE, 26.0)
 	$Light.color = color
 	$Light.range_item_cull_mask = Ships.LIGHT_MASK
+
+
+static func frames_for(c: Color) -> SpriteFrames:
+	return PaletteFrames.recolor(FRAMES, [Color.WHITE, c], RENDER_SCALE)
 
 
 func _physics_process(delta: float) -> void:
 	if not multiplayer.is_server():
 		return
 	position.y -= SPEED * delta
-	if position.y < -40.0:
+	if position.y < -HEIGHT:
 		queue_free()

@@ -206,3 +206,64 @@ func test_ship_lights_only_target_the_ship_bit() -> void:
 		assert_eq(light.range_item_cull_mask, Ships.LIGHT_MASK, str(light.get_path()))
 		for path in ["Background", "Starfield"]:
 			assert_eq(light.range_item_cull_mask & game.get_node(path).light_mask, 0, path)
+
+
+# --- Body volume ------------------------------------------------------------
+
+## alpha for a w x h image with an opaque rectangle covering columns [x0, x1).
+func _strip(w: int, h: int, x0: int, x1: int) -> PackedFloat32Array:
+	var a := PackedFloat32Array()
+	a.resize(w * h)
+	for y in h:
+		for x in range(x0, x1):
+			a[y * w + x] = 1.0
+	return a
+
+
+func _body_for(alpha: PackedFloat32Array, size: Vector2i) -> PackedFloat32Array:
+	return Baker.body_field(Baker.distance_to_empty(alpha, size), alpha, size)
+
+
+func test_body_rises_toward_the_middle() -> void:
+	var size := Vector2i(41, 41)
+	var alpha := _strip(41, 41, 0, 41)
+	var body := _body_for(alpha, size)
+	var row := 20 * 41
+	assert_gt(body[row + 20], body[row + 10])
+	assert_gt(body[row + 10], body[row + 1])
+
+
+func test_wide_parts_are_thicker_than_thin_parts() -> void:
+	var size := Vector2i(60, 30)
+	var wide := _body_for(_strip(60, 30, 5, 45), size)
+	var thin := _body_for(_strip(60, 30, 50, 56), size)
+	assert_gt(Array(wide).max(), Array(thin).max() * 2.0)
+
+
+func test_body_is_zero_outside_the_ship() -> void:
+	var size := Vector2i(20, 20)
+	var alpha := _strip(20, 20, 5, 15)
+	var body := _body_for(alpha, size)
+	for i in alpha.size():
+		if alpha[i] < Baker.EMPTY_ALPHA:
+			assert_eq(body[i], 0.0)
+
+
+func test_baked_ships_have_overall_volume() -> void:
+	# Away from the middle the normals should lean outward: left half tilts left, right half right.
+	for i in Ships.count():
+		var n := _image(Ships.LIST[i].normal)
+		var w := n.get_width()
+		var left := 0.0
+		var right := 0.0
+		for y in n.get_height():
+			for x in w:
+				var c := n.get_pixel(x, y)
+				if c.a < Baker.EMPTY_ALPHA:
+					continue
+				if x < w / 3:
+					left += c.r - 0.5
+				elif x > w * 2 / 3:
+					right += c.r - 0.5
+		assert_lt(left, 0.0, "ship %d left side faces left" % i)
+		assert_gt(right, 0.0, "ship %d right side faces right" % i)

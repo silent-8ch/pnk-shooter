@@ -2,7 +2,7 @@ extends Area2D
 ## A player ship. Simulated on the server; the owning peer sends input.
 
 const SPEED := 340.0
-const FIRE_COOLDOWN := 0.16
+const FIRE_COOLDOWN := 0.5  # min time between shots; each shot needs its own press
 const RESPAWN_TIME := 2.0
 const MAX_HP := 3
 
@@ -15,14 +15,12 @@ var spawn_position := Vector2.ZERO
 
 var hp := MAX_HP  # replicated
 var input_dir := Vector2.ZERO
-var firing := false
+var _fire_requested := false  # server: a press arrived and is waiting for the cooldown check
+var _seen_presses := -1  # local: pointer press count already handled (-1 = not synced yet)
 var _cooldown := 0.0
 var _respawn_timer := 0.0
 
-const EngineFlames := preload("res://scripts/engine_flames.gd")
-
 @onready var body: Sprite2D = $Body
-var engines: Node2D
 @onready var label: Label = $Label
 
 
@@ -31,11 +29,6 @@ func _ready() -> void:
 	body.texture = Ships.get_lit_texture(ship, palette)
 	body.scale = Ships.get_scale(ship, palette)
 	body.light_mask = Ships.LIGHT_MASK
-	engines = EngineFlames.new()
-	add_child(engines)
-	move_child(engines, body.get_index())  # behind the ship
-	var colors := Ships.get_palette_colors(ship, palette)
-	engines.build(ship, body.scale, colors[Ships.THRUSTER_SLOT - 1], false)
 	area_entered.connect(_on_area_entered)
 
 
@@ -49,7 +42,6 @@ func is_alive() -> bool:
 
 func _process(_delta: float) -> void:
 	body.modulate.a = 1.0 if is_alive() else 0.25
-	engines.visible = is_alive()
 	if multiplayer.multiplayer_peer == null:
 		return
 	if is_local():
@@ -67,28 +59,40 @@ func _gather_input() -> void:
 	var pointer := get_tree().get_first_node_in_group("pointer_controls")
 	if pointer and pointer.is_active():
 		dir = pointer.direction_from(position, _movement_bounds())
-		fire = pointer.firing
+		fire = _seen_presses >= 0 and pointer.presses != _seen_presses
+		_seen_presses = pointer.presses
 	var game := get_tree().get_first_node_in_group("game")
 	if game and not game.input_enabled:
 		dir = Vector2.ZERO
 		fire = false
 	if multiplayer.is_server():
 		input_dir = dir
-		firing = fire
+		if fire:
+			_fire_requested = true
 	else:
-		send_input.rpc_id(1, dir, fire)
+		send_input.rpc_id(1, dir)
+		if fire:
+			request_fire.rpc_id(1)
 
 
 @rpc("any_peer", "call_remote", "unreliable_ordered")
-func send_input(dir: Vector2, fire: bool) -> void:
+func send_input(dir: Vector2) -> void:
 	if multiplayer.get_remote_sender_id() != peer_id:
 		return
 	input_dir = dir.limit_length(1.0)
-	firing = fire
+
+
+## One press = one shot request. Reliable so a tap is never lost.
+@rpc("any_peer", "call_remote", "reliable")
+func request_fire() -> void:
+	if multiplayer.get_remote_sender_id() != peer_id:
+		return
+	_fire_requested = true
 
 
 func _simulate(delta: float) -> void:
 	if not is_alive():
+		_fire_requested = false
 		_respawn_timer -= delta
 		if _respawn_timer <= 0.0:
 			hp = MAX_HP
@@ -100,7 +104,10 @@ func _simulate(delta: float) -> void:
 	position = position.clamp(bounds.position, bounds.end)
 
 	_cooldown -= delta
-	if firing and _cooldown <= 0.0:
+	if _fire_requested:
+		_fire_requested = false  # a press during the cooldown is dropped, not queued
+		if _cooldown > 0.0:
+			return
 		_cooldown = FIRE_COOLDOWN
 		get_tree().get_first_node_in_group("game").spawn_bullet(position + Vector2(0, -26), color)
 
@@ -114,9 +121,6 @@ func take_damage(amount: int) -> void:
 	if not multiplayer.is_server() or not is_alive():
 		return
 	hp -= amount
-	var game := get_tree().get_first_node_in_group("game")
-	if game:
-		game.play_player_hit.rpc(peer_id)
 	if hp <= 0:
 		hp = 0
 		_respawn_timer = RESPAWN_TIME

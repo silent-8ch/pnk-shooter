@@ -13,8 +13,6 @@ const BulletScene := preload("res://scenes/bullet.tscn")
 const EnemyScript := preload("res://scripts/enemy.gd")
 const WreckScript := preload("res://scripts/wreck.gd")
 const SpriteEffect := preload("res://scripts/sprite_effect.gd")
-const HIT_HEIGHT := 28.0
-const PLAYER_HIT_HEIGHT := 64.0
 
 const ARENA := Rect2(0, 0, 540, 960)
 const GROUP_INTERVAL := 4.0  # seconds between enemy groups
@@ -54,6 +52,8 @@ func _ready() -> void:
 
 func start() -> void:
 	Ships.prewarm_enemy_parts()  # avoid a hitch on the first kill
+	for ramp in WreckScript.FIRE_RAMPS:
+		SpriteEffect.explosion_frames(ramp)  # recolor the painted explosion once per ramp
 	active = true
 	hud.visible = true
 	pointer_controls.visible = true
@@ -183,20 +183,6 @@ func play_wreck(pos: Vector2, type: int, fx_seed: int) -> void:
 	var parts := Ships.get_enemy_parts(ship, fx_seed)
 	wreck.setup(tex, Ships.scale_for(tex, EnemyScript.HEIGHT), fx_seed, parts)
 	effects.add_child(wreck)
-
-
-## Spark where a bullet hit something that survived.
-@rpc("authority", "call_local", "unreliable")
-func play_hit(pos: Vector2) -> void:
-	SpriteEffect.spawn(effects, pos, SpriteEffect.HIT, HIT_HEIGHT)
-
-
-## Flash on a player that lost HP; parented to the ship so it follows.
-@rpc("authority", "call_local", "reliable")
-func play_player_hit(peer: int) -> void:
-	var p := players.get_node_or_null(str(peer))
-	if p:
-		SpriteEffect.spawn(p, Vector2.ZERO, SpriteEffect.PLAYER_HIT, PLAYER_HIT_HEIGHT)
 
 
 func spawn_bullet(pos: Vector2, color: Color) -> void:

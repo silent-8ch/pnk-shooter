@@ -1,0 +1,104 @@
+{
+  "version": 1,
+  "assets": {
+    "assets/effects/bullet_00.svg": {
+      "strategy": "palette",
+      "role": "fx",
+      "slots": [
+        "Slot 1",
+        "Slot 2"
+      ]
+    },
+    "assets/effects/bullet_01.svg": {
+      "strategy": "palette",
+      "role": "fx",
+      "slots": [
+        "Slot 1",
+        "Slot 2"
+      ]
+    },
+    "assets/effects/bullet_02.svg": {
+      "strategy": "palette",
+      "role": "fx",
+      "slots": [
+        "Slot 1",
+        "Slot 2"
+      ]
+    },
+    "assets/effects/bullet_03.svg": {
+      "strategy": "palette",
+      "role": "fx",
+      "slots": [
+        "Slot 1",
+        "Slot 2"
+      ]
+    },
+    "assets/effects/explosion_00.svg": {
+      "strategy": "palette",
+      "role": "fx",
+      "slots": [
+        "Slot 1",
+        "Slot 2",
+        "Slot 3"
+      ]
+    },
+    "assets/effects/explosion_01.svg": {
+      "strategy": "palette",
+      "role": "fx",
+      "slots": [
+        "Slot 1",
+        "Slot 2",
+        "Slot 3"
+      ]
+    },
+    "assets/effects/explosion_02.svg": {
+      "strategy": "palette",
+      "role": "fx",
+      "slots": [
+        "Slot 1",
+        "Slot 2",
+        "Slot 3"
+      ]
+    },
+    "assets/effects/explosion_03.svg": {
+      "strategy": "palette",
+      "role": "fx",
+      "slots": [
+        "Slot 1",
+        "Slot 2",
+        "Slot 3",
+        "Slot 4"
+      ]
+    },
+    "assets/ship01.svg": {
+      "strategy": "palette",
+      "role": "ship",
+      "slots": [
+        "Slot 1",
+        "Slot 2",
+        "Slot 3",
+        "Slot 4",
+        "Slot 5",
+        "Slot 6",
+        "Slot 7",
+        "Slot 8",
+        "Slot 9"
+      ]
+    },
+    "assets/ship02.svg": {
+      "strategy": "palette",
+      "role": "ship",
+      "slots": [
+        "Slot 1",
+        "Slot 2",
+        "Slot 3",
+        "Slot 4",
+        "Slot 5",
+        "Slot 6",
+        "Slot 7",
+        "Slot 8",
+        "Slot 9"
+      ]
+    }
+  }
+}

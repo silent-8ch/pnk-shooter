@@ -1,21 +1,19 @@
 extends Control
 ## Tap/click-to-move controls for touch and mouse: pressing sets a destination
-## the ship flies to, dragging moves it, and the ship fires while pressed. A
-## quick tap or click always fires at least once.
+## the ship flies to and dragging moves it. Each press also asks for one shot
+## (`presses` counts them); holding does not keep firing.
 
 const TOUCH_OFFSET := Vector2(0, -80)  # keep the ship above the finger
 const MOUSE_INDEX := -2  # pointer index used for the mouse
 const ARRIVE_DISTANCE := 4.0
 const SLOW_RADIUS := 40.0  # ease in over this distance to avoid overshoot
-const TAP_FIRE_TIME := 0.2  # > player FIRE_COOLDOWN, so a tap always shoots
 const MARKER_RADIUS := 10.0
 
 var target := Vector2.ZERO
 var has_target := false
-var firing := false
+var presses := 0  # total fire presses; readers compare against the count they last saw
 
 var _pointer_index := -1
-var _tap_fire_timer := 0.0
 
 
 func _ready() -> void:
@@ -31,9 +29,7 @@ func is_active() -> bool:
 
 func reset() -> void:
 	_pointer_index = -1
-	_tap_fire_timer = 0.0
 	has_target = false
-	firing = false
 	queue_redraw()
 
 
@@ -71,7 +67,7 @@ func pointer_down(index: int, screen_pos: Vector2) -> void:
 	if _pointer_index != -1:
 		return
 	_pointer_index = index
-	_tap_fire_timer = TAP_FIRE_TIME
+	presses += 1
 	_set_target(screen_pos)
 
 
@@ -83,24 +79,12 @@ func pointer_drag(index: int, screen_pos: Vector2) -> void:
 func pointer_up(index: int) -> void:
 	if index == _pointer_index:
 		_pointer_index = -1
-		_update_firing()
 
 
 func _set_target(screen_pos: Vector2) -> void:
 	target = get_viewport().get_canvas_transform().affine_inverse() * screen_pos
 	has_target = true
-	_update_firing()
 	queue_redraw()
-
-
-func _update_firing() -> void:
-	firing = _pointer_index != -1 or _tap_fire_timer > 0.0
-
-
-func _process(delta: float) -> void:
-	if _tap_fire_timer > 0.0:
-		_tap_fire_timer -= delta
-		_update_firing()
 
 
 ## Movement input (length <= 1) steering a ship at `from` toward the target,

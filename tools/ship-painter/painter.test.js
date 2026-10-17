@@ -1,4 +1,4 @@
-// Run: node --test tools/ship-painter/
+// Run: node --test tools/ship-painter/*.test.js
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -257,4 +257,53 @@ test('getViewBox reads viewBox, falls back to width/height', () => {
   assert.deepEqual(P.getViewBox(SAMPLE), { x: 0, y: 0, w: 20, h: 10 });
   assert.deepEqual(P.getViewBox('<svg width="30px" height="12"><path/></svg>'), { x: 0, y: 0, w: 30, h: 12 });
   assert.throws(() => P.getViewBox('<svg><path/></svg>'), /viewBox/);
+});
+
+test('parseShip: fill="none" shapes are locked and exported untouched', () => {
+  const svg = '<svg><path fill="none" stroke="#fff" d="M0 0"/><path fill="#ff0000" d="M1 1"/></svg>';
+  const s = P.parseShip(svg, 'x');
+  assert.deepEqual(s.shapes, [{ slot: 1, locked: true }, { slot: 1 }]);
+  assert.throws(() => P.setSlot(s, 0, 1), /cannot be slotted/);
+  P.addSlot(s, 'B', '#00ff00');
+  P.assignAll(s, 2);
+  assert.deepEqual(s.shapes.map((x) => x.slot), [1, 2]);
+  assert.deepEqual(P.countBySlot(s), [0, 1]);
+  const out = P.exportSvg(s);
+  assert.match(out, /<path fill="none" stroke="#fff" d="M0 0"\/>/);
+  assert.match(out, /<path fill="#00ff00" d="M1 1" data-slot="2"\/>/);
+  assert.deepEqual(P.exportManifest(s).shapes, [0, 2]);
+  const re = P.parseShip(out, 'x');
+  assert.ok(re.shapes[0].locked);
+});
+
+test('parseShip: slotByColor gives an unpainted SVG one slot per distinct fill', () => {
+  const svg = '<svg><path fill="#FF0000"/><path fill="#00ff00"/><path fill="#ff0000"/><path fill="none"/><path/></svg>';
+  const s = P.parseShip(svg, 'x', { slotByColor: true });
+  assert.deepEqual(s.slots.map((x) => x.color), ['#ff0000', '#00ff00']);
+  assert.deepEqual(s.shapes.map((x) => x.slot), [1, 2, 1, 1, 1]);
+  assert.ok(s.shapes[3].locked);
+  const out = P.exportSvg(s);
+  assert.equal(P.exportSvg(P.parseShip(out, 'x', { slotByColor: true })), out, 'painted SVGs keep their slots');
+});
+
+test('parseShip: slotByColor caps at MAX_SLOTS and ignores painted SVGs', () => {
+  const many = '<svg>' + Array.from({ length: 11 }, (_, i) => '<path fill="#0000' + (10 + i) + '"/>').join('') + '</svg>';
+  const s = P.parseShip(many, 'x', { slotByColor: true });
+  assert.equal(s.slots.length, P.MAX_SLOTS);
+  assert.deepEqual(s.shapes.slice(9).map((x) => x.slot), [1, 1]);
+  const painted = '<svg><path data-slot="1" fill="#ff0000"/><path fill="#00ff00"/></svg>';
+  assert.equal(P.parseShip(painted, 'x', { slotByColor: true }).slots.length, 1);
+});
+
+test('parseShip: slotByColor on outlined multi-color art keeps its colors', () => {
+  const stroke = ' stroke="#ffffff" stroke-width="5"';
+  const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">\n' +
+    ['#8075ff', '#a5ff7a', '#ff7ad9', '#7ad9f5', '#ff9d7a', '#ff9d7a', '#ffdc7a']
+      .map((c, i) => '<path d="M' + i + ' 0 L9 9Z" fill="' + c + '"' + stroke + '/>').join('\n') + '\n</svg>\n';
+  const s = P.parseShip(svg, 'scout.svg', { slotByColor: true });
+  assert.equal(s.slots.length, 6);
+  const out = P.exportSvg(s);
+  const before = svg.match(/fill="#[0-9a-f]{6}"/g);
+  const after = out.match(/fill="#[0-9a-f]{6}"/g);
+  assert.deepEqual(after, before);
 });
