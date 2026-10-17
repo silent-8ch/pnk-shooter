@@ -7,7 +7,7 @@ const TOUCH_OFFSET := Vector2(0, -80)  # keep the ship above the finger
 const MOUSE_INDEX := -2  # pointer index used for the mouse
 const ARRIVE_DISTANCE := 4.0
 const SLOW_RADIUS := 40.0  # ease in over this distance to avoid overshoot
-const TAP_FIRE_TIME := 0.2  # > player FIRE_COOLDOWN, so a tap always shoots
+const TAP_FIRE_TIME := 0.28  # > player FIRE_COOLDOWN, so a tap always shoots
 const MARKER_RADIUS := 10.0
 
 var target := Vector2.ZERO

@@ -2,7 +2,7 @@ extends Area2D
 ## A player ship. Simulated on the server; the owning peer sends input.
 
 const SPEED := 340.0
-const FIRE_COOLDOWN := 0.16
+const FIRE_COOLDOWN := 0.24
 const RESPAWN_TIME := 2.0
 const MAX_HP := 3
 
