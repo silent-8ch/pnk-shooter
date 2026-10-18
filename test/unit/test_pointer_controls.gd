@@ -1,5 +1,5 @@
 extends GutTest
-## Tap/click-to-move pointer controls: target, steering, arrival, fire presses,
+## Tap/click-to-move pointer controls: target, steering, arrival, action-bar exclusion,
 ## and touch vs mouse event handling.
 
 const PointerControls := preload("res://scripts/pointer_controls.gd")
@@ -151,28 +151,29 @@ func test_target_clamped_to_bounds() -> void:
 	assert_eq(pointer.target, Vector2(20, 20))
 
 
-# --- Firing -----------------------------------------------------------------
+# --- Action bar -------------------------------------------------------------
 
-func test_each_press_counts_once() -> void:
-	_click(true, Vector2(200, 500))
-	assert_eq(pointer.presses, 1)
-	_mouse_move(Vector2(250, 450))
-	assert_eq(pointer.presses, 1, "holding or dragging is not another press")
-	_click(false, Vector2(250, 450))
-	_click(true, Vector2(250, 450))
-	assert_eq(pointer.presses, 2)
+func _with_bar() -> Control:
+	var bar: Control = ActionBar.new()
+	bar.add_to_group("action_bar")
+	layer.add_child(bar)
+	return bar
 
 
-func test_second_finger_does_not_press() -> void:
+func test_press_on_action_bar_does_not_move() -> void:
+	_with_bar()
+	_click(true, Vector2(270, 940))
+	assert_false(pointer.has_target)
+	_touch(true, Vector2(270, 940), 1)
+	assert_false(pointer.has_target, "finger on the bar, even with the touch offset")
+
+
+func test_steering_finger_keeps_working_while_other_finger_on_bar() -> void:
+	_with_bar()
 	_touch(true, Vector2(200, 500))
-	_touch(true, Vector2(400, 800), 1)
-	assert_eq(pointer.presses, 1)
-
-
-func test_hidden_press_not_counted() -> void:
-	layer.visible = false
-	_click(true, Vector2(200, 500))
-	assert_eq(pointer.presses, 0)
+	_touch(true, Vector2(40, 910), 1)
+	_drag(Vector2(300, 500))
+	assert_eq(pointer.target, Vector2(300, 500) + PointerControls.TOUCH_OFFSET)
 
 
 # --- Activation -------------------------------------------------------------
@@ -196,4 +197,3 @@ func test_release_while_hidden_still_ends_press() -> void:
 	pointer.visible = true
 	_click(true, Vector2(300, 500))
 	assert_eq(pointer.target, Vector2(300, 500), "a new press is accepted")
-	assert_eq(pointer.presses, 2)

@@ -1,0 +1,161 @@
+{
+  "name": "Level 1",
+  "length": 64,
+  "repeat": true,
+  "events": [
+    {
+      "time": 0,
+      "type": "weaver",
+      "lane": 4,
+      "count": 3,
+      "dir": 1
+    },
+    {
+      "time": 4,
+      "type": "weaver",
+      "lane": 7,
+      "count": 2,
+      "dir": 1
+    },
+    {
+      "time": 7.75,
+      "type": "weaver",
+      "lane": 8,
+      "count": 3,
+      "dir": 1
+    },
+    {
+      "time": 11.5,
+      "type": "weaver",
+      "lane": 2,
+      "count": 2,
+      "dir": 1
+    },
+    {
+      "time": 15.25,
+      "type": "weaver",
+      "lane": 6,
+      "count": 3,
+      "dir": 1
+    },
+    {
+      "time": 18.75,
+      "type": "weaver",
+      "lane": 3,
+      "count": 4,
+      "dir": 1
+    },
+    {
+      "time": 22,
+      "type": "weaver",
+      "lane": 4,
+      "count": 4,
+      "dir": 1
+    },
+    {
+      "time": 25.25,
+      "type": "diver",
+      "lane": 6,
+      "count": 3,
+      "dir": -1
+    },
+    {
+      "time": 28.5,
+      "type": "diver",
+      "lane": 1,
+      "count": 3,
+      "dir": 1
+    },
+    {
+      "time": 31.5,
+      "type": "weaver",
+      "lane": 8,
+      "count": 3,
+      "dir": 1
+    },
+    {
+      "time": 34.5,
+      "type": "weaver",
+      "lane": 2,
+      "count": 2,
+      "dir": 1
+    },
+    {
+      "time": 37.25,
+      "type": "diver",
+      "lane": 0,
+      "count": 3,
+      "dir": 1
+    },
+    {
+      "time": 40,
+      "type": "weaver",
+      "lane": 4,
+      "count": 3,
+      "dir": 1
+    },
+    {
+      "time": 42.75,
+      "type": "diver",
+      "lane": 1,
+      "count": 5,
+      "dir": 1
+    },
+    {
+      "time": 45.25,
+      "type": "diver",
+      "lane": 6,
+      "count": 3,
+      "dir": -1
+    },
+    {
+      "time": 47.75,
+      "type": "diver",
+      "lane": 2,
+      "count": 3,
+      "dir": 1
+    },
+    {
+      "time": 50.25,
+      "type": "diver",
+      "lane": 8,
+      "count": 5,
+      "dir": -1
+    },
+    {
+      "time": 52.5,
+      "type": "weaver",
+      "lane": 6,
+      "count": 3,
+      "dir": 1
+    },
+    {
+      "time": 54.75,
+      "type": "weaver",
+      "lane": 1,
+      "count": 3,
+      "dir": 1
+    },
+    {
+      "time": 57,
+      "type": "diver",
+      "lane": 3,
+      "count": 3,
+      "dir": -1
+    },
+    {
+      "time": 59,
+      "type": "diver",
+      "lane": 0,
+      "count": 3,
+      "dir": 1
+    },
+    {
+      "time": 61,
+      "type": "diver",
+      "lane": 4,
+      "count": 5,
+      "dir": -1
+    }
+  ]
+}

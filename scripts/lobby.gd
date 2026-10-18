@@ -32,6 +32,7 @@ func set_status(text: String) -> void:
 
 
 func _player_name() -> String:
+	Net.all_weapons = name_edit.text == Net.ALL_WEAPONS_NAME
 	var n := name_edit.text.strip_edges().left(12)
 	return n if n != "" else "Player"
 

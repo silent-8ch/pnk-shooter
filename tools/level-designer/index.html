@@ -1,0 +1,1150 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Level Designer</title>
+<link rel="icon" href="data:,">
+<style>
+  :root {
+    --bg: #0e0f14; --panel: #171922; --line: #2a2d3a; --text: #e6e6ee; --dim: #8a8ca0;
+    --accent: #ff7ad9; --danger: #ff5c5c;
+    --weaver: #6fd3ff; --diver: #ffb454; --end: #a597ff;
+    --tl-bg: #101117; --tl-row: #13141b; --tl-row-alt: #15161e; --tl-sep: #1d1f2a; --tl-ruler: #191b24;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    --row-h: 32px; --ruler-h: 28px;
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { margin: 0; height: 100%; }
+  body { background: var(--bg); color: var(--text); font: 14px/1.4 ui-sans-serif, system-ui, -apple-system, sans-serif; display: grid; grid-template-rows: auto 1fr; }
+  header { display: flex; gap: 8px; align-items: center; padding: 10px 14px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  header h1 { font-size: 15px; margin: 0 12px 0 0; letter-spacing: .04em; }
+  header .file { color: var(--dim); font: 12px var(--mono); }
+  header .spacer { flex: 1; }
+  button, .btn { background: #232634; color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px; font: inherit; cursor: pointer; }
+  button:hover:not(:disabled), .btn:hover { border-color: var(--accent); }
+  button:disabled { opacity: .4; cursor: default; }
+  button.primary { background: var(--accent); color: #1a0d16; border-color: var(--accent); font-weight: 600; }
+  button.danger:hover:not(:disabled) { border-color: var(--danger); color: var(--danger); }
+  input[type=text], input[type=number], select { background: #0e0f14; color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px; font: inherit; }
+  input[type=number] { width: 100%; }
+  main { display: grid; grid-template-columns: 240px minmax(0, 1fr) 300px; min-height: 0; }
+  aside, section { min-height: 0; overflow: auto; }
+  aside { background: var(--panel); padding: 12px; }
+  aside.library { border-right: 1px solid var(--line); display: flex; flex-direction: column; gap: 8px; padding: 12px 8px; }
+  aside.right { border-left: 1px solid var(--line); display: flex; flex-direction: column; gap: 10px; }
+  h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--dim); margin: 4px 0 4px; font-weight: 600; }
+  .lib-controls { display: flex; gap: 6px; }
+  .lib-controls button { flex: 1; padding: 5px 4px; }
+  #levelList { display: flex; flex-direction: column; gap: 1px; }
+  .lvl { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; padding: 6px 8px; border: 1px solid transparent; border-radius: 6px; background: none; text-align: left; width: 100%; }
+  .lvl:hover { background: #1e2130; }
+  .lvl.current { border-color: var(--accent); background: #22192a; }
+  .lvl .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
+  .lvl .nm small { display: block; color: var(--dim); font: 11px var(--mono); }
+  .lvl .mark { color: var(--accent); font-size: 12px; }
+  .lvl .bad { color: var(--danger); font: 600 10px var(--mono); }
+  #libEmpty { color: var(--dim); font-size: 12px; }
+  .help { color: var(--dim); font-size: 12px; margin-top: auto; border-top: 1px solid var(--line); padding-top: 8px; }
+  .help p { margin: 4px 0; }
+  .help kbd { font: 11px var(--mono); border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; color: var(--text); white-space: nowrap; }
+  #dirty { color: var(--accent); font-size: 12px; }
+  #error { color: var(--danger); font-size: 13px; }
+
+  /* Toolbar */
+  .work { display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; }
+  .toolbar { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; padding: 8px 12px; border-bottom: 1px solid var(--line); background: var(--panel); }
+  .grp { display: flex; gap: 0; align-items: center; }
+  .grp > span { color: var(--dim); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; margin-right: 6px; }
+  .grp button { min-width: 30px; padding: 4px 8px; border-radius: 0; margin-left: -1px; }
+  .grp button:first-of-type { border-radius: 6px 0 0 6px; margin-left: 0; }
+  .grp button:last-of-type { border-radius: 0 6px 6px 0; }
+  .grp button.on { border-color: var(--accent); color: var(--accent); background: #22192a; position: relative; z-index: 1; }
+  .grp select { padding: 4px 6px; }
+  .sw { display: inline-block; width: 10px; height: 10px; margin-right: 6px; vertical-align: -1px; border-radius: 2px; }
+  .sw.weaver { background: var(--weaver); }
+  .sw.diver { background: var(--diver); }
+  .transport { display: flex; gap: 6px; align-items: center; margin-left: auto; }
+  .transport button { padding: 4px 9px; }
+  #play { min-width: 40px; }
+  #play.on { border-color: var(--accent); color: var(--accent); }
+  #tc { font: 600 13px var(--mono); color: var(--text); background: #0b0c10; border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; min-width: 150px; text-align: center; letter-spacing: .02em; }
+  #tc small { color: var(--dim); font-weight: 400; }
+  #zoomLbl { font: 11px var(--mono); color: var(--dim); min-width: 52px; text-align: center; }
+
+  /* Timeline */
+  .timeline { flex: 1; display: flex; min-height: calc(var(--ruler-h) + 9 * 26px + 16px); background: var(--tl-bg); border-bottom: 1px solid var(--line); }
+  .heads { flex: none; width: 84px; border-right: 1px solid var(--line); background: var(--panel); user-select: none; }
+  .heads .corner { height: var(--ruler-h); border-bottom: 1px solid var(--line); display: flex; align-items: center; padding: 0 8px; color: var(--dim); font-size: 10px; text-transform: uppercase; letter-spacing: .08em; background: var(--tl-ruler); }
+  .heads .row { height: var(--row-h); display: flex; align-items: center; gap: 7px; padding: 0 8px; border-bottom: 1px solid var(--tl-sep); }
+  .heads .row:nth-child(odd) { background: #1a1c26; }
+  .heads .row.hot { background: #241c2b; }
+  .heads .row svg { flex: none; }
+  .heads .row .lt { font: 700 12px var(--mono); width: 12px; color: var(--text); }
+  .heads .row .ln { font: 11px var(--mono); color: var(--dim); margin-left: auto; }
+  #scroller { flex: 1; min-width: 0; overflow-x: auto; overflow-y: hidden; position: relative; }
+  #tl { display: block; user-select: none; touch-action: none; }
+  #tl .ruler { fill: var(--tl-ruler); }
+  #tl .rline { stroke: var(--line); }
+  #tl .tmaj { stroke: #5a5d70; stroke-width: 1; }
+  #tl .tmin { stroke: #3a3d4c; stroke-width: 1; }
+  #tl .tlbl { fill: var(--dim); font: 10px var(--mono); }
+  #tl .row0 { fill: var(--tl-row); }
+  #tl .row1 { fill: var(--tl-row-alt); }
+  #tl .rsep { stroke: var(--tl-sep); }
+  #tl .gmaj { stroke: #ffffff; stroke-opacity: .06; }
+  #tl .gmin { stroke: #ffffff; stroke-opacity: .025; }
+  #tl .pastend { fill: url(#hatch); }
+  #tl .clip .tail { stroke-width: 1; pointer-events: none; }
+  #tl .clip.weaver .tail { fill: rgba(111, 211, 255, .13); stroke: rgba(111, 211, 255, .45); }
+  #tl .clip.diver .tail { fill: rgba(255, 180, 84, .13); stroke: rgba(255, 180, 84, .45); }
+  #tl .clip .tname { font: 11px ui-sans-serif, system-ui, sans-serif; pointer-events: none; }
+  #tl .clip.weaver .tname { fill: rgba(111, 211, 255, .75); }
+  #tl .clip.diver .tname { fill: rgba(255, 180, 84, .8); }
+  #tl .clip .head { cursor: grab; }
+  #tl .clip .hd { stroke: rgba(0, 0, 0, .55); stroke-width: 1; }
+  #tl .clip.weaver .hd { fill: var(--weaver); }
+  #tl .clip.diver .hd { fill: var(--diver); }
+  #tl .clip .grip { fill: rgba(0, 0, 0, .28); }
+  #tl .clip .ico { fill: #0b0c10; }
+  #tl .clip .badge { fill: #0b0c10; }
+  #tl .clip .cnt { fill: #fff; font: 700 10px var(--mono); text-anchor: middle; dominant-baseline: central; }
+  #tl .clip .arr { stroke: #0b0c10; stroke-width: 1.8; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+  #tl .clip.sel .hd { stroke: var(--accent); stroke-width: 2; }
+  #tl .clip.sel .tail { stroke: var(--accent); stroke-opacity: .8; }
+  #tl .clip.sel .head { filter: drop-shadow(0 0 4px rgba(255, 122, 217, .65)); }
+  #tl .ghost { opacity: .4; pointer-events: none; }
+  #tl .endline { stroke: var(--end); stroke-width: 1.5; pointer-events: none; }
+  #tl .endflag { fill: var(--end); }
+  #tl .endloop { stroke: #14121f; stroke-width: 1.6; fill: none; stroke-linecap: round; }
+  #tl .endhit { fill: transparent; cursor: ew-resize; }
+  #tl .playhead { stroke: var(--accent); stroke-width: 1.5; pointer-events: none; }
+  #tl .playcap { fill: var(--accent); pointer-events: none; }
+  #tl .selbox { fill: rgba(255, 122, 217, .08); stroke: var(--accent); stroke-dasharray: 4 3; pointer-events: none; }
+  #tl .rulerhit { fill: transparent; cursor: col-resize; }
+  #status { color: var(--dim); font-size: 12px; padding: 6px 14px; min-height: 2.2em; }
+
+  /* Right panel */
+  .preview-wrap { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  #preview { width: 100%; max-width: 270px; aspect-ratio: 540 / 960; border: 1px solid var(--line); border-radius: 6px; background: #05060a; display: block; }
+  .legend { display: flex; gap: 12px; color: var(--dim); font-size: 12px; }
+  .meta { display: grid; grid-template-columns: 64px 1fr; gap: 6px 8px; align-items: center; }
+  .meta label, .meta .k { color: var(--dim); font-size: 12px; }
+  .meta select, .meta input[type=text] { width: 100%; }
+  .meta .unit { display: flex; align-items: center; gap: 6px; color: var(--dim); font-size: 12px; }
+  .meta .chk { display: flex; align-items: center; gap: 6px; font-size: 13px; }
+  #selNone { color: var(--dim); font-size: 12px; margin: 0; }
+  @media (max-width: 1100px) {
+    main { grid-template-columns: 1fr; grid-auto-rows: auto; }
+    aside.library, aside.right { border: 0; border-bottom: 1px solid var(--line); max-height: none; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>LEVEL DESIGNER</h1>
+  <span class="file" id="fileName"></span>
+  <button id="undo" disabled title="Ctrl/Cmd+Z">Undo</button>
+  <button id="redo" disabled title="Ctrl/Cmd+Shift+Z">Redo</button>
+  <span class="spacer"></span>
+  <span id="error"></span>
+  <span id="dirty"></span>
+  <button id="save" class="primary" disabled title="Ctrl/Cmd+S">Save</button>
+</header>
+<main>
+  <aside class="library">
+    <h2>Levels</h2>
+    <div class="lib-controls">
+      <button id="new" title="Start a new level">New</button>
+      <button id="del" class="danger" title="Delete this level file">Delete</button>
+    </div>
+    <div id="levelList"></div>
+    <div id="libEmpty"></div>
+    <div class="help">
+      <p><strong>Timeline</strong>: time runs left to right; each row is where a group enters the screen, L (left edge) at the top to R (right edge) at the bottom. A clip lasts as long as its group takes to cross the screen.</p>
+      <p>Click an empty spot to add a group · drag a clip's head to move it · <kbd>Shift</kbd>+click or drag a box to multi-select · click the ruler to scrub · drag the purple end marker to set the length.</p>
+      <p><kbd>Space</kbd> play/stop · <kbd>Home</kbd>/<kbd>End</kbd> jump · <kbd>Del</kbd>/<kbd>⌫</kbd> delete · <kbd>Esc</kbd> deselect</p>
+      <p><kbd>W</kbd> weaver · <kbd>D</kbd> diver · <kbd>1</kbd>–<kbd>7</kbd> count · <kbd>F</kbd> flip direction (all apply to the selection too)</p>
+      <p><kbd>S</kbd> cycle snap · <kbd>←</kbd><kbd>→</kbd> nudge by snap · <kbd>↑</kbd><kbd>↓</kbd> change lane · <kbd>+</kbd>/<kbd>−</kbd> or <kbd>⌘</kbd>+wheel zoom · <kbd>Z</kbd> fit</p>
+      <p><kbd>⌘C</kbd>/<kbd>⌘X</kbd>/<kbd>⌘V</kbd> copy, cut, paste at playhead · <kbd>⌘A</kbd> all · <kbd>⌘Z</kbd> undo · <kbd>⇧⌘Z</kbd> redo · <kbd>⌘S</kbd> save · <kbd>M</kbd> sound</p>
+    </div>
+  </aside>
+  <section class="work">
+    <div class="toolbar">
+      <div class="grp" id="typeGrp"><span>Type</span>
+        <button data-type="weaver" title="Weaver (W)"><i class="sw weaver"></i>Weaver</button>
+        <button data-type="diver" title="Diver (D)"><i class="sw diver"></i>Diver</button>
+      </div>
+      <div class="grp" id="countGrp"><span>Count</span></div>
+      <div class="grp" id="dirGrp"><span>Dir</span>
+        <button data-dir="-1" title="Diver starts moving left (F flips)">←</button>
+        <button data-dir="1" title="Diver starts moving right (F flips)">→</button>
+      </div>
+      <div class="grp"><span>Snap</span>
+        <select id="snap" title="Snap (S cycles)">
+          <option value="0">Off</option><option value="0.1">0.1 s</option><option value="0.25">0.25 s</option><option value="0.5">0.5 s</option><option value="1">1 s</option>
+        </select>
+      </div>
+      <div class="grp" id="zoomGrp"><span>Zoom</span>
+        <button id="zoomOut" title="Zoom out (−)">−</button>
+        <button id="zoomFit" title="Fit the level (Z)">Fit</button>
+        <button id="zoomIn" title="Zoom in (+)">+</button>
+        <span id="zoomLbl"></span>
+      </div>
+      <div class="transport">
+        <button id="toStart" title="Go to start (Home)">⏮</button>
+        <button id="play" title="Play/stop (Space)">▶</button>
+        <span id="tc"></span>
+        <button id="sound" title="Spawn blips (M)">Sound on</button>
+      </div>
+    </div>
+    <div class="timeline">
+      <div class="heads" id="heads"><div class="corner">Enters at</div></div>
+      <div id="scroller">
+        <svg id="tl" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <pattern id="hatch" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+              <rect width="8" height="8" fill="rgba(0,0,0,.38)"/><line x1="0" y1="0" x2="0" y2="8" stroke="rgba(255,255,255,.035)" stroke-width="3"/>
+            </pattern>
+          </defs>
+          <g id="gridLayer"></g>
+          <g id="clipLayer"></g>
+          <g id="ghost" class="ghost"></g>
+          <g id="endLayer"></g>
+          <rect id="selbox" class="selbox" visibility="hidden"></rect>
+          <line id="playhead" class="playhead"></line>
+          <path id="playcap" class="playcap"></path>
+        </svg>
+      </div>
+    </div>
+    <div id="status"></div>
+  </section>
+  <aside class="right">
+    <h2>Preview</h2>
+    <div class="preview-wrap">
+      <canvas id="preview" width="270" height="480"></canvas>
+      <div class="legend"><span><i class="sw weaver"></i>weaver</span><span><i class="sw diver"></i>diver</span><span>540×960</span></div>
+    </div>
+    <h2>Selection</h2>
+    <p id="selNone">Nothing selected.</p>
+    <div class="meta" id="selPanel" hidden>
+      <span class="k">Groups</span><span id="selCount"></span>
+      <label for="selTime" id="selTimeLbl">Time</label>
+      <span class="unit"><input id="selTime" type="number" min="0" step="0.01"> s</span>
+      <label for="selLane">Lane</label>
+      <select id="selLane"></select>
+      <label for="selType">Type</label>
+      <select id="selType"><option value="weaver">Weaver</option><option value="diver">Diver</option><option value="" disabled>mixed</option></select>
+      <label for="selCountSel">Count</label>
+      <select id="selCountSel"></select>
+      <label for="selDir">Dir</label>
+      <select id="selDir" title="Initial sideways direction (divers only)"><option value="-1">← left</option><option value="1">→ right</option><option value="" disabled>mixed</option></select>
+      <span></span><button id="selDelete" class="danger">Delete</button>
+    </div>
+    <h2>Level</h2>
+    <div class="meta">
+      <label for="lvName">Name</label>
+      <input id="lvName" type="text" maxlength="60">
+      <label for="lvLength">Length</label>
+      <span class="unit"><input id="lvLength" type="number" min="1" max="1800" step="0.01"> s</span>
+      <span class="k">Repeat</span>
+      <label class="chk"><input id="lvRepeat" type="checkbox"> Loop when the timeline ends</label>
+      <span class="k">Groups</span><span id="lvCount"></span>
+    </div>
+  </aside>
+</main>
+<script src="level.js"></script>
+<script>
+(function () {
+  'use strict';
+  const L = window.LevelFormat;
+  const $ = (id) => document.getElementById(id);
+
+  // ---- Timeline geometry (SVG user units = CSS px) ----
+  const RULER_H = 28;
+  const PAD_L = 16;            // x of time 0
+  const HEAD_W = 50;           // clip head (the click/drag handle)
+  const PPS_MIN = 2, PPS_MAX = 400;
+  const PREVIEW_WINDOW = 16;   // seconds a group stays in the preview
+  const PENTA = [0, 2, 4, 7, 9, 12, 14, 16, 19];
+  const SNAPS = [0, 0.1, 0.25, 0.5, 1];
+  const LANE_NAMES = ['L', '', '', '', 'C', '', '', '', 'R'];
+
+  let level = L.empty();
+  let current = { slug: null, isNew: true, baseline: '' };
+  let levels = [];
+  let selection = new Set();
+  let undoStack = [], redoStack = [];
+  let clipboard = null;
+  let palette = { type: 'weaver', count: 3, dir: 1 };
+  let snap = 0.25;
+  let pps = 24;                // pixels per second
+  let rowH = 32;
+  let playhead = 0;            // seconds
+  let soundOn = true;
+  let drag = null;
+  let play = null;             // { startPerf, startAbs, prevAbs, raf }
+  let audio = null;
+  let gridQueued = false;
+
+  const r2 = L.round2;
+  const X = (t) => PAD_L + t * pps;
+  const T = (x) => (x - PAD_L) / pps;
+  const rowY = (lane) => RULER_H + lane * rowH;
+  const laneAt = (y) => Math.max(0, Math.min(8, Math.floor((y - RULER_H) / rowH)));
+  const maxTime = () => r2(level.length - 0.01);
+  const snapT = (t) => r2(snap ? Math.round(t / snap) * snap : t);
+  const nudgeStep = () => snap || 0.1;
+  const crossW = (e) => L.crossTime(e.type, e.count) * pps;
+
+  function fmtTime(t, dec) {
+    const f = Math.pow(10, dec);
+    t = Math.round(Math.max(0, t) * f) / f;
+    const m = Math.floor(t / 60 + 1e-9);
+    const s = t - m * 60;
+    return String(m).padStart(2, '0') + ':' + s.toFixed(dec).padStart(dec ? 3 + dec : 2, '0');
+  }
+  const fmtS = (t) => String(r2(t));
+
+  function canonical(lv) {
+    return JSON.stringify({ ...lv, events: lv.events.slice().sort(L.compareEvents) });
+  }
+  const isDirty = () => canonical(level) !== current.baseline;
+
+  function showError(msg) {
+    $('error').textContent = msg || '';
+    if (msg) setTimeout(() => { if ($('error').textContent === msg) $('error').textContent = ''; }, 5000);
+  }
+  function status(msg) { $('status').textContent = msg; }
+
+  // ---- Undo ----
+  function snapshot() {
+    const idx = [];
+    level.events.forEach((e, i) => { if (selection.has(e)) idx.push(i); });
+    return { level: JSON.stringify(level), sel: idx };
+  }
+  function restore(s) {
+    level = JSON.parse(s.level);
+    selection = new Set(s.sel.map((i) => level.events[i]).filter(Boolean));
+    playhead = Math.min(playhead, level.length);
+  }
+  function pushUndo(prev) {
+    undoStack.push(prev);
+    if (undoStack.length > 300) undoStack.shift();
+    redoStack = [];
+  }
+  function commit(mutator) {
+    const prev = snapshot();
+    try { mutator(); } catch (e) { showError(e.message); restore(prev); render(); return false; }
+    level.events.sort(L.compareEvents);
+    pushUndo(prev);
+    render();
+    return true;
+  }
+  function undo() { if (!undoStack.length) return; redoStack.push(snapshot()); restore(undoStack.pop()); render(); }
+  function redo() { if (!redoStack.length) return; undoStack.push(snapshot()); restore(redoStack.pop()); render(); }
+
+  // ---- Track headers ----
+  function screenIcon(lane) {
+    const x = 1.5 + 9 * lane / 8;
+    return '<svg width="14" height="20" viewBox="0 0 14 20" aria-hidden="true"><rect x="1" y="1" width="12" height="18" rx="2" fill="none" stroke="#5a5d70"/>' +
+      '<rect x="' + (x + 0.5).toFixed(2) + '" y="2.5" width="2" height="6" rx="1" fill="' + (lane === 4 ? '#e6e6ee' : '#ff7ad9') + '"/></svg>';
+  }
+  function buildHeads() {
+    const heads = $('heads');
+    for (let lane = 0; lane < 9; lane++) {
+      const row = document.createElement('div');
+      row.className = 'row';
+      row.dataset.lane = lane;
+      row.title = 'Lane ' + lane + (lane === 0 ? ': left edge' : lane === 8 ? ': right edge' : lane === 4 ? ': center' : '');
+      row.innerHTML = screenIcon(lane) + '<span class="lt">' + LANE_NAMES[lane] + '</span><span class="ln">' + lane + '</span>';
+      heads.append(row);
+    }
+  }
+  function hotLane(lane) {
+    document.querySelectorAll('#heads .row').forEach((r) => r.classList.toggle('hot', +r.dataset.lane === lane));
+  }
+
+  // ---- Layout ----
+  function contentEnd() {
+    let end = level.length;
+    for (const e of level.events) end = Math.max(end, e.time + L.crossTime(e.type, e.count));
+    return end;
+  }
+  const svgW = () => Math.ceil(Math.max(X(contentEnd()) + 160, $('scroller').clientWidth));
+  const svgH = () => RULER_H + 9 * rowH;
+
+  function measure() {
+    const tl = document.querySelector('.timeline');
+    const sc = $('scroller');
+    const bar = sc.offsetHeight - sc.clientHeight;
+    const h = Math.floor((tl.clientHeight - RULER_H - bar) / 9);
+    const next = Math.max(26, Math.min(64, h || 32));
+    if (next !== rowH) {
+      rowH = next;
+      document.documentElement.style.setProperty('--row-h', rowH + 'px');
+    }
+  }
+
+  // ---- Ruler and grid (only the visible span is drawn) ----
+  const STEPS = [[0.05, 5], [0.1, 5], [0.25, 5], [0.5, 5], [1, 4], [2, 4], [5, 5], [10, 5], [15, 3], [30, 6], [60, 6], [120, 4], [300, 5], [600, 4]];
+  function renderGrid() {
+    gridQueued = false;
+    const sc = $('scroller');
+    const W = svgW(), H = svgH();
+    const svg = $('tl');
+    svg.setAttribute('width', W);
+    svg.setAttribute('height', H);
+    const [major, div] = STEPS.find(([s]) => s * pps >= 76) || STEPS[STEPS.length - 1];
+    const minor = major / div;
+    const showMinor = minor * pps >= 7;
+    const t0 = Math.max(0, Math.floor(T(sc.scrollLeft - 100) / major) * major);
+    const t1 = T(sc.scrollLeft + sc.clientWidth + 100);
+    const out = [];
+    for (let lane = 0; lane < 9; lane++) out.push('<rect class="row' + (lane % 2) + '" x="0" y="' + rowY(lane) + '" width="' + W + '" height="' + rowH + '"/>');
+    let sep = '';
+    for (let lane = 1; lane < 9; lane++) sep += 'M0 ' + (rowY(lane) - 0.5) + 'H' + W;
+    out.push('<path class="rsep" d="' + sep + '"/>');
+    out.push('<rect class="pastend" x="' + X(level.length) + '" y="' + RULER_H + '" width="' + Math.max(0, W - X(level.length)) + '" height="' + (H - RULER_H) + '"/>');
+    out.push('<rect class="ruler" x="0" y="0" width="' + W + '" height="' + RULER_H + '"/>');
+    out.push('<line class="rline" x1="0" x2="' + W + '" y1="' + (RULER_H - 0.5) + '" y2="' + (RULER_H - 0.5) + '"/>');
+    let tmaj = '', tmin = '', gmaj = '', gmin = '', labels = '';
+    const dec = major < 0.1 ? 2 : 1;
+    const n = Math.ceil((t1 - t0) / minor);
+    for (let i = 0; i <= n; i++) {
+      const t = t0 + i * minor;
+      const x = (Math.round(X(t)) + 0.5).toFixed(1);
+      const isMajor = Math.abs(t / major - Math.round(t / major)) < 1e-6;
+      if (isMajor) {
+        tmaj += 'M' + x + ' ' + RULER_H + 'V9';
+        gmaj += 'M' + x + ' ' + RULER_H + 'V' + H;
+        labels += '<text class="tlbl" x="' + (+x + 4) + '" y="11">' + fmtTime(t, dec) + '</text>';
+      } else if (showMinor) {
+        tmin += 'M' + x + ' ' + RULER_H + 'v-' + (Math.abs((i % div) - div / 2) < 1e-9 ? 9 : 5);
+        gmin += 'M' + x + ' ' + RULER_H + 'V' + H;
+      }
+    }
+    out.push('<path class="gmin" d="' + gmin + '"/><path class="gmaj" d="' + gmaj + '"/>');
+    out.push('<path class="tmin" d="' + tmin + '"/><path class="tmaj" d="' + tmaj + '"/>' + labels);
+    out.push('<rect class="rulerhit" x="0" y="0" width="' + W + '" height="' + RULER_H + '"/>');
+    $('gridLayer').innerHTML = out.join('');
+    $('zoomLbl').textContent = pps >= 10 ? Math.round(pps) + ' px/s' : pps.toFixed(1) + ' px/s';
+  }
+  function queueGrid() { if (!gridQueued) { gridQueued = true; requestAnimationFrame(renderGrid); } }
+
+  // ---- Clips ----
+  function icon(type, cx, cy) {
+    if (type === 'diver') return '<path class="ico" d="M' + cx + ' ' + (cy + 6) + 'L' + (cx + 5) + ' ' + (cy - 2) + 'L' + cx + ' ' + (cy - 6) + 'L' + (cx - 5) + ' ' + (cy - 2) + 'Z"/>';
+    return '<path class="ico" d="M' + cx + ' ' + (cy + 5) + 'L' + (cx + 6) + ' ' + (cy - 4) + 'L' + (cx + 2) + ' ' + (cy - 2) + 'L' + cx + ' ' + (cy - 5) + 'L' + (cx - 2) + ' ' + (cy - 2) + 'L' + (cx - 6) + ' ' + (cy - 4) + 'Z"/>';
+  }
+  function clipMarkup(e, cls, i) {
+    const x = X(e.time), y = rowY(e.lane) + 3, h = rowH - 7, cy = y + h / 2;
+    const w = Math.max(HEAD_W, crossW(e));
+    const g = '<g class="clip ' + e.type + (cls || '') + '">';
+    let s = g + '<rect class="tail" x="' + x.toFixed(1) + '" y="' + y + '" width="' + w.toFixed(1) + '" height="' + h + '" rx="3"/>';
+    if (w - HEAD_W > 84) s += '<text class="tname" x="' + (x + HEAD_W + 8).toFixed(1) + '" y="' + (cy + 4) + '">' + e.type + ' ×' + e.count + (e.type === 'diver' ? (e.dir === 1 ? ' →' : ' ←') : '') + '</text>';
+    const tail = s + '</g>';
+    s = g + '<g class="head"' + (i === undefined ? '' : ' data-i="' + i + '"') + '>';
+    s += '<rect class="hd" x="' + x.toFixed(1) + '" y="' + y + '" width="' + HEAD_W + '" height="' + h + '" rx="3"/>';
+    s += '<rect class="grip" x="' + (x + 1).toFixed(1) + '" y="' + (y + 1) + '" width="3" height="' + (h - 2) + '" rx="1"/>';
+    s += icon(e.type, +(x + 13).toFixed(1), cy);
+    const bx = x + 22;
+    s += '<rect class="badge" x="' + bx.toFixed(1) + '" y="' + (cy - 7) + '" width="14" height="14" rx="7"/>';
+    s += '<text class="cnt" x="' + (bx + 7).toFixed(1) + '" y="' + cy + '">' + e.count + '</text>';
+    if (e.type === 'diver') {
+      const ax = x + 43, d = e.dir;
+      s += '<path class="arr" d="M' + (ax - 3 * d).toFixed(1) + ' ' + cy + 'H' + (ax + 3 * d).toFixed(1) + 'M' + (ax + 0.5 * d).toFixed(1) + ' ' + (cy - 3) + 'L' + (ax + 3.5 * d).toFixed(1) + ' ' + cy + 'L' + (ax + 0.5 * d).toFixed(1) + ' ' + (cy + 3) + '"/>';
+    }
+    return [tail, s + '</g></g>'];
+  }
+  function renderClips() {
+    // All tails first, then all heads (selected last), so a head is never hidden under another clip.
+    const tails = [], heads = [], selHeads = [];
+    level.events.forEach((e, i) => {
+      const on = selection.has(e);
+      const [t, h] = clipMarkup(e, on ? ' sel' : '', i);
+      tails.push(t);
+      (on ? selHeads : heads).push(h);
+    });
+    $('clipLayer').innerHTML = tails.join('') + heads.join('') + selHeads.join('');
+  }
+
+  // ---- End marker and playhead ----
+  function renderEnd() {
+    const x = X(level.length), H = svgH();
+    let s = '<line class="endline" x1="' + x + '" x2="' + x + '" y1="0" y2="' + H + '"/>';
+    s += '<path class="endflag" d="M' + (x - 22) + ' 3H' + x + 'V' + (RULER_H - 3) + 'L' + (x - 8) + ' ' + (RULER_H - 9) + 'H' + (x - 22) + 'Z"/>';
+    if (level.repeat) {
+      const cx = x - 12, cy = 11;
+      s += '<path class="endloop" d="M' + (cx + 4) + ' ' + (cy - 1) + 'A4 4 0 1 0 ' + (cx + 1) + ' ' + (cy + 4) + '"/><path class="endloop" d="M' + (cx + 2) + ' ' + (cy - 3) + 'L' + (cx + 4.5) + ' ' + (cy - 1) + 'L' + (cx + 6) + ' ' + (cy - 4) + '"/>';
+    } else {
+      s += '<path class="endloop" d="M' + (x - 15) + ' 7V15M' + (x - 10) + ' 7V15"/>';
+    }
+    s += '<rect class="endhit" data-end="1" x="' + (x - 24) + '" y="0" width="28" height="' + RULER_H + '"/>';
+    s += '<rect class="endhit" data-end="1" x="' + (x - 4) + '" y="' + RULER_H + '" width="8" height="' + (H - RULER_H) + '"><title>End of level: drag to set the length</title></rect>';
+    $('endLayer').innerHTML = s;
+  }
+  function renderPlayhead() {
+    const x = (Math.round(X(Math.min(playhead, level.length))) + 0.5).toFixed(1);
+    const ph = $('playhead');
+    ph.setAttribute('x1', x); ph.setAttribute('x2', x);
+    ph.setAttribute('y1', 0); ph.setAttribute('y2', svgH());
+    $('playcap').setAttribute('d', 'M' + (x - 6) + ' ' + (RULER_H - 14) + 'H' + (+x + 6) + 'V' + (RULER_H - 6) + 'L' + x + ' ' + RULER_H + 'L' + (x - 6) + ' ' + (RULER_H - 6) + 'Z');
+    $('tc').innerHTML = fmtTime(playhead, 2) + ' <small>/ ' + fmtTime(level.length, 2) + '</small>';
+  }
+
+  function render() {
+    measure();
+    renderGrid();
+    renderClips();
+    renderEnd();
+    renderPlayhead();
+    renderToolbar();
+    renderSettings();
+    renderSelectionPanel();
+    renderFile();
+    if (!play) drawPreview(playhead);
+  }
+
+  // ---- Toolbar / settings / selection panel ----
+  function renderToolbar() {
+    document.querySelectorAll('#typeGrp button').forEach((b) => b.classList.toggle('on', b.dataset.type === palette.type));
+    document.querySelectorAll('#countGrp button').forEach((b) => b.classList.toggle('on', +b.dataset.count === palette.count));
+    document.querySelectorAll('#dirGrp button').forEach((b) => b.classList.toggle('on', +b.dataset.dir === palette.dir));
+    $('snap').value = String(snap);
+    $('sound').textContent = soundOn ? 'Sound on' : 'Sound off';
+    $('play').textContent = play ? '■' : '▶';
+    $('play').classList.toggle('on', !!play);
+    $('undo').disabled = !undoStack.length;
+    $('redo').disabled = !redoStack.length;
+  }
+  function renderSettings() {
+    const set = (id, v) => { if (document.activeElement !== $(id)) $(id).value = v; };
+    set('lvName', level.name);
+    set('lvLength', level.length);
+    $('lvRepeat').checked = level.repeat;
+    $('lvCount').textContent = level.events.length + ' / ' + L.MAX_EVENTS;
+  }
+  function uniform(key) {
+    let v;
+    for (const e of selection) { if (v === undefined) v = e[key]; else if (v !== e[key]) return ''; }
+    return String(v);
+  }
+  function renderSelectionPanel() {
+    const n = selection.size;
+    $('selNone').hidden = n > 0;
+    $('selPanel').hidden = n === 0;
+    if (!n) return;
+    const sel = [...selection];
+    const lo = Math.min(...sel.map((e) => e.time)), hi = Math.max(...sel.map((e) => e.time));
+    $('selCount').textContent = n === 1 ? '1 group' : n + ' groups, ' + fmtS(lo) + '–' + fmtS(hi) + ' s';
+    $('selTimeLbl').textContent = n === 1 ? 'Time' : 'Start';
+    $('selTime').title = n === 1 ? 'Spawn time in seconds' : 'Time of the earliest selected group; changing it shifts them all';
+    if (document.activeElement !== $('selTime')) $('selTime').value = fmtS(lo);
+    $('selLane').value = uniform('lane');
+    $('selType').value = uniform('type');
+    $('selCountSel').value = uniform('count');
+    $('selDir').value = uniform('dir');
+  }
+  function renderFile() {
+    const dirty = isDirty();
+    $('fileName').textContent = current.slug ? 'levels/' + current.slug + '.json' + (current.isNew ? ' (new)' : '') : '';
+    $('dirty').textContent = dirty ? '● unsaved' : '';
+    $('save').disabled = !dirty && !current.isNew;
+    $('del').disabled = !current.slug;
+    renderLibrary();
+  }
+  function renderLibrary() {
+    const rows = levels.slice();
+    if (current.isNew && current.slug && !rows.some((r) => r.slug === current.slug)) rows.push({ slug: current.slug, name: level.name, unsaved: true });
+    const dirty = isDirty();
+    $('levelList').replaceChildren(...rows.map((r) => {
+      const b = document.createElement('button');
+      b.className = 'lvl' + (r.slug === current.slug ? ' current' : '');
+      const nm = document.createElement('span');
+      nm.className = 'nm';
+      nm.textContent = r.slug === current.slug ? level.name : r.name;
+      const sm = document.createElement('small');
+      sm.textContent = r.slug + '.json';
+      nm.append(sm);
+      const mark = document.createElement('span');
+      if (r.error) { mark.className = 'bad'; mark.textContent = 'invalid'; mark.title = r.error; }
+      else if (r.slug === current.slug && dirty) { mark.className = 'mark'; mark.textContent = '●'; mark.title = 'unsaved changes'; }
+      b.append(nm, mark);
+      b.addEventListener('click', () => openLevel(r.slug));
+      return b;
+    }));
+    $('libEmpty').textContent = rows.length ? '' : 'No levels yet. Press New.';
+  }
+
+  // Apply a field to the selected groups (one undo step).
+  function applyToSelection(key, value) {
+    if (!selection.size) return;
+    if ([...selection].some((e) => e[key] !== value)) commit(() => { for (const e of selection) e[key] = value; });
+  }
+  function setPalette(key, value) {
+    palette[key] = value;
+    applyToSelection(key, value);
+    renderToolbar();
+    drawGhostLast();
+    if (!play) drawPreview(playhead);
+  }
+
+  // ---- Editing ----
+  function addEvent(time, lane) {
+    const existing = level.events.find((e) => e.time === time && e.lane === lane);
+    if (existing) { selection = new Set([existing]); render(); return; }
+    if (level.events.length >= L.MAX_EVENTS) { showError('at most ' + L.MAX_EVENTS + ' groups'); return; }
+    commit(() => {
+      const e = { time, type: palette.type, lane, count: palette.count, dir: palette.dir };
+      level.events.push(e);
+      selection = new Set([e]);
+    });
+    blip({ type: palette.type, lane });
+  }
+  function deleteSelection() {
+    if (!selection.size) return;
+    const n = selection.size;
+    commit(() => { level.events = level.events.filter((e) => !selection.has(e)); selection = new Set(); });
+    status('Deleted ' + n + (n === 1 ? ' group.' : ' groups.'));
+  }
+  // Clamp a time shift and lane shift so every selected group stays inside the level.
+  function clampShift(items, dt, dl) {
+    const lo = Math.min(...items.map((v) => v.time)), hi = Math.max(...items.map((v) => v.time));
+    const lmin = Math.min(...items.map((v) => v.lane)), lmax = Math.max(...items.map((v) => v.lane));
+    return [Math.max(-lo, Math.min(maxTime() - hi, dt)), Math.max(-lmin, Math.min(8 - lmax, dl))];
+  }
+  function moveSelection(dt, dl) {
+    if (!selection.size) return;
+    const sel = [...selection];
+    [dt, dl] = clampShift(sel, dt, dl);
+    if (!dt && !dl) return;
+    commit(() => { for (const e of sel) { e.time = r2(e.time + dt); e.lane += dl; } });
+  }
+  function copySelection(cut) {
+    if (!selection.size) return;
+    const sel = [...selection].sort(L.compareEvents);
+    const base = sel[0].time;
+    clipboard = sel.map((e) => ({ ...e, time: r2(e.time - base) }));
+    status((cut ? 'Cut ' : 'Copied ') + sel.length + (sel.length === 1 ? ' group.' : ' groups.'));
+    if (cut) commit(() => { level.events = level.events.filter((e) => !selection.has(e)); selection = new Set(); });
+  }
+  function paste() {
+    if (!clipboard || !clipboard.length) return;
+    const at = Math.min(Math.max(0, snapT(playhead)), maxTime());
+    const room = L.MAX_EVENTS - level.events.length;
+    const items = clipboard.map((e) => ({ ...e, time: r2(e.time + at) })).filter((e) => e.time < level.length).slice(0, Math.max(0, room));
+    if (!items.length) { showError('nothing fits at the playhead'); return; }
+    commit(() => { level.events.push(...items); selection = new Set(items); });
+    status('Pasted ' + items.length + ' at ' + fmtTime(at, 2) + (items.length < clipboard.length ? ' (some fell past the end)' : '') + '.');
+  }
+  function setPlayhead(t) {
+    playhead = Math.max(0, Math.min(level.length, t));
+    if (play) { play.startAbs = playhead; play.startPerf = performance.now(); play.prevAbs = playhead - 1e-6; }
+    renderPlayhead();
+    if (!play) drawPreview(playhead);
+  }
+  // Shrinking the level drops groups past the new end.
+  function setLength(v) {
+    v = r2(v);
+    if (v === level.length) return;
+    let dropped = 0;
+    commit(() => {
+      level.length = v;
+      const keep = level.events.filter((e) => e.time < v);
+      dropped = level.events.length - keep.length;
+      level.events = keep;
+      for (const e of [...selection]) if (e.time >= v) selection.delete(e);
+      if (playhead > v) playhead = v;
+    });
+    if (dropped) status('Removed ' + dropped + ' groups past the new end (undo to restore).');
+  }
+
+  // ---- Pointer ----
+  const svg = $('tl');
+  function pt(e) {
+    const r = svg.getBoundingClientRect();
+    return { x: e.clientX - r.left, y: e.clientY - r.top };
+  }
+  function hoverCell(p) {
+    if (p.y < RULER_H || p.y >= svgH()) return null;
+    const t = snapT(T(p.x));
+    if (t < 0 || t >= level.length) return null;
+    return { time: t, lane: laneAt(p.y) };
+  }
+  let lastHover = null;
+  function drawGhost(cell) {
+    lastHover = cell;
+    $('ghost').innerHTML = cell ? clipMarkup({ ...palette, time: cell.time, lane: cell.lane }).join('') : '';
+    hotLane(cell ? cell.lane : -1);
+  }
+  function drawGhostLast() { if (lastHover && !drag) drawGhost(lastHover); }
+  function minLength() {
+    const last = level.events.reduce((m, e) => Math.max(m, e.time), -1);
+    return Math.max(L.LENGTH_MIN, r2(last + 0.01));
+  }
+  function endAt(x) {
+    const t = snapT(T(x));
+    return Math.max(minLength(), Math.min(L.LENGTH_MAX, t));
+  }
+
+  svg.addEventListener('pointerdown', (e) => {
+    if (e.button !== 0) return;
+    const p = pt(e);
+    svg.setPointerCapture(e.pointerId);
+    drawGhost(null);
+    if (e.target.closest('[data-end]')) {
+      drag = { kind: 'end', prev: snapshot(), orig: level.length };
+      svg.style.cursor = 'ew-resize';
+      return;
+    }
+    if (p.y < RULER_H) {
+      drag = { kind: 'scrub' };
+      setPlayhead(snapT(T(p.x)));
+      return;
+    }
+    const g = e.target.closest('[data-i]');
+    if (g) {
+      const ev = level.events[+g.dataset.i];
+      if (e.shiftKey) {
+        if (selection.has(ev)) selection.delete(ev); else selection.add(ev);
+        render();
+        if (!selection.has(ev)) { drag = null; return; }
+      } else if (!selection.has(ev)) {
+        selection = new Set([ev]);
+        render();
+      }
+      drag = { kind: 'move', start: p, prev: snapshot(), orig: new Map([...selection].map((s) => [s, { time: s.time, lane: s.lane }])), moved: false, clicked: ev, shift: e.shiftKey };
+      svg.style.cursor = 'grabbing';
+      return;
+    }
+    drag = { kind: 'box', start: p, base: e.shiftKey ? new Set(selection) : new Set(), moved: false, shift: e.shiftKey };
+  });
+
+  svg.addEventListener('pointermove', (e) => {
+    const p = pt(e);
+    if (!drag) {
+      const overHead = e.target.closest && e.target.closest('[data-i], [data-end]');
+      drawGhost(overHead ? null : hoverCell(p));
+      return;
+    }
+    if (drag.kind === 'scrub') { setPlayhead(snapT(T(p.x))); return; }
+    if (drag.kind === 'end') {
+      level.length = endAt(p.x);
+      renderGrid(); renderEnd(); renderPlayhead(); renderSettings();
+      status('Length ' + fmtTime(level.length, 2));
+      return;
+    }
+    const dx = p.x - drag.start.x, dy = p.y - drag.start.y;
+    if (!drag.moved && Math.hypot(dx, dy) < 4) return;
+    drag.moved = true;
+    if (drag.kind === 'move') {
+      const o = drag.orig.get(drag.clicked);
+      let dt = snapT(o.time + dx / pps) - o.time;
+      let dl = Math.round(dy / rowH);
+      [dt, dl] = clampShift([...drag.orig.values()], dt, dl);
+      for (const [ev, v] of drag.orig) { ev.time = r2(v.time + dt); ev.lane = v.lane + dl; }
+      renderClips();
+      renderSelectionPanel();
+      hotLane(drag.clicked.lane);
+      status(fmtTime(drag.clicked.time, 2) + ' · lane ' + drag.clicked.lane);
+      return;
+    }
+    // Box select: a clip is picked when the box touches its head.
+    const x1 = Math.min(p.x, drag.start.x), x2 = Math.max(p.x, drag.start.x);
+    const y1 = Math.min(p.y, drag.start.y), y2 = Math.max(p.y, drag.start.y);
+    const box = $('selbox');
+    box.setAttribute('x', x1); box.setAttribute('y', y1); box.setAttribute('width', x2 - x1); box.setAttribute('height', y2 - y1);
+    box.setAttribute('visibility', 'visible');
+    selection = new Set(drag.base);
+    for (const ev of level.events) {
+      const hx = X(ev.time), hy = rowY(ev.lane);
+      if (hx + HEAD_W >= x1 && hx <= x2 && hy + rowH >= y1 && hy <= y2) selection.add(ev);
+    }
+    renderClips();
+  });
+
+  function endDrag(e) {
+    if (!drag) return;
+    const d = drag;
+    drag = null;
+    svg.style.cursor = '';
+    $('selbox').setAttribute('visibility', 'hidden');
+    if (d.kind === 'end') {
+      if (level.length !== d.orig) pushUndo(d.prev);
+      render();
+    } else if (d.kind === 'move') {
+      const changed = [...d.orig].some(([ev, o]) => ev.time !== o.time || ev.lane !== o.lane);
+      if (changed) { level.events.sort(L.compareEvents); pushUndo(d.prev); }
+      else if (!d.moved && !d.shift) selection = new Set([d.clicked]);
+      render();
+    } else if (d.kind === 'box') {
+      if (!d.moved && e && e.type === 'pointerup' && !d.shift) {
+        const cell = hoverCell(d.start);
+        if (cell) addEvent(cell.time, cell.lane);
+        else { selection = new Set(); render(); }
+      } else render();
+    }
+  }
+  svg.addEventListener('pointerup', endDrag);
+  svg.addEventListener('pointercancel', endDrag);
+  svg.addEventListener('pointerleave', () => { if (!drag) drawGhost(null); });
+
+  // Cmd/Ctrl+wheel zooms around the pointer; a plain vertical wheel scrolls the timeline sideways.
+  $('scroller').addEventListener('wheel', (e) => {
+    const sc = $('scroller');
+    if (e.ctrlKey || e.metaKey) {
+      e.preventDefault();
+      setZoom(pps * Math.exp(-e.deltaY * 0.0025), T(pt(e).x), e.clientX - sc.getBoundingClientRect().left);
+    } else if (Math.abs(e.deltaY) > Math.abs(e.deltaX) && sc.scrollWidth > sc.clientWidth && !e.shiftKey) {
+      e.preventDefault();
+      sc.scrollLeft += e.deltaY;
+    }
+  }, { passive: false });
+  $('scroller').addEventListener('scroll', queueGrid);
+  window.addEventListener('resize', () => render());
+
+  function setZoom(z, anchorT, anchorPx) {
+    const sc = $('scroller');
+    if (anchorT === undefined) { anchorPx = sc.clientWidth / 2; anchorT = T(sc.scrollLeft + anchorPx); }
+    pps = Math.max(PPS_MIN, Math.min(PPS_MAX, z));
+    render();
+    sc.scrollLeft = X(anchorT) - anchorPx;
+    renderGrid();
+  }
+  function zoomFit() {
+    const sc = $('scroller');
+    pps = Math.max(PPS_MIN, Math.min(PPS_MAX, (sc.clientWidth - PAD_L - 40) / level.length));
+    render();
+    sc.scrollLeft = 0;
+    renderGrid();
+  }
+
+  // ---- Preview ----
+  const STARS = Array.from({ length: 70 }, (_, i) => {
+    const r = (n) => { const s = Math.sin(i * 127.1 + n * 311.7) * 43758.5453; return s - Math.floor(s); };
+    return { x: r(1) * 540, y: r(2) * 960, s: 0.6 + r(3) * 1.6, v: 20 + r(4) * 60 };
+  });
+  // Ship positions at absolute time `abs` in seconds (counts up past the end when the level loops).
+  function shipsAtTime(abs) {
+    const total = level.length;
+    const out = [];
+    const kHi = level.repeat ? Math.floor(abs / total) : 0;
+    const kLo = level.repeat ? Math.max(0, Math.floor((abs - PREVIEW_WINDOW) / total)) : 0;
+    for (let k = kLo; k <= kHi; k++) {
+      for (const ev of level.events) {
+        const at = k * total + ev.time;
+        if (at > abs + 1e-9) continue;
+        const t = abs - at;
+        if (t > PREVIEW_WINDOW) continue;
+        const sel = selection.has(ev);
+        for (const s of L.shipsAt(ev, t)) if (s.y < 1010) out.push({ x: s.x, y: s.y, type: ev.type, sel });
+      }
+    }
+    return out;
+  }
+  function drawPreview(abs) {
+    const cv = $('preview'), ctx = cv.getContext('2d');
+    const k = cv.width / 540;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    const g = ctx.createLinearGradient(0, 0, 0, cv.height);
+    g.addColorStop(0, '#0b0820'); g.addColorStop(1, '#05060a');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, cv.width, cv.height);
+    ctx.setTransform(k, 0, 0, k, 0, 0);
+    ctx.fillStyle = '#ffffff';
+    for (const s of STARS) {
+      ctx.globalAlpha = 0.25 + s.s * 0.2;
+      ctx.fillRect(s.x, (s.y + abs * s.v) % 960, s.s * 1.6, s.s * 1.6);
+    }
+    ctx.globalAlpha = 1;
+    // Where the palette's group would enter, per lane.
+    ctx.fillStyle = 'rgba(255,255,255,.22)';
+    for (let lane = 0; lane < 9; lane++) {
+      const x = L.groupCenterX(palette.type, palette.count, lane);
+      ctx.fillRect(x - 1, 0, 2, lane % 4 ? 10 : 18);
+    }
+    const col = { weaver: getVar('--weaver'), diver: getVar('--diver') };
+    for (const s of shipsAtTime(abs)) {
+      ctx.save();
+      ctx.translate(s.x, s.y);
+      ctx.beginPath();
+      if (s.type === 'diver') { ctx.moveTo(0, 22); ctx.lineTo(16, -6); ctx.lineTo(0, -16); ctx.lineTo(-16, -6); }
+      else { ctx.moveTo(0, 20); ctx.lineTo(20, -12); ctx.lineTo(8, -6); ctx.lineTo(0, -16); ctx.lineTo(-8, -6); ctx.lineTo(-20, -12); }
+      ctx.closePath();
+      ctx.fillStyle = col[s.type];
+      ctx.fill();
+      if (s.sel) { ctx.lineWidth = 4; ctx.strokeStyle = getVar('--accent'); ctx.stroke(); }
+      ctx.restore();
+    }
+  }
+  const varCache = {};
+  function getVar(n) { return varCache[n] || (varCache[n] = getComputedStyle(document.documentElement).getPropertyValue(n).trim()); }
+
+  // ---- Playback and sound ----
+  function ensureAudio() {
+    if (!audio) { try { audio = new (window.AudioContext || window.webkitAudioContext)(); } catch { audio = null; } }
+    if (audio && audio.state === 'suspended') audio.resume();
+    return audio;
+  }
+  // A soft blip when a group spawns, pitched by lane.
+  function blip(ev) {
+    ensureAudio();
+    if (!soundOn || !audio) return;
+    const t = audio.currentTime;
+    const o = audio.createOscillator(), g = audio.createGain();
+    o.type = ev.type === 'diver' ? 'triangle' : 'sine';
+    o.frequency.value = 440 * Math.pow(2, PENTA[ev.lane] / 12);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.04, t + 0.006);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.1);
+    o.connect(g).connect(audio.destination);
+    o.start(t); o.stop(t + 0.12);
+  }
+
+  function startPlay() {
+    if (play) return;
+    ensureAudio();
+    if (playhead >= level.length) playhead = 0;
+    play = { startPerf: performance.now(), startAbs: playhead, prevAbs: playhead - 1e-6, raf: 0 };
+    play.raf = requestAnimationFrame(tick);
+    renderToolbar();
+  }
+  function stopPlay() {
+    if (!play) return;
+    cancelAnimationFrame(play.raf);
+    play = null;
+    renderToolbar();
+    drawPreview(playhead);
+  }
+  function tick(now) {
+    if (!play) return;
+    const total = level.length;
+    let abs = play.startAbs + (now - play.startPerf) / 1000;
+    if (!level.repeat && abs >= total) abs = total;
+    const prev = play.prevAbs;
+    const k0 = level.repeat ? Math.floor(Math.max(0, prev) / total) : 0, k1 = level.repeat ? Math.floor(abs / total) : 0;
+    let blips = 0;
+    for (let k = k0; k <= k1; k++) for (const ev of level.events) {
+      const at = k * total + ev.time;
+      if (at > prev && at <= abs && blips++ < 3) blip(ev);
+    }
+    play.prevAbs = abs;
+    playhead = level.repeat ? abs % total : abs;
+    renderPlayhead();
+    drawPreview(abs);
+    follow();
+    if (!level.repeat && abs >= total) { stopPlay(); return; }
+    play.raf = requestAnimationFrame(tick);
+  }
+  function follow() {
+    const sc = $('scroller'), x = X(playhead);
+    if (x < sc.scrollLeft + 20 || x > sc.scrollLeft + sc.clientWidth - 60) sc.scrollLeft = x - 80;
+  }
+
+  // ---- Files ----
+  async function api(method, url, body) {
+    const res = await fetch(url, { method, headers: body ? { 'Content-Type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || res.statusText);
+    return data;
+  }
+  async function refreshList() {
+    try { levels = (await api('GET', '/api/levels')).levels; }
+    catch (e) { showError('Could not list levels: ' + e.message); levels = []; }
+    renderLibrary();
+  }
+  function confirmDiscard() {
+    return !isDirty() || confirm('Discard unsaved changes to ' + (current.slug || 'this level') + '?');
+  }
+  function loadInto(slug, lv, isNew) {
+    stopPlay();
+    level = lv;
+    level.events.sort(L.compareEvents);
+    current = { slug, isNew, baseline: canonical(level) };
+    selection = new Set();
+    undoStack = []; redoStack = [];
+    playhead = 0;
+    zoomFit();
+  }
+  async function openLevel(slug) {
+    if (slug === current.slug || !confirmDiscard()) return;
+    try {
+      const lv = await api('GET', '/api/level?slug=' + encodeURIComponent(slug));
+      loadInto(slug, lv, false);
+      status('Opened levels/' + slug + '.json · ' + lv.events.length + ' groups.');
+    } catch (e) { showError(e.message); }
+  }
+  function newLevel() {
+    if (!confirmDiscard()) return;
+    const name = prompt('Level name', 'Level ' + (levels.length + 1));
+    if (name === null) return;
+    const trimmed = name.trim().slice(0, L.MAX_NAME) || 'New level';
+    const slug = prompt('File name (levels/<name>.json): lowercase letters, digits, _ and -', L.slugify(trimmed));
+    if (slug === null) return;
+    if (!L.isSlug(slug)) { showError('bad file name: use a-z, 0-9, _ and -, starting with a letter or digit (max 40)'); return; }
+    if (levels.some((r) => r.slug === slug)) { showError(slug + '.json already exists'); return; }
+    loadInto(slug, L.empty(trimmed), true);
+    status('New level ' + slug + '. Click the timeline to add groups, then Save.');
+  }
+  async function save() {
+    if (!current.slug) return;
+    let valid;
+    try { valid = L.validate(level); } catch (e) { showError(e.message); return; }
+    try {
+      await api('PUT', '/api/level?slug=' + encodeURIComponent(current.slug), valid);
+      current.isNew = false;
+      current.baseline = canonical(level);
+      status('Saved levels/' + current.slug + '.json');
+      await refreshList();
+      render();
+    } catch (e) { showError('Save failed: ' + e.message); }
+  }
+  async function deleteLevel() {
+    if (!current.slug) return;
+    if (!confirm('Delete levels/' + current.slug + '.json? This cannot be undone.')) return;
+    try {
+      if (!current.isNew) await api('DELETE', '/api/level?slug=' + encodeURIComponent(current.slug));
+      status('Deleted levels/' + current.slug + '.json');
+      await refreshList();
+      current = { slug: null, isNew: true, baseline: '' };
+      await openFirst();
+    } catch (e) { showError('Delete failed: ' + e.message); }
+  }
+  async function openFirst() {
+    const first = levels.find((r) => !r.error);
+    if (first) {
+      try { loadInto(first.slug, await api('GET', '/api/level?slug=' + encodeURIComponent(first.slug)), false); return; }
+      catch (e) { showError(e.message); }
+    }
+    let n = 1, slug;
+    do { slug = 'level_' + String(n++).padStart(2, '0'); } while (levels.some((r) => r.slug === slug));
+    loadInto(slug, L.empty('Level ' + (n - 1)), true);
+  }
+
+  // ---- Controls ----
+  buildHeads();
+  for (let c = 1; c <= 7; c++) {
+    const b = document.createElement('button');
+    b.dataset.count = c; b.textContent = c; b.title = c + (c === 1 ? ' ship' : ' ships') + ' (' + c + ')';
+    $('countGrp').append(b);
+    const o = document.createElement('option'); o.value = c; o.textContent = c + (c === 1 ? ' ship' : ' ships');
+    $('selCountSel').append(o);
+  }
+  { const o = document.createElement('option'); o.value = ''; o.disabled = true; o.textContent = 'mixed'; $('selCountSel').append(o); }
+  for (let lane = 0; lane < 9; lane++) {
+    const o = document.createElement('option');
+    o.value = lane;
+    o.textContent = lane + (lane === 0 ? ' · L (left edge)' : lane === 4 ? ' · C (center)' : lane === 8 ? ' · R (right edge)' : '');
+    $('selLane').append(o);
+  }
+  { const o = document.createElement('option'); o.value = ''; o.disabled = true; o.textContent = 'mixed'; $('selLane').append(o); }
+
+  $('typeGrp').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) setPalette('type', b.dataset.type); });
+  $('countGrp').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) setPalette('count', +b.dataset.count); });
+  $('dirGrp').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) setPalette('dir', +b.dataset.dir); });
+  $('snap').addEventListener('change', () => { snap = +$('snap').value; $('snap').blur(); renderToolbar(); });
+  $('zoomIn').addEventListener('click', () => setZoom(pps * 1.25));
+  $('zoomOut').addEventListener('click', () => setZoom(pps / 1.25));
+  $('zoomFit').addEventListener('click', zoomFit);
+  $('toStart').addEventListener('click', () => { setPlayhead(0); $('scroller').scrollLeft = 0; });
+  $('play').addEventListener('click', () => (play ? stopPlay() : startPlay()));
+  $('sound').addEventListener('click', () => { soundOn = !soundOn; renderToolbar(); });
+  $('undo').addEventListener('click', undo);
+  $('redo').addEventListener('click', redo);
+  $('save').addEventListener('click', save);
+  $('new').addEventListener('click', newLevel);
+  $('del').addEventListener('click', deleteLevel);
+  $('selDelete').addEventListener('click', deleteSelection);
+  $('selType').addEventListener('change', () => applyToSelection('type', $('selType').value));
+  $('selCountSel').addEventListener('change', () => applyToSelection('count', +$('selCountSel').value));
+  $('selDir').addEventListener('change', () => applyToSelection('dir', +$('selDir').value));
+  $('selLane').addEventListener('change', () => applyToSelection('lane', +$('selLane').value));
+  $('selTime').addEventListener('change', () => {
+    const v = r2(+$('selTime').value);
+    const sel = [...selection];
+    if (!sel.length) return;
+    const lo = Math.min(...sel.map((e) => e.time)), hi = Math.max(...sel.map((e) => e.time));
+    if (!Number.isFinite(v) || v < 0 || hi + (v - lo) >= level.length) {
+      showError('time must be from 0 to below the level length (' + fmtS(level.length) + ' s)');
+      $('selTime').value = fmtS(lo);
+      return;
+    }
+    moveSelection(r2(v - lo), 0);
+  });
+  // Buttons should not keep focus, so Space always means play.
+  document.addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) b.blur(); });
+
+  $('lvName').addEventListener('change', () => {
+    const v = $('lvName').value.trim();
+    if (!v || v.length > L.MAX_NAME) { showError('name must be 1 to ' + L.MAX_NAME + ' characters'); renderSettings(); return; }
+    if (v !== level.name) commit(() => { level.name = v; });
+  });
+  $('lvLength').addEventListener('change', () => {
+    const v = +$('lvLength').value;
+    if (!Number.isFinite(v) || v < L.LENGTH_MIN || v > L.LENGTH_MAX) { showError('length must be 1 to 1800 seconds'); renderSettings(); return; }
+    setLength(v);
+  });
+  $('lvRepeat').addEventListener('change', () => commit(() => { level.repeat = $('lvRepeat').checked; }));
+
+  document.addEventListener('keydown', (e) => {
+    const mod = e.metaKey || e.ctrlKey;
+    const k = e.key;
+    if (mod && k.toLowerCase() === 's') { e.preventDefault(); if (document.activeElement) document.activeElement.blur(); save(); return; }
+    const t = e.target;
+    if (t.matches && t.matches('input[type=text], input[type=number], select, textarea')) {
+      if (k === 'Enter' || k === 'Escape') t.blur();
+      return;
+    }
+    if (mod) {
+      const lk = k.toLowerCase();
+      if (lk === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); }
+      else if (lk === 'y') { e.preventDefault(); redo(); }
+      else if (lk === 'c') { e.preventDefault(); copySelection(false); }
+      else if (lk === 'x') { e.preventDefault(); copySelection(true); }
+      else if (lk === 'v') { e.preventDefault(); paste(); }
+      else if (lk === 'a') { e.preventDefault(); selection = new Set(level.events); render(); }
+      return;
+    }
+    if (e.altKey) return;
+    switch (k) {
+      case ' ': e.preventDefault(); play ? stopPlay() : startPlay(); break;
+      case 'Delete': case 'Backspace': e.preventDefault(); deleteSelection(); break;
+      case 'Escape': if (drag) return; if (selection.size) { selection = new Set(); render(); } else stopPlay(); break;
+      case 'Home': e.preventDefault(); setPlayhead(0); $('scroller').scrollLeft = 0; break;
+      case 'End': e.preventDefault(); setPlayhead(level.length); follow(); break;
+      case 'ArrowLeft': case 'ArrowRight': {
+        e.preventDefault();
+        const d = (k === 'ArrowLeft' ? -1 : 1) * nudgeStep();
+        if (selection.size) moveSelection(d, 0); else { setPlayhead(snapT(playhead + d)); follow(); }
+        break;
+      }
+      case 'ArrowUp': case 'ArrowDown': e.preventDefault(); moveSelection(0, k === 'ArrowUp' ? -1 : 1); break;
+      case 'w': case 'W': setPalette('type', 'weaver'); break;
+      case 'd': case 'D': setPalette('type', 'diver'); break;
+      case 'f': case 'F': setPalette('dir', -palette.dir); break;
+      case 's': case 'S': snap = SNAPS[(SNAPS.indexOf(snap) + 1) % SNAPS.length]; renderToolbar(); status('Snap ' + (snap ? snap + ' s' : 'off')); break;
+      case 'm': case 'M': soundOn = !soundOn; renderToolbar(); break;
+      case 'z': case 'Z': zoomFit(); break;
+      case '+': case '=': setZoom(pps * 1.25); break;
+      case '-': case '_': setZoom(pps / 1.25); break;
+      default:
+        if (/^[1-7]$/.test(k)) setPalette('count', +k);
+    }
+  });
+  window.addEventListener('beforeunload', (e) => { if (isDirty()) { e.preventDefault(); e.returnValue = ''; } });
+
+  (async function init() {
+    render();
+    await refreshList();
+    const want = levels.find((r) => r.slug === 'level_01' && !r.error);
+    if (want) {
+      try { loadInto(want.slug, await api('GET', '/api/level?slug=level_01'), false); return; } catch (e) { showError(e.message); }
+    }
+    await openFirst();
+  })();
+})();
+</script>
+</body>
+</html>

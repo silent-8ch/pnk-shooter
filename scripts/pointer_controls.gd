@@ -1,7 +1,7 @@
 extends Control
 ## Tap/click-to-move controls for touch and mouse: pressing sets a destination
-## the ship flies to and dragging moves it. Each press also asks for one shot
-## (`presses` counts them); holding does not keep firing.
+## the ship flies to and dragging moves it. Firing is on the ActionBar; presses
+## that land on the bar or the PowerMeter are left to them.
 
 const TOUCH_OFFSET := Vector2(0, -80)  # keep the ship above the finger
 const MOUSE_INDEX := -2  # pointer index used for the mouse
@@ -11,7 +11,6 @@ const MARKER_RADIUS := 10.0
 
 var target := Vector2.ZERO
 var has_target := false
-var presses := 0  # total fire presses; readers compare against the count they last saw
 
 var _pointer_index := -1
 
@@ -45,29 +44,37 @@ func _input(event: InputEvent) -> void:
 	if event is InputEventMouse and event.device == InputEvent.DEVICE_ID_EMULATION:
 		return
 	if event is InputEventScreenTouch:
-		_handle_press(event.pressed, event.index, event.position + TOUCH_OFFSET)
+		_handle_press(event.pressed, event.index, event.position + TOUCH_OFFSET, event.position)
 	elif event is InputEventScreenDrag:
 		if _accepting_input():
 			pointer_drag(event.index, event.position + TOUCH_OFFSET)
 	elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
-		_handle_press(event.pressed, MOUSE_INDEX, event.position)
+		_handle_press(event.pressed, MOUSE_INDEX, event.position, event.position)
 	elif event is InputEventMouseMotion:
 		if _accepting_input():
 			pointer_drag(MOUSE_INDEX, event.position)
 
 
-func _handle_press(pressed: bool, index: int, screen_pos: Vector2) -> void:
+## screen_pos: where the target goes; touch_pos: where the finger actually is.
+func _handle_press(pressed: bool, index: int, screen_pos: Vector2, touch_pos: Vector2) -> void:
 	if not pressed:
 		pointer_up(index)
-	elif _accepting_input():
+	elif _accepting_input() and not _on_action_bar(touch_pos):
 		pointer_down(index, screen_pos)
+
+
+func _on_action_bar(screen_pos: Vector2) -> bool:
+	for group in [&"action_bar", &"power_meter"]:
+		var c := get_tree().get_first_node_in_group(group)
+		if c != null and c.contains(screen_pos):
+			return true
+	return false
 
 
 func pointer_down(index: int, screen_pos: Vector2) -> void:
 	if _pointer_index != -1:
 		return
 	_pointer_index = index
-	presses += 1
 	_set_target(screen_pos)
 
 

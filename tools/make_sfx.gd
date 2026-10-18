@@ -13,6 +13,7 @@ extends SceneTree
 ##   curve   volume shape: 1 linear, <1 drops fast (punchy), >1 holds then drops
 ##   vib     [rate Hz, depth semitones]   vibrato
 ##   arp     [semitones...] stepped through every `arp_step` s (chip-style chords and jingles)
+##   gate    [rate Hz, duty 0-1]          chops the voice on and off (rapid fire, rattles)
 
 const RATE := 22050
 const DIR := "res://assets/sfx/"
@@ -39,6 +40,16 @@ const SOUNDS := {
 	"hit": [
 		{wave = "noise", dur = 0.07, f0 = 4000.0, f1 = 1200.0, v0 = 0.6, v1 = 0.0, curve = 0.5},
 		{wave = "square", dur = 0.04, f0 = 320.0, f1 = 140.0, v0 = 0.35, v1 = 0.0},
+	],
+	# Vulcan cannon burst, "buuuuuuurt": a thump as it spins up ("b"), then ~28 rounds a second
+	# chopping a low buzz and a crackle together ("uuuu"), ending as the barrels spin down
+	# with a last falling rattle ("rt").
+	"vulcan": [
+		{wave = "triangle", dur = 0.06, f0 = 180.0, f1 = 60.0, v0 = 0.6, v1 = 0.0, curve = 0.5},
+		{wave = "square", dur = 0.8, f0 = 110.0, f1 = 95.0, v0 = 0.45, v1 = 0.35, gate = [28.0, 0.5]},
+		{wave = "noise", dur = 0.8, f0 = 2200.0, f1 = 1500.0, v0 = 0.5, v1 = 0.4, gate = [28.0, 0.45]},
+		{wave = "square", at = 0.8, dur = 0.15, f0 = 95.0, f1 = 50.0, v0 = 0.35, v1 = 0.0, curve = 0.7, gate = [20.0, 0.5]},
+		{wave = "noise", at = 0.8, dur = 0.12, f0 = 1500.0, f1 = 400.0, v0 = 0.4, v1 = 0.0, curve = 0.5},
 	],
 	# Enemy health hits zero, just before the explosion: a low thud (falling triangle with a
 	# dull noise body), then a dark rush sucked inward that swells and cuts off.
@@ -78,6 +89,14 @@ const SOUNDS := {
 		{wave = "square", at = 0.66, dur = 0.9, f0 = 329.63, f1 = 329.63, v0 = 0.4, v1 = 0.0, curve = 1.6, vib = [5.0, 0.35]},
 		{wave = "triangle", dur = 1.56, f0 = 98.0, f1 = 82.41, v0 = 0.35, v1 = 0.0, curve = 1.6},
 	],
+	# Experience point collected: coin-like but its own tune. A quick A5 to E6 leap (a fifth,
+	# not the coin's fourth), the E6 ringing on a soft triangle, and a faint shimmering A6 on top.
+	"xp": [
+		{wave = "pulse25", dur = 0.045, f0 = 880.0, f1 = 880.0, v0 = 0.4, v1 = 0.35},
+		{wave = "pulse25", at = 0.045, dur = 0.07, f0 = 1318.5, f1 = 1318.5, v0 = 0.4, v1 = 0.0, curve = 1.2},
+		{wave = "triangle", at = 0.045, dur = 0.18, f0 = 1318.5, f1 = 1318.5, v0 = 0.3, v1 = 0.0, curve = 0.6},
+		{wave = "pulse12", at = 0.09, dur = 0.14, f0 = 1760.0, f1 = 1760.0, v0 = 0.18, v1 = 0.0, curve = 0.5, vib = [30.0, 0.15]},
+	],
 	# Menu button tap: very short thin blip.
 	"ui_click": [
 		{wave = "pulse12", dur = 0.035, f0 = 1760.0, f1 = 1760.0, v0 = 0.4, v1 = 0.0},
@@ -101,6 +120,8 @@ const VARIANTS := {
 	"hit": {count = 4, pitch = 2.0, layer_pitch = 3.0, length = 0.2, curve = 0.3},
 	"implosion": {count = 3, pitch = 2.0, layer_pitch = 2.0, length = 0.15, curve = 0.3},
 	"explosion": {count = 4, pitch = 2.0, layer_pitch = 3.0, length = 0.2, curve = 0.3},
+	"vulcan": {count = 3, pitch = 1.0, layer_pitch = 1.5, length = 0.15, curve = 0.2},
+	"xp": {count = 3, pitch = 0.7, layer_pitch = 0.0, length = 0.05, curve = 0.1},
 }
 
 
@@ -206,6 +227,7 @@ static func voice(l: Dictionary) -> PackedFloat32Array:
 	var arp: Array = l.get("arp", [0])
 	var arp_step: float = l.get("arp_step", l.dur)
 	var curve: float = l.get("curve", 1.0)
+	var gate: Array = l.get("gate", [0.0, 1.0])
 	var edge := maxi(1, roundi(EDGE * RATE))
 	var phase := 0.0
 	var noise_phase := 0.0
@@ -217,6 +239,8 @@ static func voice(l: Dictionary) -> PackedFloat32Array:
 		var f: float = l.f0 * pow(l.f1 / l.f0, t) * pow(2.0, semis / 12.0)
 		var vol: float = lerpf(l.v0, l.v1, pow(t, curve))
 		vol = roundf(vol * 15.0) / 15.0
+		if gate[0] > 0.0 and fposmod(sec * gate[0], 1.0) >= gate[1]:
+			vol = 0.0
 		vol *= minf(1.0, minf(float(i) / edge, float(n - 1 - i) / edge))
 		phase = fposmod(phase + f / RATE, 1.0)
 		var x := 0.0

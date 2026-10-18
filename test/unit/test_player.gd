@@ -12,7 +12,6 @@ func _spawn(ship: int, palette: int) -> Area2D:
 	p.ship = ship
 	p.palette = palette
 	p.color = Color("ff7ad9")
-	p.position = Vector2(270, Depth.REF_Y)  # full size on the player line
 	add_child_autofree(p)
 	return p
 

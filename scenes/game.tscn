@@ -1,10 +1,12 @@
-[gd_scene load_steps=9 format=3]
+[gd_scene load_steps=11 format=3]
 
 [ext_resource type="Script" path="res://scripts/game.gd" id="1"]
 [ext_resource type="Script" path="res://scripts/starfield.gd" id="2"]
 [ext_resource type="Script" path="res://scripts/pointer_controls.gd" id="3"]
 [ext_resource type="AudioStream" path="res://assets/sfx/shoot.tres" id="4"]
 [ext_resource type="AudioStream" path="res://assets/sfx/hit.tres" id="5"]
+[ext_resource type="Script" path="res://scripts/action_bar.gd" id="6"]
+[ext_resource type="Script" path="res://scripts/power_meter.gd" id="7"]
 
 [sub_resource type="Gradient" id="Gradient_shade"]
 colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 1)
@@ -48,14 +50,9 @@ height = 4096.0
 
 [node name="Effects" type="Node2D" parent="."]
 
-[node name="PlayerSpawner" type="MultiplayerSpawner" parent="."]
-spawn_path = NodePath("../Players")
+[node name="Pickups" type="Node2D" parent="."]
 
-[node name="EnemySpawner" type="MultiplayerSpawner" parent="."]
-spawn_path = NodePath("../Enemies")
-
-[node name="BulletSpawner" type="MultiplayerSpawner" parent="."]
-spawn_path = NodePath("../Bullets")
+[node name="Pods" type="Node2D" parent="."]
 
 [node name="ShootSound" type="AudioStreamPlayer" parent="."]
 stream = ExtResource("4")
@@ -107,3 +104,15 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 mouse_filter = 2
 script = ExtResource("3")
+
+[node name="ActionBar" type="Control" parent="PointerControls" groups=["action_bar"]]
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+script = ExtResource("6")
+
+[node name="PowerMeter" type="Control" parent="PointerControls" groups=["power_meter"]]
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+script = ExtResource("7")

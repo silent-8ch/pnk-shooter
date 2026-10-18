@@ -9,6 +9,11 @@ extends Node2D
 ##
 ## The node itself stays put; the hull moves inside it so loose parts keep
 ## their own world-space motion.
+##
+## Chain reactions: while it veers the wreck is a hazard (Game.wreck_moved);
+## touching a ship or pod blows it up early, and its blast (Game.blast,
+## BLAST_RADIUS scaled by depth) takes out what's nearby, whose wrecks can
+## blow up more.
 
 const SpriteEffect := preload("res://scripts/sprite_effect.gd")
 const IMPLOSION_SOUND := preload("res://assets/sfx/implosion.tres")  # random pitch/volume per play
@@ -27,6 +32,8 @@ const BREAKOFF_SPEED := Vector2(60, 140)  # kick for parts shed during the veer
 const PIECE_SPIN := Vector2(3, 10)
 const LINGER := 0.8  # time after the explosion before the node is freed
 const BLAST_HEIGHT := 56.0  # painted explosion size at normal depth
+const RADIUS := 14.0  # hull reach for collisions, at normal depth
+const BLAST_RADIUS := 48.0  # destroys/damages within this, at normal depth
 
 ## Fire color ramps for the painted explosion; one is picked per explosion.
 const FIRE_RAMPS: Array = [
@@ -40,6 +47,7 @@ var velocity := Vector2.ZERO
 var spin := 0.0
 var end_scale := 1.0
 var exploded := false
+var pod_name := ""  # its own escape pod, which it doesn't hit
 
 var fire_ramp := 0  # index into FIRE_RAMPS, rolled from the seed
 var breakoffs: Array[Dictionary] = []  # parts shed during the veer: {piece, time}
@@ -125,6 +133,10 @@ func _process(delta: float) -> void:
 				_detach(hull.get_child(b.piece), kick, velocity)
 		if _time >= DURATION:
 			explode()
+			return
+		var game := _game()
+		if game:
+			game.wreck_moved(self)
 		return
 	_boom_time += delta
 	if _boom_time >= LINGER:
@@ -134,6 +146,23 @@ func _process(delta: float) -> void:
 ## Apparent size (1 = normal depth) at veer progress t in [0, 1].
 func depth_scale(t: float) -> float:
 	return lerpf(1.0, end_scale, t * t)
+
+
+## Hull center in the parent's space (where it hits and blasts).
+func hull_position() -> Vector2:
+	return position + (hull.position if hull else Vector2.ZERO)
+
+
+func reach() -> float:
+	return RADIUS * depth_scale(clampf(_time / DURATION, 0.0, 1.0))
+
+
+func blast_radius() -> float:
+	return BLAST_RADIUS * _boom_size
+
+
+func _game() -> Node:
+	return get_tree().get_first_node_in_group("game") if is_inside_tree() else null
 
 
 func explode() -> void:
@@ -154,6 +183,9 @@ func explode() -> void:
 	explosion_sound.volume_db = clampf(linear_to_db(_boom_size), -8.0, 3.0)
 	if explosion_sound.is_inside_tree():
 		explosion_sound.play()
+	var game := _game()
+	if game:
+		game.blast(position + _boom_origin, blast_radius(), pod_name)
 
 
 ## Turns a hull part into a loose piece flying away from the hull center.

@@ -8,13 +8,19 @@ const ANNOUNCE_PREFIX := "PNK_HOST|"
 const BROWSE_INTERVAL := 1.0
 const SERVER_TIMEOUT := 4.0
 const MAX_PLAYERS := 8
+const TIMEOUT_LIMIT := 32  # ENet peer timeout: give up after TIMEOUT_MAX_MS of silence
+const TIMEOUT_MIN_MS := 1000
+const TIMEOUT_MAX_MS := 3000
 
 signal game_started
 signal join_failed(reason: String)
-signal disconnected
+signal disconnected(old_id: int)  # host went away; we are now offline as peer 1
 signal servers_updated(servers: Array)
 
 var player_name := "Player"
+const ALL_WEAPONS_NAME := "p4u1 "  # cheat: typed exactly (trailing space) as the name
+var all_weapons := false  # cheat on: the local ship spawns with every upgrade maxed
+var my_id := 0  # our peer id in the current session (still known after the host is gone)
 
 var _browser: PacketPeerUDP
 var _announcer: PacketPeerUDP
@@ -26,6 +32,7 @@ func _ready() -> void:
 	multiplayer.connected_to_server.connect(_on_connected_to_server)
 	multiplayer.connection_failed.connect(_on_connection_failed)
 	multiplayer.server_disconnected.connect(_on_server_disconnected)
+	multiplayer.peer_connected.connect(_on_peer_connected)
 
 
 func _process(delta: float) -> void:
@@ -46,6 +53,7 @@ func host(pname: String) -> void:
 		return
 	stop_browsing()
 	multiplayer.multiplayer_peer = peer
+	my_id = 1
 	_start_announcer()
 	game_started.emit()
 
@@ -68,8 +76,25 @@ func leave() -> void:
 
 
 func _on_connected_to_server() -> void:
+	_short_timeout(1)
+	my_id = multiplayer.get_unique_id()
 	stop_browsing()
 	game_started.emit()
+
+
+## Notice a vanished peer (phone killed, Wi-Fi gone) in ~3 s instead of ENet's ~30 s.
+func _short_timeout(id: int) -> void:
+	var enet := multiplayer.multiplayer_peer as ENetMultiplayerPeer
+	if enet == null:
+		return
+	var p := enet.get_peer(id)
+	if p:
+		p.set_timeout(TIMEOUT_LIMIT, TIMEOUT_MIN_MS, TIMEOUT_MAX_MS)
+
+
+func _on_peer_connected(id: int) -> void:
+	if multiplayer.is_server():
+		_short_timeout(id)
 
 
 func _on_connection_failed() -> void:
@@ -77,9 +102,13 @@ func _on_connection_failed() -> void:
 	join_failed.emit("Could not connect to host")
 
 
+## The host left. Switch to an offline peer (we become peer 1, our own host) so
+## a game in progress can carry on solo in this peer's copy of the world.
 func _on_server_disconnected() -> void:
-	multiplayer.multiplayer_peer = null
-	disconnected.emit()
+	multiplayer.multiplayer_peer = OfflineMultiplayerPeer.new()
+	var old_id := my_id
+	my_id = 1
+	disconnected.emit(old_id)
 
 
 # --- LAN discovery: host side ----------------------------------------------

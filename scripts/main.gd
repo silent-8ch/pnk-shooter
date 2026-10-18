@@ -78,7 +78,12 @@ func _on_game_started() -> void:
 	game.start()
 
 
-func _on_disconnected() -> void:
+## The host left. In a game, keep playing solo; otherwise back to the lobby.
+func _on_disconnected(old_id: int) -> void:
+	if game.active:
+		game.continue_solo(old_id)
+		return
+	Net.leave()
 	set_paused(false)
 	game.stop()
 	show_screen(lobby)

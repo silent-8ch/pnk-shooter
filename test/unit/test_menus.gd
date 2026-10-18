@@ -111,3 +111,21 @@ func test_android_back_walks_screens_and_pauses() -> void:
 	main.show_screen(null)
 	main._notification(NOTIFICATION_WM_GO_BACK_REQUEST)
 	assert_true(main.is_paused())
+
+
+func test_host_leaving_mid_game_keeps_playing() -> void:
+	var saved := multiplayer.multiplayer_peer
+	multiplayer.multiplayer_peer = OfflineMultiplayerPeer.new()
+	main.game.start()
+	main.show_screen(null)
+	main._on_disconnected(1)
+	assert_true(main.game.active, "game keeps running")
+	assert_eq(_visible_screens(), [], "no menu pops up")
+	main.game.stop()
+	multiplayer.multiplayer_peer = saved
+
+
+func test_host_leaving_outside_a_game_returns_to_lobby() -> void:
+	main.show_screen(main.lobby)
+	main._on_disconnected(5)
+	assert_eq(_visible_screens(), [main.lobby])

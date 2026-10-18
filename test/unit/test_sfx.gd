@@ -35,6 +35,7 @@ func test_durations_fit_their_use() -> void:
 	var len := func(n: String) -> float: return Sfx.render(n).size() / float(Sfx.RATE)
 	assert_lt(len.call("shoot"), preload("res://scripts/player.gd").FIRE_COOLDOWN, "ends before the next shot")
 	assert_lt(len.call("ui_click"), 0.1)
+	assert_lt(len.call("xp"), 0.3, "picked up in quick runs")
 	assert_gt(len.call("explosion"), len.call("hit"))
 	assert_lt(len.call("implosion"), len.call("explosion"), "a quick lead-in to the explosion")
 	assert_gt(len.call("player_death"), len.call("explosion"))
@@ -87,3 +88,10 @@ func test_randomizer_text_keeps_random_settings() -> void:
 	assert_string_contains(t, "random_volume_offset_db = 2.0\n")
 	assert_string_contains(t, "streams_count = %d\n" % Sfx.VARIANTS.hit.count)
 	assert_false(t.contains("streams_count = 1\n"))
+
+
+func test_gate_chops_a_voice() -> void:
+	var v := Sfx.voice({wave = "square", dur = 0.2, f0 = 100.0, f1 = 100.0, v0 = 1.0, v1 = 1.0, gate = [10.0, 0.5]})
+	assert_ne(v[int(0.025 * Sfx.RATE)], 0.0, "on in the first half of each cycle")
+	assert_eq(v[int(0.075 * Sfx.RATE)], 0.0, "off in the second half")
+	assert_ne(v[int(0.125 * Sfx.RATE)], 0.0, "on again next cycle")
