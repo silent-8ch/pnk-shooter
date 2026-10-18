@@ -131,7 +131,8 @@ func test_fill_layer_recolored_and_drawn_under_outline() -> void:
 
 
 func test_shipped_ships_are_painted() -> void:
-	for path in ["res://assets/ship01.svg", "res://assets/ship02.svg"]:
+	for ship in Ships.LIST:
+		var path: String = ship.svg
 		var svg := FileAccess.get_file_as_string(path)
 		assert_eq(ShipSkin.slot_count(svg), 9, path)
 		assert_eq(ShipSkin.default_palette(svg).size(), 9, path)

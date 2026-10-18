@@ -211,4 +211,4 @@ func test_stop_clears_pickups() -> void:
 	var game := _game()
 	game.spawn_pickup(Vector2(100, 100), "Pickup1")
 	game.stop()
-	assert_true(game.get_node("Pickups/Pickup1").is_queued_for_deletion())
+	assert_false(game.has_node("Pickups/Pickup1"))

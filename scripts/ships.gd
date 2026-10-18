@@ -10,6 +10,9 @@ const LIGHT_MASK := 2  # light_mask bit for ship bodies; ship lights cull to thi
 const LIST: Array[Dictionary] = [
 	{"name": "Ship 01", "svg": "res://assets/ship01.svg", "normal": "res://assets/ship01_normal.png"},
 	{"name": "Ship 02", "svg": "res://assets/ship02.svg", "normal": "res://assets/ship02_normal.png"},
+	{"name": "Ship 03", "svg": "res://assets/ship03.svg", "normal": "res://assets/ship03_normal.png"},
+	{"name": "Ship 04", "svg": "res://assets/ship04.svg", "normal": "res://assets/ship04_normal.png"},
+	{"name": "Ship 05", "svg": "res://assets/ship05.svg", "normal": "res://assets/ship05_normal.png"},
 ]
 
 ## Slot order: 1 outline, 2 hull, 3 glass, 4 thrusters, 5 accents, 6 panels,
@@ -61,7 +64,22 @@ const ENEMY_PALETTES: Array[Dictionary] = [
 	{"name": "Inferno", "colors": [
 		Color("ffe0d0"), Color("3d0b0b"), Color("ff7a59"), Color("ff1e00"), Color("e63946"),
 		Color("2b0505"), Color("ff5733"), Color("7a0f0f"), Color("ffb4a2")]},
+	{"name": "Blood Orange", "colors": [
+		Color("ffe8d0"), Color("7a2e0a"), Color("ffb26b"), Color("ff6a00"), Color("ff8c42"),
+		Color("4a1a05"), Color("e85d04"), Color("9c3b0d"), Color("ffc078")]},
+	{"name": "Rust", "colors": [
+		Color("f5d6c6"), Color("5e2a1c"), Color("e8a07a"), Color("c1440e"), Color("d9764a"),
+		Color("3b1a10"), Color("b5523b"), Color("7a3424"), Color("f0b090")]},
+	{"name": "Magma", "colors": [
+		Color("fff0c9"), Color("400a0a"), Color("ffcc33"), Color("ff3300"), Color("ff9900"),
+		Color("260505"), Color("ff6600"), Color("661111"), Color("ffe066")]},
 ]
+
+## Enemy colors climb this ramp as the stage goes up (stage 0 uses the
+## per-ship ENEMY_PALETTES above); past the end it starts over and the ships
+## pulse (see enemy_glows()). Built from the Crimson palette, hue-shifted.
+const ENEMY_STAGE_HUES: Array[float] = [0.33, 0.78, 0.55, 0.13]  # toxic green, violet, ice blue, gold
+const ENEMY_STAGE_NAMES: Array[String] = ["Toxic Green", "Violet", "Ice Blue", "Gold", "Obsidian"]
 
 const THRUSTER_SLOT := 4
 const ENEMY_PART_VARIANTS := 4  # precomputed crack patterns per enemy ship
@@ -77,7 +95,8 @@ var _texture_cache := {}  # "ship:palette" -> Texture2D
 var _parts_cache := {}  # "ship:variant" -> Array[Dictionary]
 var _analysis_cache := {}  # ship -> ShipParts.analyze() result
 var _thruster_cache := {}  # ship -> get_thrusters() result
-var _lit_cache := {}  # "ship:palette" / "enemy:ship" -> CanvasTexture
+var _lit_cache := {}  # "ship:palette" / "enemy:ship[:stage]" -> CanvasTexture
+var _hit_cache := {}  # ship -> hit polygons (see hit_polygons)
 
 
 func _ready() -> void:
@@ -116,28 +135,106 @@ func get_texture(index: int, palette: int = -1) -> Texture2D:
 	return _render_cached("%d:%d" % [index, palette], index, get_palette_colors(index, palette))
 
 
-## The ship rendered in its enemy-only palette.
-func get_enemy_texture(index: int) -> Texture2D:
+## The ship rendered in its enemy palette for `stage` (see enemy_colors).
+func get_enemy_texture(index: int, stage := 0) -> Texture2D:
 	index = clamp_index(index)
-	var colors: Array[Color] = []
-	colors.assign(ENEMY_PALETTES[index % ENEMY_PALETTES.size()].colors)
-	return _render_cached("enemy:%d" % index, index, colors)
+	return _render_cached(_enemy_key(index, stage), index, enemy_colors(index, stage))
+
+
+## Cache key of an enemy look: stage 0 and every stage that loops back to it share one.
+func _enemy_key(index: int, stage: int) -> String:
+	var step := enemy_color_step(stage)
+	return "enemy:%d" % index if step == 0 else "enemy:%d:s%d" % [index, step]
+
+
+## Where `stage` is on the color ramp: 0 = the per-ship reds, 1.. = ENEMY_STAGE_NAMES.
+static func enemy_color_step(stage: int) -> int:
+	return posmod(stage, ENEMY_STAGE_NAMES.size() + 1)
+
+
+## Past the end of the ramp (it has looped), enemies pulse.
+static func enemy_glows(stage: int) -> bool:
+	return stage > ENEMY_STAGE_NAMES.size()
+
+
+## The 9 slot colors of an enemy ship at `stage`.
+static func enemy_colors(index: int, stage := 0) -> Array[Color]:
+	var base: Array = ENEMY_PALETTES[index % ENEMY_PALETTES.size()].colors
+	var step := enemy_color_step(stage)
+	var out: Array[Color] = []
+	for c: Color in base:
+		if step == 0:
+			out.append(c)
+		elif step <= ENEMY_STAGE_HUES.size():
+			out.append(Color.from_hsv(ENEMY_STAGE_HUES[step - 1], c.s, c.v, c.a))
+		else:  # Obsidian: near black, the brightest parts glow red
+			out.append(Color.from_hsv(0.0, 0.9, 1.0, c.a) if c.v > 0.95 and c.s > 0.5 else Color.from_hsv(0.0, c.s * 0.4, c.v * 0.22, c.a))
+	return out
+
+
+## Hit outline of a ship, traced from its art's alpha at RENDER_SCALE: polygons
+## in texture pixels, centered like the sprite. Scale them by the sprite's scale.
+func hit_polygons(index: int) -> Array[PackedVector2Array]:
+	index = clamp_index(index)
+	if not _hit_cache.has(index):
+		var out: Array[PackedVector2Array] = []
+		var img := Image.new()
+		if img.load_svg_from_string(get_svg(index), RENDER_SCALE) == OK:
+			var bits := BitMap.new()
+			bits.create_from_image_alpha(img, 0.5)
+			var half := Vector2(img.get_size()) / 2.0
+			for poly in bits.opaque_to_polygons(Rect2i(Vector2i.ZERO, img.get_size()), 1.0):
+				if poly.size() < 3 or absf(_area(poly)) < 4.0:
+					continue
+				var centered := PackedVector2Array()
+				for v in poly:
+					centered.append(v - half)
+				out.append(centered)
+		_hit_cache[index] = out
+	return _hit_cache[index]
+
+
+static func _area(poly: PackedVector2Array) -> float:
+	var a := 0.0
+	for i in poly.size():
+		a += poly[i].cross(poly[(i + 1) % poly.size()])
+	return a / 2.0
+
+
+## Swaps `area`'s collision shapes for the outline of ship `index`, drawn by
+## `sprite` (its scale and flip). Keeps the old shapes if the art has no outline.
+func apply_hitbox(area: CollisionObject2D, index: int, sprite: Sprite2D) -> void:
+	var polys := hit_polygons(index)
+	if polys.is_empty():
+		return
+	for c in area.get_children():
+		if c is CollisionShape2D or c is CollisionPolygon2D:
+			area.remove_child(c)
+			c.free()
+	var k := Vector2(sprite.scale.x, -sprite.scale.y if sprite.flip_v else sprite.scale.y)
+	for poly in polys:
+		var shape := CollisionPolygon2D.new()
+		shape.name = "Hit"
+		var pts := PackedVector2Array()
+		for v in poly:
+			pts.append(v * k + sprite.position)
+		shape.polygon = pts
+		area.add_child(shape)
 
 
 ## Pieces of the enemy-palette ship for wreck effects (see ShipParts.split),
 ## in the same pixel scale as get_enemy_texture(). `variant` picks one of
 ## ENEMY_PART_VARIANTS precomputed crack patterns.
-func get_enemy_parts(index: int, variant: int) -> Array[Dictionary]:
+func get_enemy_parts(index: int, variant: int, stage := 0) -> Array[Dictionary]:
 	index = clamp_index(index)
 	variant = posmod(variant, ENEMY_PART_VARIANTS)
-	var key := "%d:%d" % [index, variant]
+	var look := _enemy_key(index, stage)
+	var key := "%s:%d" % [look, variant]
 	if not _parts_cache.has(key):
-		if not _analysis_cache.has(index):
-			var colors: Array[Color] = []
-			colors.assign(ENEMY_PALETTES[index % ENEMY_PALETTES.size()].colors)
-			_analysis_cache[index] = ShipParts.analyze(get_svg(index), colors, RENDER_SCALE,
+		if not _analysis_cache.has(look):
+			_analysis_cache[look] = ShipParts.analyze(get_svg(index), enemy_colors(index, stage), RENDER_SCALE,
 					ENEMY_PART_MAX, ENEMY_PART_MIN_AREA)
-		var a: Dictionary = _analysis_cache[index]
+		var a: Dictionary = _analysis_cache[look]
 		var parts: Array[Dictionary] = []
 		if not a.is_empty():
 			var shards := 1 + variant % 2  # crack one or two of the largest parts
@@ -147,19 +244,26 @@ func get_enemy_parts(index: int, variant: int) -> Array[Dictionary]:
 
 
 ## Exhaust points of the ship's thrusters (slot 4), for engine flames:
-## [{pos: Vector2 (px from texture center), width: float (px)}].
+## [{pos: Vector2 (px from texture center), width: float (px)}]. Only slot-4
+## paint in the lower half counts: flames trail behind the ship, so thruster
+## color painted up front is just color. A ship can have none.
 func get_thrusters(index: int) -> Array[Dictionary]:
 	index = clamp_index(index)
 	if not _thruster_cache.has(index):
-		_thruster_cache[index] = ShipParts.slot_anchors(get_svg(index), THRUSTER_SLOT, RENDER_SCALE)
+		var out: Array[Dictionary] = []
+		for a in ShipParts.slot_anchors(get_svg(index), THRUSTER_SLOT, RENDER_SCALE):
+			if a.pos.y > 0.0:
+				out.append(a)
+		_thruster_cache[index] = out
 	return _thruster_cache[index]
 
 
 ## Builds every enemy part variant up front so the first kill doesn't hitch.
-func prewarm_enemy_parts() -> void:
+func prewarm_enemy_parts(stage := 0) -> void:
 	for ship in count():
+		get_lit_enemy_texture(ship, stage)
 		for v in ENEMY_PART_VARIANTS:
-			get_enemy_parts(ship, v)
+			get_enemy_parts(ship, v, stage)
 
 
 ## get_texture() paired with the ship's baked normal map, for 2D lighting.
@@ -170,9 +274,9 @@ func get_lit_texture(index: int, palette: int = -1) -> CanvasTexture:
 
 
 ## get_enemy_texture() paired with the ship's baked normal map.
-func get_lit_enemy_texture(index: int) -> CanvasTexture:
+func get_lit_enemy_texture(index: int, stage := 0) -> CanvasTexture:
 	index = clamp_index(index)
-	return _lit_cached("enemy:%d" % index, index, get_enemy_texture(index))
+	return _lit_cached(_enemy_key(index, stage), index, get_enemy_texture(index, stage))
 
 
 func _lit_cached(key: String, index: int, diffuse: Texture2D) -> CanvasTexture:

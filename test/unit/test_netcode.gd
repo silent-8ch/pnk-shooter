@@ -88,7 +88,7 @@ func test_damage_is_decided_by_the_owner() -> void:
 	var theirs := _player(99)
 	mine.take_damage(1)
 	theirs.take_damage(1)
-	assert_eq(mine.hp, mine.MAX_HP - 1)
+	assert_eq(mine.hp, mine.MAX_HP - mine.HIT_HP)
 	assert_eq(theirs.hp, theirs.MAX_HP, "remote owner decides its own hp")
 
 
@@ -96,7 +96,7 @@ func test_owner_ramming_hurts_itself_and_reports_the_ram() -> void:
 	var p := _player(multiplayer.get_unique_id())
 	var e := _enemy()
 	p._on_area_entered(e)
-	assert_eq(p.hp, p.MAX_HP - 1)
+	assert_eq(p.hp, p.MAX_HP - p.HIT_HP)
 	assert_true(e.is_queued_for_deletion(), "host destroyed the rammed enemy")
 
 

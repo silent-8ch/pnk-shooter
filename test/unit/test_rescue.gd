@@ -1,7 +1,8 @@
 extends GutTest
 ## Search and rescue: shot-down enemies launch escape pods with a flashing green
 ## beacon that drift off screen; buying RESCUE adds a button that launches an
-## option-sized drone which collects pods and brings them home for exp and score.
+## option-sized drone which collects pods and brings them home, where they
+## trail behind the ship until turned in at a station (test_station.gd).
 
 const PlayerScript := preload("res://scripts/player.gd")
 const PodScript := preload("res://scripts/escape_pod.gd")
@@ -32,9 +33,9 @@ func after_each() -> void:
 
 
 func _buy_rescue() -> void:
-	for i in PowerMeter.slot_index(&"rescue") + 1:
+	for i in player.price(&"rescue"):
 		game.collect_pickup("none", 1)
-	assert_true(player.buy_upgrade())
+	assert_true(player.buy_upgrade(&"rescue"))
 
 
 func _pod(pos: Vector2, pod_name := "Pod1") -> Node2D:
@@ -152,8 +153,9 @@ func test_drone_fetches_pods_and_brings_them_home() -> void:
 	_fly(4.0)
 	assert_eq(game.get_node("Pods").get_child_count(), 0, "both picked up")
 	assert_false(player.drone_out, "back home")
-	assert_eq(player.exp_total, exp_before + 2)
-	assert_eq(game.score, 2 * game.RESCUE_POINTS)
+	assert_eq(player.tail.size(), 2, "they join the tail")
+	assert_eq(player.exp_total, exp_before, "exp comes when they're turned in at a station")
+	assert_eq(game.score, 0)
 
 
 func test_drone_carries_at_most_capacity() -> void:
@@ -204,4 +206,4 @@ func test_drone_replicates() -> void:
 func test_stop_clears_pods() -> void:
 	_pod(Vector2(100, 200))
 	game.stop()
-	assert_true(game.get_node("Pods/Pod1").is_queued_for_deletion())
+	assert_false(game.has_node("Pods/Pod1"))

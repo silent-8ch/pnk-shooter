@@ -1,6 +1,6 @@
 {
   "name": "Level 1",
-  "length": 64,
+  "length": 96,
   "repeat": true,
   "events": [
     {
@@ -11,147 +11,300 @@
       "dir": 1
     },
     {
-      "time": 4,
+      "time": 6,
       "type": "weaver",
       "lane": 7,
       "count": 2,
       "dir": 1
     },
     {
-      "time": 7.75,
+      "time": 9,
+      "type": "obstacle",
+      "piece": "asteroid_l",
+      "lane": 2,
+      "count": 1,
+      "dir": 1
+    },
+    {
+      "time": 11.75,
       "type": "weaver",
       "lane": 8,
       "count": 3,
       "dir": 1
     },
     {
-      "time": 11.5,
+      "time": 13.5,
+      "type": "striker",
+      "lane": 5,
+      "count": 3,
+      "dir": 1
+    },
+    {
+      "time": 15,
+      "type": "obstacle",
+      "piece": "asteroid_s",
+      "lane": 6,
+      "count": 3,
+      "dir": 1
+    },
+    {
+      "time": 17.25,
       "type": "weaver",
       "lane": 2,
       "count": 2,
       "dir": 1
     },
     {
-      "time": 15.25,
+      "time": 21,
+      "type": "obstacle",
+      "piece": "girder",
+      "lane": 1,
+      "count": 3,
+      "dir": 1
+    },
+    {
+      "time": 23,
       "type": "weaver",
       "lane": 6,
       "count": 3,
       "dir": 1
     },
     {
-      "time": 18.75,
+      "time": 25.5,
+      "type": "orbiter",
+      "lane": 4,
+      "count": 4,
+      "dir": 1
+    },
+    {
+      "time": 28.25,
       "type": "weaver",
       "lane": 3,
       "count": 4,
       "dir": 1
     },
     {
-      "time": 22,
+      "time": 30,
+      "type": "obstacle",
+      "piece": "asteroid_m",
+      "lane": 7,
+      "count": 2,
+      "dir": 1
+    },
+    {
+      "time": 33,
       "type": "weaver",
       "lane": 4,
       "count": 4,
       "dir": 1
     },
     {
-      "time": 25.25,
+      "time": 36,
+      "type": "tank",
+      "lane": 3,
+      "count": 2,
+      "dir": 1
+    },
+    {
+      "time": 38,
       "type": "diver",
       "lane": 6,
       "count": 3,
       "dir": -1
     },
     {
-      "time": 28.5,
-      "type": "diver",
-      "lane": 1,
-      "count": 3,
-      "dir": 1
-    },
-    {
-      "time": 31.5,
-      "type": "weaver",
-      "lane": 8,
-      "count": 3,
-      "dir": 1
-    },
-    {
-      "time": 34.5,
-      "type": "weaver",
-      "lane": 2,
+      "time": 39,
+      "type": "obstacle",
+      "piece": "hull",
+      "lane": 6,
       "count": 2,
-      "dir": 1
-    },
-    {
-      "time": 37.25,
-      "type": "diver",
-      "lane": 0,
-      "count": 3,
-      "dir": 1
-    },
-    {
-      "time": 40,
-      "type": "weaver",
-      "lane": 4,
-      "count": 3,
-      "dir": 1
+      "dir": -1
     },
     {
       "time": 42.75,
       "type": "diver",
       "lane": 1,
-      "count": 5,
+      "count": 3,
       "dir": 1
     },
     {
-      "time": 45.25,
-      "type": "diver",
-      "lane": 6,
-      "count": 3,
-      "dir": -1
-    },
-    {
-      "time": 47.75,
-      "type": "diver",
+      "time": 45,
+      "type": "obstacle",
+      "piece": "debris",
       "lane": 2,
+      "count": 4,
+      "dir": 1
+    },
+    {
+      "time": 47.25,
+      "type": "weaver",
+      "lane": 8,
       "count": 3,
       "dir": 1
     },
     {
-      "time": 50.25,
-      "type": "diver",
-      "lane": 8,
-      "count": 5,
-      "dir": -1
-    },
-    {
-      "time": 52.5,
-      "type": "weaver",
+      "time": 49.5,
+      "type": "striker",
       "lane": 6,
       "count": 3,
       "dir": 1
     },
     {
-      "time": 54.75,
-      "type": "weaver",
-      "lane": 1,
-      "count": 3,
+      "time": 51,
+      "type": "obstacle",
+      "piece": "solar_panel",
+      "lane": 8,
+      "count": 1,
       "dir": 1
     },
     {
-      "time": 57,
-      "type": "diver",
-      "lane": 3,
-      "count": 3,
-      "dir": -1
+      "time": 51.75,
+      "type": "weaver",
+      "lane": 2,
+      "count": 2,
+      "dir": 1
     },
     {
-      "time": 59,
+      "time": 56,
       "type": "diver",
       "lane": 0,
       "count": 3,
       "dir": 1
     },
     {
-      "time": 61,
+      "time": 57,
+      "type": "obstacle",
+      "piece": "ring_arc",
+      "lane": 3,
+      "count": 1,
+      "dir": 1
+    },
+    {
+      "time": 60,
+      "type": "weaver",
+      "lane": 4,
+      "count": 3,
+      "dir": 1
+    },
+    {
+      "time": 62.25,
+      "type": "orbiter",
+      "lane": 2,
+      "count": 4,
+      "dir": -1
+    },
+    {
+      "time": 64.25,
+      "type": "diver",
+      "lane": 1,
+      "count": 5,
+      "dir": 1
+    },
+    {
+      "time": 66,
+      "type": "obstacle",
+      "piece": "girder",
+      "lane": 7,
+      "count": 4,
+      "dir": -1
+    },
+    {
+      "time": 68,
+      "type": "diver",
+      "lane": 6,
+      "count": 3,
+      "dir": -1
+    },
+    {
+      "time": 71.75,
+      "type": "diver",
+      "lane": 2,
+      "count": 3,
+      "dir": 1
+    },
+    {
+      "time": 72,
+      "type": "obstacle",
+      "piece": "asteroid_s",
+      "lane": 1,
+      "count": 5,
+      "dir": 1
+    },
+    {
+      "time": 73.5,
+      "type": "tank",
+      "lane": 6,
+      "count": 1,
+      "dir": 1
+    },
+    {
+      "time": 75.5,
+      "type": "diver",
+      "lane": 8,
+      "count": 5,
+      "dir": -1
+    },
+    {
+      "time": 78,
+      "type": "obstacle",
+      "piece": "reactor",
+      "lane": 5,
+      "count": 1,
+      "dir": 1
+    },
+    {
+      "time": 78.75,
+      "type": "weaver",
+      "lane": 6,
+      "count": 3,
+      "dir": 1
+    },
+    {
+      "time": 82.25,
+      "type": "weaver",
+      "lane": 1,
+      "count": 3,
+      "dir": 1
+    },
+    {
+      "time": 83.25,
+      "type": "striker",
+      "lane": 4,
+      "count": 4,
+      "dir": 1
+    },
+    {
+      "time": 84,
+      "type": "obstacle",
+      "piece": "hull",
+      "lane": 1,
+      "count": 3,
+      "dir": 1
+    },
+    {
+      "time": 85.5,
+      "type": "diver",
+      "lane": 3,
+      "count": 3,
+      "dir": -1
+    },
+    {
+      "time": 88.5,
+      "type": "diver",
+      "lane": 0,
+      "count": 3,
+      "dir": 1
+    },
+    {
+      "time": 90,
+      "type": "obstacle",
+      "piece": "asteroid_l",
+      "lane": 6,
+      "count": 1,
+      "dir": 1
+    },
+    {
+      "time": 91.5,
       "type": "diver",
       "lane": 4,
       "count": 5,

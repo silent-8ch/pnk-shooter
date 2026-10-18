@@ -47,6 +47,18 @@ custom_minimum_size = Vector2(0, 64)
 theme_override_font_sizes/font_size = 26
 text = "Host a game"
 
+[node name="BuddyToggle" type="CheckButton" parent="Margin/VBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 48)
+theme_override_font_sizes/font_size = 22
+text = "Fly with an AI buddy (host)"
+
+[node name="HighScoresLabel" type="Label" parent="Margin/VBox"]
+unique_name_in_owner = true
+theme_override_colors/font_color = Color(1, 0.83, 0.35, 0.9)
+theme_override_font_sizes/font_size = 15
+text = "High scores"
+
 [node name="ListLabel" type="Label" parent="Margin/VBox"]
 theme_override_colors/font_color = Color(1, 1, 1, 0.7)
 theme_override_font_sizes/font_size = 20
@@ -54,7 +66,7 @@ text = "Games on your network"
 
 [node name="ServerList" type="ItemList" parent="Margin/VBox"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 200)
+custom_minimum_size = Vector2(0, 140)
 size_flags_vertical = 3
 theme_override_font_sizes/font_size = 22
 

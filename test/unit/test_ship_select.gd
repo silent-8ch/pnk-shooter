@@ -137,3 +137,9 @@ func test_palette_buttons_pass_drags_to_scroll() -> void:
 	assert_gt(scroll.scroll_deadzone, 0)
 	for b in _palette_buttons():
 		assert_eq(b.mouse_filter, Control.MOUSE_FILTER_PASS, b.name)
+
+
+func test_ship_buttons_fit_the_portrait_screen() -> void:
+	var row: Control = screen.get_node("%ShipRow")
+	var width: float = ProjectSettings.get_setting("display/window/size/viewport_width")
+	assert_lt(row.get_combined_minimum_size().x, width - 64.0, "inside the 32px side margins")

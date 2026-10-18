@@ -10,6 +10,10 @@ signal back_pressed
 @onready var join_button: Button = %JoinButton
 @onready var status_label: Label = %StatusLabel
 @onready var back_button: Button = %BackButton
+@onready var buddy_toggle: CheckButton = %BuddyToggle
+@onready var high_scores_label: Label = %HighScoresLabel
+
+const HIGH_SCORES_SHOWN := 5
 
 var _servers: Array = []
 
@@ -19,6 +23,8 @@ func _ready() -> void:
 	host_button.pressed.connect(_on_host_pressed)
 	join_button.pressed.connect(_on_join_pressed)
 	back_button.pressed.connect(back_pressed.emit)
+	buddy_toggle.set_pressed_no_signal(Net.ai_buddy)
+	buddy_toggle.toggled.connect(func(on: bool) -> void: Net.ai_buddy = on)
 	server_list.item_selected.connect(_on_server_selected)
 	server_list.item_activated.connect(_on_server_activated)
 	Net.servers_updated.connect(_on_servers_updated)
@@ -70,8 +76,21 @@ func _on_servers_updated(servers: Array) -> void:
 		server_list.add_item("%s  (%s)" % [s.name, s.ip])
 
 
+## The best runs on this device (HighScores), one per line.
+func show_high_scores() -> void:
+	var lines := PackedStringArray(["High scores"])
+	var runs := HighScores.top(HIGH_SCORES_SHOWN)
+	for i in runs.size():
+		var r: Dictionary = runs[i]
+		lines.append("%d. Stage %d   %d   %s" % [i + 1, r.stage, r.score, ", ".join(PackedStringArray(r.get("players", [])))])
+	if runs.is_empty():
+		lines.append("No runs yet")
+	high_scores_label.text = "\n".join(lines)
+
+
 func _on_visibility_changed() -> void:
 	if visible:
+		show_high_scores()
 		Net.start_browsing()
 	else:
 		Net.stop_browsing()

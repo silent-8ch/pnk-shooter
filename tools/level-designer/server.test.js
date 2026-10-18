@@ -13,8 +13,22 @@ const LEVEL = {
   events: [{ time: 1, type: 'diver', lane: 1, count: 3, dir: -1 }, { time: 0, type: 'weaver', lane: 4, count: 3, dir: 1 }],
 };
 
-function makeRepo({ levels = true } = {}) {
+const PIECES = {
+  version: 1, scroll_speed: 60,
+  pieces: [
+    { id: 'rock', name: 'Rock', description: 'A rock.', size: [40, 40], shape: 'circle', hp: 3, outline: [[0, -20], [20, 0], [0, 20], [-20, 0]] },
+    { id: 'bar', name: 'Bar', size: [64, 18], shape: 'rect', hp: 0, tile: true, caps: ['bar_l', 'bar_l'], outline: [[-32, -9], [32, -9], [32, 9], [-32, 9]] },
+    { id: 'bar_l', name: 'Bar end', size: [24, 18], shape: 'rect', hp: 0, cap: true, outline: [[-12, -9], [12, -9], [12, 9], [-12, 9]] },
+  ],
+};
+const OB = { time: 2, type: 'obstacle', piece: 'bar', lane: 3, count: 4, dir: -1 };
+
+function makeRepo({ levels = true, pieces = PIECES } = {}) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'leveldes-'));
+  if (pieces !== null) {
+    fs.mkdirSync(path.join(root, 'assets/obstacles'), { recursive: true });
+    fs.writeFileSync(path.join(root, 'assets/obstacles/pieces.json'), typeof pieces === 'string' ? pieces : JSON.stringify(pieces));
+  }
   if (levels) {
     fs.mkdirSync(path.join(root, 'levels'));
     fs.writeFileSync(path.join(root, 'levels/one.json'), L.serialize(LEVEL));
@@ -210,3 +224,68 @@ test('parseArgs: defaults, options, errors', () => {
   assert.throws(() => S.parseArgs(['--port=abc']), /port/);
   assert.throws(() => S.parseArgs(['--root=/nonexistent-dir']), /no such/);
 });
+
+test('GET /api/pieces serves the catalog; 404 without one, 422 when malformed', async () => {
+  await withServer(async ({ request }) => {
+    const res = await request('GET', '/api/pieces');
+    assert.equal(res.status, 200);
+    assert.deepEqual(res.json, PIECES);
+    assert.equal((await request('POST', '/api/pieces')).status, 404);
+  });
+  await withServer(async ({ request }) => {
+    const res = await request('GET', '/api/pieces');
+    assert.equal(res.status, 404);
+    assert.match(res.json.error, /piece catalog/);
+  }, { pieces: null });
+  await withServer(async ({ request, put }) => {
+    const res = await request('GET', '/api/pieces');
+    assert.equal(res.status, 422);
+    assert.match(res.json.error, /pieces\.json: not valid JSON/);
+    assert.equal((await put('one', LEVEL)).status, 422);
+  }, { pieces: '{nope' });
+  await withServer(async ({ request }) => {
+    assert.match((await request('GET', '/api/pieces')).json.error, /duplicate/);
+  }, { pieces: { pieces: [{ id: 'a', size: [1, 1] }, { id: 'a', size: [1, 1] }] } });
+});
+
+test('the real repo catalog loads', async () => {
+  const p = await S.loadPieces(path.resolve(__dirname, '../..'));
+  assert.ok(p && p.cat.placeable.length > 0);
+});
+
+test('PUT validates obstacles against the catalog and saves them in key order', () => withServer(async ({ root, put, get }) => {
+  const good = { ...LEVEL, events: [...LEVEL.events, OB, { ...OB, piece: 'rock', time: 3, count: 1, dir: 1 }] };
+  const res = await put('obs', good);
+  assert.equal(res.status, 200, res.text);
+  const text = fs.readFileSync(path.join(root, 'levels/obs.json'), 'utf8');
+  assert.equal(text, L.serialize(good, PIECES));
+  const saved = JSON.parse(text).events.find((e) => e.type === 'obstacle');
+  assert.deepEqual(Object.keys(saved), ['time', 'type', 'piece', 'lane', 'count', 'dir']);
+  assert.deepEqual((await get('obs')).json.events.filter((e) => e.type === 'obstacle').length, 2);
+  const before = text;
+  const bad = [
+    [{ ...OB, piece: 'nope' }, /not in the piece catalog/],
+    [{ ...OB, piece: 'bar_l' }, /end cap/],
+    [{ ...OB, piece: 'Bad-Id' }, /piece/],
+    [{ time: 0, type: 'weaver', piece: 'rock', lane: 0, count: 1, dir: 1 }, /only allowed on obstacle/],
+    [{ time: 0, type: 'obstacle', lane: 0, count: 1, dir: 1 }, /missing field "piece"/],
+  ];
+  for (const [e, re] of bad) {
+    const r = await put('obs', { ...LEVEL, events: [e] });
+    assert.equal(r.status, 400, JSON.stringify(e));
+    assert.match(r.json.error, re);
+  }
+  assert.equal(fs.readFileSync(path.join(root, 'levels/obs.json'), 'utf8'), before);
+}));
+
+test('levels using unknown pieces are flagged on list/get', () => withServer(async ({ root, request, get }) => {
+  fs.writeFileSync(path.join(root, 'levels/gone.json'), L.serialize({ ...LEVEL, events: [{ ...OB, piece: 'removed' }] }, null));
+  const list = (await request('GET', '/api/levels')).json.levels;
+  assert.match(list.find((l) => l.slug === 'gone').error, /not in the piece catalog/);
+  assert.equal((await get('gone')).status, 422);
+}));
+
+test('without a catalog any well-formed piece id is accepted', () => withServer(async ({ put }) => {
+  assert.equal((await put('obs', { ...LEVEL, events: [{ ...OB, piece: 'whatever_1' }] })).status, 200);
+  assert.equal((await put('obs', { ...LEVEL, events: [{ ...OB, piece: 'Bad!' }] })).status, 400);
+}, { pieces: null }));

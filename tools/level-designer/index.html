@@ -9,7 +9,7 @@
   :root {
     --bg: #0e0f14; --panel: #171922; --line: #2a2d3a; --text: #e6e6ee; --dim: #8a8ca0;
     --accent: #ff7ad9; --danger: #ff5c5c;
-    --weaver: #6fd3ff; --diver: #ffb454; --end: #a597ff;
+    --weaver: #6fd3ff; --diver: #ffb454; --striker: #ff6b8b; --tank: #9be37a; --orbiter: #e58cff; --obstacle: #b9a184; --end: #a597ff;
     --tl-bg: #101117; --tl-row: #13141b; --tl-row-alt: #15161e; --tl-sep: #1d1f2a; --tl-ruler: #191b24;
     --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
     --row-h: 32px; --ruler-h: 28px;
@@ -65,6 +65,10 @@
   .sw { display: inline-block; width: 10px; height: 10px; margin-right: 6px; vertical-align: -1px; border-radius: 2px; }
   .sw.weaver { background: var(--weaver); }
   .sw.diver { background: var(--diver); }
+  .sw.striker { background: var(--striker); }
+  .sw.tank { background: var(--tank); }
+  .sw.orbiter { background: var(--orbiter); }
+  .sw.obstacle { background: none; border: 1.5px solid var(--obstacle); }
   .transport { display: flex; gap: 6px; align-items: center; margin-left: auto; }
   .transport button { padding: 4px 9px; }
   #play { min-width: 40px; }
@@ -99,18 +103,35 @@
   #tl .clip .tail { stroke-width: 1; pointer-events: none; }
   #tl .clip.weaver .tail { fill: rgba(111, 211, 255, .13); stroke: rgba(111, 211, 255, .45); }
   #tl .clip.diver .tail { fill: rgba(255, 180, 84, .13); stroke: rgba(255, 180, 84, .45); }
+  #tl .clip.striker .tail { fill: rgba(255, 107, 139, .13); stroke: rgba(255, 107, 139, .45); }
+  #tl .clip.tank .tail { fill: rgba(155, 227, 122, .13); stroke: rgba(155, 227, 122, .45); }
+  #tl .clip.orbiter .tail { fill: rgba(229, 140, 255, .13); stroke: rgba(229, 140, 255, .45); }
   #tl .clip .tname { font: 11px ui-sans-serif, system-ui, sans-serif; pointer-events: none; }
   #tl .clip.weaver .tname { fill: rgba(111, 211, 255, .75); }
   #tl .clip.diver .tname { fill: rgba(255, 180, 84, .8); }
+  #tl .clip.striker .tname { fill: rgba(255, 107, 139, .8); }
+  #tl .clip.tank .tname { fill: rgba(155, 227, 122, .8); }
+  #tl .clip.orbiter .tname { fill: rgba(229, 140, 255, .8); }
   #tl .clip .head { cursor: grab; }
   #tl .clip .hd { stroke: rgba(0, 0, 0, .55); stroke-width: 1; }
   #tl .clip.weaver .hd { fill: var(--weaver); }
   #tl .clip.diver .hd { fill: var(--diver); }
+  #tl .clip.striker .hd { fill: var(--striker); }
+  #tl .clip.tank .hd { fill: var(--tank); }
+  #tl .clip.orbiter .hd { fill: var(--orbiter); }
   #tl .clip .grip { fill: rgba(0, 0, 0, .28); }
   #tl .clip .ico { fill: #0b0c10; }
   #tl .clip .badge { fill: #0b0c10; }
   #tl .clip .cnt { fill: #fff; font: 700 10px var(--mono); text-anchor: middle; dominant-baseline: central; }
   #tl .clip .arr { stroke: #0b0c10; stroke-width: 1.8; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+  #tl .clip.obstacle .tail { fill: rgba(185, 161, 132, .07); stroke: rgba(185, 161, 132, .5); stroke-dasharray: 5 3; }
+  #tl .clip.obstacle .tname { fill: rgba(185, 161, 132, .85); }
+  #tl .clip.obstacle .hd { fill: #2a241e; stroke: var(--obstacle); stroke-width: 1.5; }
+  #tl .clip.obstacle .grip { fill: rgba(185, 161, 132, .35); }
+  #tl .clip.obstacle .ico { fill: rgba(185, 161, 132, .35); stroke: var(--obstacle); stroke-width: 1; }
+  #tl .clip.obstacle .badge { fill: var(--obstacle); }
+  #tl .clip.obstacle .cnt { fill: #1a1510; }
+  #tl .clip.obstacle .arr { stroke: var(--obstacle); }
   #tl .clip.sel .hd { stroke: var(--accent); stroke-width: 2; }
   #tl .clip.sel .tail { stroke: var(--accent); stroke-opacity: .8; }
   #tl .clip.sel .head { filter: drop-shadow(0 0 4px rgba(255, 122, 217, .65)); }
@@ -135,6 +156,15 @@
   .meta .unit { display: flex; align-items: center; gap: 6px; color: var(--dim); font-size: 12px; }
   .meta .chk { display: flex; align-items: center; gap: 6px; font-size: 13px; }
   #selNone { color: var(--dim); font-size: 12px; margin: 0; }
+  #pieceGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+  .pc { display: flex; align-items: center; gap: 6px; padding: 4px 6px; text-align: left; font-size: 12px; min-width: 0; }
+  .pc svg { flex: none; }
+  .pc span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pc.on { border-color: var(--obstacle); background: #241f1a; color: var(--obstacle); }
+  .pc .th { fill: rgba(185, 161, 132, .3); stroke: var(--obstacle); stroke-width: 1; stroke-linejoin: round; }
+  #pieceDesc { color: var(--dim); font-size: 12px; margin: 0; min-height: 3em; }
+  #pieceDesc strong { color: var(--text); font-weight: 600; }
+  #pieceEmpty { color: var(--dim); font-size: 12px; margin: 0; }
   @media (max-width: 1100px) {
     main { grid-template-columns: 1fr; grid-auto-rows: auto; }
     aside.library, aside.right { border: 0; border-bottom: 1px solid var(--line); max-height: none; }
@@ -165,7 +195,8 @@
       <p><strong>Timeline</strong>: time runs left to right; each row is where a group enters the screen, L (left edge) at the top to R (right edge) at the bottom. A clip lasts as long as its group takes to cross the screen.</p>
       <p>Click an empty spot to add a group · drag a clip's head to move it · <kbd>Shift</kbd>+click or drag a box to multi-select · click the ruler to scrub · drag the purple end marker to set the length.</p>
       <p><kbd>Space</kbd> play/stop · <kbd>Home</kbd>/<kbd>End</kbd> jump · <kbd>Del</kbd>/<kbd>⌫</kbd> delete · <kbd>Esc</kbd> deselect</p>
-      <p><kbd>W</kbd> weaver · <kbd>D</kbd> diver · <kbd>1</kbd>–<kbd>7</kbd> count · <kbd>F</kbd> flip direction (all apply to the selection too)</p>
+      <p><kbd>W</kbd> weaver · <kbd>D</kbd> diver · <kbd>K</kbd> striker · <kbd>T</kbd> tank · <kbd>R</kbd> orbiter · <kbd>O</kbd> obstacle · <kbd>1</kbd>–<kbd>7</kbd> count · <kbd>F</kbd> flip direction (all apply to the selection too)</p>
+      <p><strong>Obstacles</strong> scroll down slowly; pick a piece under Obstacles. Count is the number of segments for a tiling piece (girder, hull) or copies in a loose cluster otherwise; flipping mirrors it.</p>
       <p><kbd>S</kbd> cycle snap · <kbd>←</kbd><kbd>→</kbd> nudge by snap · <kbd>↑</kbd><kbd>↓</kbd> change lane · <kbd>+</kbd>/<kbd>−</kbd> or <kbd>⌘</kbd>+wheel zoom · <kbd>Z</kbd> fit</p>
       <p><kbd>⌘C</kbd>/<kbd>⌘X</kbd>/<kbd>⌘V</kbd> copy, cut, paste at playhead · <kbd>⌘A</kbd> all · <kbd>⌘Z</kbd> undo · <kbd>⇧⌘Z</kbd> redo · <kbd>⌘S</kbd> save · <kbd>M</kbd> sound</p>
     </div>
@@ -175,11 +206,15 @@
       <div class="grp" id="typeGrp"><span>Type</span>
         <button data-type="weaver" title="Weaver (W)"><i class="sw weaver"></i>Weaver</button>
         <button data-type="diver" title="Diver (D)"><i class="sw diver"></i>Diver</button>
+        <button data-type="striker" title="Striker (K)"><i class="sw striker"></i>Striker</button>
+        <button data-type="tank" title="Tank (T)"><i class="sw tank"></i>Tank</button>
+        <button data-type="orbiter" title="Orbiter (R)"><i class="sw orbiter"></i>Orbiter</button>
+        <button data-type="obstacle" title="Obstacle: the piece picked under Obstacles (O)"><i class="sw obstacle"></i>Obstacle</button>
       </div>
       <div class="grp" id="countGrp"><span>Count</span></div>
       <div class="grp" id="dirGrp"><span>Dir</span>
-        <button data-dir="-1" title="Diver starts moving left (F flips)">←</button>
-        <button data-dir="1" title="Diver starts moving right (F flips)">→</button>
+        <button data-dir="-1" title="Diver starts moving left; obstacle mirrored (F flips)">←</button>
+        <button data-dir="1" title="Diver starts moving right; obstacle normal (F flips)">→</button>
       </div>
       <div class="grp"><span>Snap</span>
         <select id="snap" title="Snap (S cycles)">
@@ -224,8 +259,12 @@
     <h2>Preview</h2>
     <div class="preview-wrap">
       <canvas id="preview" width="270" height="480"></canvas>
-      <div class="legend"><span><i class="sw weaver"></i>weaver</span><span><i class="sw diver"></i>diver</span><span>540×960</span></div>
+      <div class="legend"><span><i class="sw weaver"></i>weaver</span><span><i class="sw diver"></i>diver</span><span><i class="sw striker"></i>striker</span><span><i class="sw tank"></i>tank</span><span><i class="sw orbiter"></i>orbiter</span><span><i class="sw obstacle"></i>obstacle</span><span>540×960</span></div>
     </div>
+    <h2>Obstacles</h2>
+    <div id="pieceGrid"></div>
+    <p id="pieceEmpty" hidden></p>
+    <p id="pieceDesc"></p>
     <h2>Selection</h2>
     <p id="selNone">Nothing selected.</p>
     <div class="meta" id="selPanel" hidden>
@@ -235,11 +274,13 @@
       <label for="selLane">Lane</label>
       <select id="selLane"></select>
       <label for="selType">Type</label>
-      <select id="selType"><option value="weaver">Weaver</option><option value="diver">Diver</option><option value="" disabled>mixed</option></select>
+      <select id="selType"><option value="weaver">Weaver</option><option value="diver">Diver</option><option value="striker">Striker</option><option value="tank">Tank</option><option value="orbiter">Orbiter</option><option value="obstacle">Obstacle</option><option value="" disabled>mixed</option></select>
+      <label for="selPiece" id="selPieceLbl">Piece</label>
+      <select id="selPiece" title="Obstacle piece (applies to the selected obstacles)"></select>
       <label for="selCountSel">Count</label>
       <select id="selCountSel"></select>
       <label for="selDir">Dir</label>
-      <select id="selDir" title="Initial sideways direction (divers only)"><option value="-1">← left</option><option value="1">→ right</option><option value="" disabled>mixed</option></select>
+      <select id="selDir" title="Divers: initial sideways direction. Obstacles: ← is mirrored"><option value="-1">← left</option><option value="1">→ right</option><option value="" disabled>mixed</option></select>
       <span></span><button id="selDelete" class="danger">Delete</button>
     </div>
     <h2>Level</h2>
@@ -277,7 +318,9 @@
   let selection = new Set();
   let undoStack = [], redoStack = [];
   let clipboard = null;
-  let palette = { type: 'weaver', count: 3, dir: 1 };
+  let palette = { type: 'weaver', count: 3, dir: 1, piece: null };
+  let pieces = null;           // indexed obstacle catalog (L.setPieces), null until /api/pieces loads
+  let hoverPiece = null;       // piece id under the pointer in the Obstacles palette
   let snap = 0.25;
   let pps = 24;                // pixels per second
   let rowH = 32;
@@ -296,7 +339,29 @@
   const maxTime = () => r2(level.length - 0.01);
   const snapT = (t) => r2(snap ? Math.round(t / snap) * snap : t);
   const nudgeStep = () => snap || 0.1;
-  const crossW = (e) => L.crossTime(e.type, e.count) * pps;
+  const crossW = (e) => L.eventCrossTime(e) * pps;
+  const isObs = (e) => e.type === L.OBSTACLE;
+  const esc = (v) => String(v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+  // An event object with keys in the saved order; `piece` only on obstacles.
+  function makeEvent(time, type, lane, count, dir, piece) {
+    if (type === L.OBSTACLE) return { time, type, piece: piece || palette.piece, lane, count, dir };
+    return { time, type, lane, count, dir };
+  }
+  // Rewrites an event in place (the selection holds references) so its keys stay in the saved order.
+  function setEvent(e, key, value) {
+    const v = { ...e, [key]: value };
+    const n = makeEvent(v.time, v.type, v.lane, v.count, v.dir, v.piece);
+    for (const k of Object.keys(e)) delete e[k];
+    Object.assign(e, n);
+  }
+  // SVG path of a piece's outline scaled to fit a box of `size` px centred on (cx, cy); flip -1 mirrors.
+  function outlinePath(p, cx, cy, size, flip) {
+    const k = size / Math.max(p.size[0], p.size[1]);
+    const f = flip === -1 ? -1 : 1;
+    return 'M' + p.outline.map(([x, y]) => (cx + f * x * k).toFixed(1) + ' ' + (cy + y * k).toFixed(1)).join('L') + 'Z';
+  }
+  const pieceName = (id) => L.pieceOf(id).name;
 
   function fmtTime(t, dec) {
     const f = Math.pow(10, dec);
@@ -369,7 +434,7 @@
   // ---- Layout ----
   function contentEnd() {
     let end = level.length;
-    for (const e of level.events) end = Math.max(end, e.time + L.crossTime(e.type, e.count));
+    for (const e of level.events) end = Math.max(end, e.time + L.eventCrossTime(e));
     return end;
   }
   const svgW = () => Math.ceil(Math.max(X(contentEnd()) + 160, $('scroller').clientWidth));
@@ -435,24 +500,32 @@
 
   // ---- Clips ----
   function icon(type, cx, cy) {
+    if (type === 'striker') return '<path class="ico" d="M' + cx + ' ' + (cy + 7) + 'L' + (cx + 4) + ' ' + (cy - 3) + 'L' + cx + ' ' + (cy - 7) + 'L' + (cx - 4) + ' ' + (cy - 3) + 'Z"/>';
+    if (type === 'tank') return '<path class="ico" d="M' + (cx - 6) + ' ' + (cy - 4) + 'L' + (cx + 6) + ' ' + (cy - 4) + 'L' + (cx + 6) + ' ' + (cy + 3) + 'L' + cx + ' ' + (cy + 6) + 'L' + (cx - 6) + ' ' + (cy + 3) + 'Z"/>';
+    if (type === 'orbiter') return '<circle class="ico" cx="' + cx + '" cy="' + cy + '" r="5"/>';
     if (type === 'diver') return '<path class="ico" d="M' + cx + ' ' + (cy + 6) + 'L' + (cx + 5) + ' ' + (cy - 2) + 'L' + cx + ' ' + (cy - 6) + 'L' + (cx - 5) + ' ' + (cy - 2) + 'Z"/>';
     return '<path class="ico" d="M' + cx + ' ' + (cy + 5) + 'L' + (cx + 6) + ' ' + (cy - 4) + 'L' + (cx + 2) + ' ' + (cy - 2) + 'L' + cx + ' ' + (cy - 5) + 'L' + (cx - 2) + ' ' + (cy - 2) + 'L' + (cx - 6) + ' ' + (cy - 4) + 'Z"/>';
+  }
+  function clipLabel(e) {
+    if (isObs(e)) return esc(pieceName(e.piece)) + ' ×' + e.count + (e.dir === -1 ? ' (mirrored)' : '');
+    return e.type + ' ×' + e.count + (e.type === 'diver' ? (e.dir === 1 ? ' →' : ' ←') : e.type === 'orbiter' ? (e.dir === 1 ? ' ↻' : ' ↺') : '');
   }
   function clipMarkup(e, cls, i) {
     const x = X(e.time), y = rowY(e.lane) + 3, h = rowH - 7, cy = y + h / 2;
     const w = Math.max(HEAD_W, crossW(e));
     const g = '<g class="clip ' + e.type + (cls || '') + '">';
     let s = g + '<rect class="tail" x="' + x.toFixed(1) + '" y="' + y + '" width="' + w.toFixed(1) + '" height="' + h + '" rx="3"/>';
-    if (w - HEAD_W > 84) s += '<text class="tname" x="' + (x + HEAD_W + 8).toFixed(1) + '" y="' + (cy + 4) + '">' + e.type + ' ×' + e.count + (e.type === 'diver' ? (e.dir === 1 ? ' →' : ' ←') : '') + '</text>';
+    if (w - HEAD_W > 84) s += '<text class="tname" x="' + (x + HEAD_W + 8).toFixed(1) + '" y="' + (cy + 4) + '">' + clipLabel(e) + '</text>';
     const tail = s + '</g>';
     s = g + '<g class="head"' + (i === undefined ? '' : ' data-i="' + i + '"') + '>';
     s += '<rect class="hd" x="' + x.toFixed(1) + '" y="' + y + '" width="' + HEAD_W + '" height="' + h + '" rx="3"/>';
     s += '<rect class="grip" x="' + (x + 1).toFixed(1) + '" y="' + (y + 1) + '" width="3" height="' + (h - 2) + '" rx="1"/>';
-    s += icon(e.type, +(x + 13).toFixed(1), cy);
+    if (isObs(e)) s += '<path class="ico" d="' + outlinePath(L.pieceOf(e.piece), x + 13, cy, 13, e.dir) + '"><title>' + esc(pieceName(e.piece)) + '</title></path>';
+    else s += icon(e.type, +(x + 13).toFixed(1), cy);
     const bx = x + 22;
     s += '<rect class="badge" x="' + bx.toFixed(1) + '" y="' + (cy - 7) + '" width="14" height="14" rx="7"/>';
     s += '<text class="cnt" x="' + (bx + 7).toFixed(1) + '" y="' + cy + '">' + e.count + '</text>';
-    if (e.type === 'diver') {
+    if (e.type === 'diver' || e.type === 'orbiter' || (isObs(e) && e.dir === -1)) {
       const ax = x + 43, d = e.dir;
       s += '<path class="arr" d="M' + (ax - 3 * d).toFixed(1) + ' ' + cy + 'H' + (ax + 3 * d).toFixed(1) + 'M' + (ax + 0.5 * d).toFixed(1) + ' ' + (cy - 3) + 'L' + (ax + 3.5 * d).toFixed(1) + ' ' + cy + 'L' + (ax + 0.5 * d).toFixed(1) + ' ' + (cy + 3) + '"/>';
     }
@@ -512,6 +585,7 @@
     document.querySelectorAll('#typeGrp button').forEach((b) => b.classList.toggle('on', b.dataset.type === palette.type));
     document.querySelectorAll('#countGrp button').forEach((b) => b.classList.toggle('on', +b.dataset.count === palette.count));
     document.querySelectorAll('#dirGrp button').forEach((b) => b.classList.toggle('on', +b.dataset.dir === palette.dir));
+    renderPieces();
     $('snap').value = String(snap);
     $('sound').textContent = soundOn ? 'Sound on' : 'Sound off';
     $('play').textContent = play ? '■' : '▶';
@@ -544,8 +618,79 @@
     if (document.activeElement !== $('selTime')) $('selTime').value = fmtS(lo);
     $('selLane').value = uniform('lane');
     $('selType').value = uniform('type');
+    const obs = sel.filter(isObs);
+    $('selPiece').hidden = $('selPieceLbl').hidden = !obs.length;
+    if (obs.length) {
+      const ids = new Set(obs.map((e) => e.piece));
+      const id = ids.size === 1 ? [...ids][0] : '';
+      fillPieceSelect(id);
+      $('selPiece').value = id;
+    }
+    // Unit names for count/dir follow what is selected.
+    const kinds = new Set(sel.map((e) => (isObs(e) ? (L.pieceOf(e.piece).tile ? 'seg' : 'copy') : 'ship')));
+    const kind = kinds.size === 1 ? [...kinds][0] : '';
+    const unit = (c) => ({ ship: c === 1 ? ' ship' : ' ships', seg: c === 1 ? ' segment' : ' segments', copy: c === 1 ? ' copy' : ' copies' }[kind] || '');
+    for (const o of $('selCountSel').options) if (o.value) o.textContent = o.value + unit(+o.value);
+    const allObs = obs.length === n;
+    $('selDir').options[0].textContent = allObs ? '← mirrored' : '← left';
+    $('selDir').options[1].textContent = allObs ? '→ normal' : '→ right';
     $('selCountSel').value = uniform('count');
     $('selDir').value = uniform('dir');
+  }
+  // Placeable pieces, plus the current id if it is not in the catalog (so it still shows).
+  function fillPieceSelect(cur) {
+    const list = pieces ? pieces.placeable.map((p) => [p.id, p.name]) : [];
+    if (cur && !list.some(([id]) => id === cur)) list.push([cur, cur + ' (unknown)']);
+    const sig = JSON.stringify(list);
+    const sp = $('selPiece');
+    if (sp.dataset.sig === sig) return;
+    sp.dataset.sig = sig;
+    sp.replaceChildren(...list.map(([id, name]) => { const o = document.createElement('option'); o.value = id; o.textContent = name; return o; }));
+    const m = document.createElement('option'); m.value = ''; m.disabled = true; m.textContent = 'mixed';
+    sp.append(m);
+  }
+
+  // ---- Obstacle palette ----
+  function buildPieces() {
+    const grid = $('pieceGrid');
+    if (!pieces || !pieces.placeable.length) {
+      grid.replaceChildren();
+      $('pieceEmpty').hidden = false;
+      $('pieceEmpty').textContent = pieces ? 'The piece catalog has no placeable pieces.' : 'No piece catalog (assets/obstacles/pieces.json).';
+      return;
+    }
+    $('pieceEmpty').hidden = true;
+    grid.replaceChildren(...pieces.placeable.map((p) => {
+      const b = document.createElement('button');
+      b.className = 'pc';
+      b.dataset.piece = p.id;
+      b.title = p.name + (p.tile ? ' (tiles)' : '');
+      b.innerHTML = '<svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true"><path class="th" d="' + outlinePath(p, 13, 13, 22, 1) + '"/></svg>';
+      const nm = document.createElement('span');
+      nm.textContent = p.name;
+      b.append(nm);
+      b.addEventListener('mouseenter', () => { hoverPiece = p.id; renderPieceDesc(); });
+      b.addEventListener('mouseleave', () => { hoverPiece = null; renderPieceDesc(); });
+      return b;
+    }));
+  }
+  function renderPieces() {
+    document.querySelectorAll('#pieceGrid .pc').forEach((b) => b.classList.toggle('on', palette.type === L.OBSTACLE && b.dataset.piece === palette.piece));
+    document.querySelector('#typeGrp [data-type="obstacle"]').disabled = !palette.piece;
+    renderPieceDesc();
+  }
+  // Description of the hovered piece, else the selected obstacle's, else the palette's.
+  function renderPieceDesc() {
+    let id = hoverPiece;
+    if (!id && selection.size === 1) { const e = [...selection][0]; if (isObs(e)) id = e.piece; }
+    if (!id && palette.type === L.OBSTACLE) id = palette.piece;
+    const el = $('pieceDesc');
+    if (!id) { el.textContent = pieces && pieces.placeable.length ? 'Pick a piece to place obstacles. Hover one for its description.' : ''; return; }
+    const p = L.pieceOf(id);
+    const facts = [p.size[0] + '×' + p.size[1] + ' px', p.hp ? p.hp + ' hp' : 'indestructible'];
+    if (p.tile) facts.push('tiles' + (p.caps ? ' with end caps' : ''));
+    if (p.spin) facts.push('spins');
+    el.innerHTML = '<strong>' + esc(p.name) + '</strong> · ' + esc(facts.join(' · ')) + '<br>' + esc(p.description || (p.unknown ? 'Not in the piece catalog.' : ''));
   }
   function renderFile() {
     const dirty = isDirty();
@@ -579,11 +724,14 @@
   }
 
   // Apply a field to the selected groups (one undo step).
+  // `piece` only applies to the selected obstacles.
   function applyToSelection(key, value) {
     if (!selection.size) return;
-    if ([...selection].some((e) => e[key] !== value)) commit(() => { for (const e of selection) e[key] = value; });
+    const targets = [...selection].filter((e) => key !== 'piece' || isObs(e));
+    if (targets.some((e) => e[key] !== value)) commit(() => { for (const e of targets) setEvent(e, key, value); });
   }
   function setPalette(key, value) {
+    if (key === 'type' && value === L.OBSTACLE && !palette.piece) { showError('no obstacle pieces loaded'); return; }
     palette[key] = value;
     applyToSelection(key, value);
     renderToolbar();
@@ -597,7 +745,7 @@
     if (existing) { selection = new Set([existing]); render(); return; }
     if (level.events.length >= L.MAX_EVENTS) { showError('at most ' + L.MAX_EVENTS + ' groups'); return; }
     commit(() => {
-      const e = { time, type: palette.type, lane, count: palette.count, dir: palette.dir };
+      const e = makeEvent(time, palette.type, lane, palette.count, palette.dir, palette.piece);
       level.events.push(e);
       selection = new Set([e]);
     });
@@ -826,23 +974,46 @@
     const r = (n) => { const s = Math.sin(i * 127.1 + n * 311.7) * 43758.5453; return s - Math.floor(s); };
     return { x: r(1) * 540, y: r(2) * 960, s: 0.6 + r(3) * 1.6, v: 20 + r(4) * 60 };
   });
-  // Ship positions at absolute time `abs` in seconds (counts up past the end when the level loops).
+  // Ship and obstacle positions at absolute time `abs` in seconds (counts up past the end when the level loops).
   function shipsAtTime(abs) {
     const total = level.length;
-    const out = [];
+    const ships = [], obstacles = [];
+    let win = PREVIEW_WINDOW;
+    for (const ev of level.events) if (isObs(ev)) win = Math.max(win, L.obstacleCrossTime(ev.piece));
     const kHi = level.repeat ? Math.floor(abs / total) : 0;
-    const kLo = level.repeat ? Math.max(0, Math.floor((abs - PREVIEW_WINDOW) / total)) : 0;
+    const kLo = level.repeat ? Math.max(0, Math.floor((abs - win) / total)) : 0;
     for (let k = kLo; k <= kHi; k++) {
       for (const ev of level.events) {
         const at = k * total + ev.time;
         if (at > abs + 1e-9) continue;
         const t = abs - at;
-        if (t > PREVIEW_WINDOW) continue;
         const sel = selection.has(ev);
-        for (const s of L.shipsAt(ev, t)) if (s.y < 1010) out.push({ x: s.x, y: s.y, type: ev.type, sel });
+        if (isObs(ev)) {
+          if (t > L.obstacleCrossTime(ev.piece)) continue;
+          for (const o of L.obstaclesAt(ev, t)) obstacles.push({ ...o, t, sel });
+          continue;
+        }
+        if (t > PREVIEW_WINDOW) continue;
+        for (const s of L.shipsAt(ev, t)) if (s.y < 1010) ships.push({ x: s.x, y: s.y, type: ev.type, sel });
       }
     }
-    return out;
+    return { ships, obstacles };
+  }
+  function drawObstacle(ctx, o) {
+    const p = o.piece;
+    ctx.save();
+    ctx.translate(o.x, o.y);
+    ctx.scale(o.flip, 1);
+    if (p.spin) ctx.rotate(o.t * 0.4);
+    ctx.beginPath();
+    p.outline.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
+    ctx.closePath();
+    ctx.fillStyle = 'rgba(185, 161, 132, .28)';
+    ctx.fill();
+    ctx.lineWidth = o.sel ? 4 : 2;
+    ctx.strokeStyle = o.sel ? getVar('--accent') : getVar('--obstacle');
+    ctx.stroke();
+    ctx.restore();
   }
   function drawPreview(abs) {
     const cv = $('preview'), ctx = cv.getContext('2d');
@@ -862,15 +1033,20 @@
     // Where the palette's group would enter, per lane.
     ctx.fillStyle = 'rgba(255,255,255,.22)';
     for (let lane = 0; lane < 9; lane++) {
-      const x = L.groupCenterX(palette.type, palette.count, lane);
+      const x = palette.type === L.OBSTACLE ? L.obstacleCenterX(palette.piece, palette.count, lane) : L.groupCenterX(palette.type, palette.count, lane);
       ctx.fillRect(x - 1, 0, 2, lane % 4 ? 10 : 18);
     }
-    const col = { weaver: getVar('--weaver'), diver: getVar('--diver') };
-    for (const s of shipsAtTime(abs)) {
+    const col = { weaver: getVar('--weaver'), diver: getVar('--diver'), striker: getVar('--striker'), tank: getVar('--tank'), orbiter: getVar('--orbiter') };
+    const now = shipsAtTime(abs);
+    for (const o of now.obstacles) drawObstacle(ctx, o);
+    for (const s of now.ships) {
       ctx.save();
       ctx.translate(s.x, s.y);
       ctx.beginPath();
       if (s.type === 'diver') { ctx.moveTo(0, 22); ctx.lineTo(16, -6); ctx.lineTo(0, -16); ctx.lineTo(-16, -6); }
+      else if (s.type === 'striker') { ctx.moveTo(0, 24); ctx.lineTo(9, -4); ctx.lineTo(0, -18); ctx.lineTo(-9, -4); }
+      else if (s.type === 'tank') { ctx.moveTo(-20, -18); ctx.lineTo(20, -18); ctx.lineTo(24, 4); ctx.lineTo(0, 22); ctx.lineTo(-24, 4); }
+      else if (s.type === 'orbiter') { ctx.arc(0, 0, 15, 0, Math.PI * 2); }
       else { ctx.moveTo(0, 20); ctx.lineTo(20, -12); ctx.lineTo(8, -6); ctx.lineTo(0, -16); ctx.lineTo(-8, -6); ctx.lineTo(-20, -12); }
       ctx.closePath();
       ctx.fillStyle = col[s.type];
@@ -894,8 +1070,8 @@
     if (!soundOn || !audio) return;
     const t = audio.currentTime;
     const o = audio.createOscillator(), g = audio.createGain();
-    o.type = ev.type === 'diver' ? 'triangle' : 'sine';
-    o.frequency.value = 440 * Math.pow(2, PENTA[ev.lane] / 12);
+    o.type = { diver: 'triangle', striker: 'sawtooth', tank: 'square' }[ev.type] || 'sine';
+    o.frequency.value = (isObs(ev) ? 220 : 440) * Math.pow(2, PENTA[ev.lane] / 12);
     g.gain.setValueAtTime(0.0001, t);
     g.gain.exponentialRampToValueAtTime(0.04, t + 0.006);
     g.gain.exponentialRampToValueAtTime(0.0001, t + 0.1);
@@ -1057,7 +1233,24 @@
   $('new').addEventListener('click', newLevel);
   $('del').addEventListener('click', deleteLevel);
   $('selDelete').addEventListener('click', deleteSelection);
-  $('selType').addEventListener('change', () => applyToSelection('type', $('selType').value));
+  $('selType').addEventListener('change', () => {
+    if ($('selType').value === L.OBSTACLE && !palette.piece) { showError('no obstacle pieces loaded'); renderSelectionPanel(); return; }
+    applyToSelection('type', $('selType').value);
+  });
+  $('selPiece').addEventListener('change', () => { if ($('selPiece').value) applyToSelection('piece', $('selPiece').value); });
+  $('pieceGrid').addEventListener('click', (e) => {
+    const b = e.target.closest('.pc');
+    if (!b) return;
+    const id = b.dataset.piece;
+    palette.piece = id;
+    palette.type = L.OBSTACLE;
+    // One undo step: selected groups become this piece.
+    const sel = [...selection];
+    if (sel.some((ev) => ev.type !== L.OBSTACLE || ev.piece !== id)) commit(() => { for (const ev of sel) { setEvent(ev, 'type', L.OBSTACLE); setEvent(ev, 'piece', id); } });
+    renderToolbar();
+    drawGhostLast();
+    if (!play) drawPreview(playhead);
+  });
   $('selCountSel').addEventListener('change', () => applyToSelection('count', +$('selCountSel').value));
   $('selDir').addEventListener('change', () => applyToSelection('dir', +$('selDir').value));
   $('selLane').addEventListener('change', () => applyToSelection('lane', +$('selLane').value));
@@ -1123,6 +1316,10 @@
       case 'ArrowUp': case 'ArrowDown': e.preventDefault(); moveSelection(0, k === 'ArrowUp' ? -1 : 1); break;
       case 'w': case 'W': setPalette('type', 'weaver'); break;
       case 'd': case 'D': setPalette('type', 'diver'); break;
+      case 'k': case 'K': setPalette('type', 'striker'); break;
+      case 't': case 'T': setPalette('type', 'tank'); break;
+      case 'r': case 'R': setPalette('type', 'orbiter'); break;
+      case 'o': case 'O': setPalette('type', L.OBSTACLE); break;
       case 'f': case 'F': setPalette('dir', -palette.dir); break;
       case 's': case 'S': snap = SNAPS[(SNAPS.indexOf(snap) + 1) % SNAPS.length]; renderToolbar(); status('Snap ' + (snap ? snap + ' s' : 'off')); break;
       case 'm': case 'M': soundOn = !soundOn; renderToolbar(); break;
@@ -1135,8 +1332,20 @@
   });
   window.addEventListener('beforeunload', (e) => { if (isDirty()) { e.preventDefault(); e.returnValue = ''; } });
 
+  async function loadPieces() {
+    try {
+      pieces = L.setPieces(await api('GET', '/api/pieces'));
+      palette.piece = pieces.placeable.length ? pieces.placeable[0].id : null;
+    } catch (e) {
+      pieces = L.setPieces(null);
+      showError('Could not load obstacle pieces: ' + e.message);
+    }
+    buildPieces();
+  }
+
   (async function init() {
     render();
+    await loadPieces();
     await refreshList();
     const want = levels.find((r) => r.slug === 'level_01' && !r.error);
     if (want) {

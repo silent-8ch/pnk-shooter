@@ -165,3 +165,157 @@ test('motion: speed ramp, weave and diver bounce', () => {
   assert.deepEqual(v.map((p) => p.x), [380, 330, 430]);
   assert.equal(v[0].y, -40 + 130 * 0.75);
 });
+
+test('new enemy types: constants match scripts/enemy.gd', () => {
+  const src = require('node:fs').readFileSync(require('node:path').join(__dirname, '../../scripts/enemy.gd'), 'utf8');
+  const num = (name) => Number(new RegExp('const ' + name + ' := ([0-9.]+)').exec(src)[1]);
+  const vec = (name) => new RegExp('const ' + name + ' := Vector2\\(([0-9.]+), ([0-9.]+)\\)').exec(src).slice(1).map(Number);
+  const speed = (ship) => Number(new RegExp('"ship": ' + ship + ', [^\\n]*"speed": ([0-9.]+)').exec(src)[1]);
+  assert.deepEqual([L.GAME.strikerGapX, L.GAME.strikerGapY], vec('STRIKER_GAP'));
+  assert.equal(L.GAME.lungeTime, num('LUNGE_TIME'));
+  assert.equal(L.GAME.lungeStagger, num('LUNGE_STAGGER'));
+  assert.equal(L.GAME.lungeSpeed, num('LUNGE_SPEED'));
+  assert.equal(L.GAME.tankSpacing, num('TANK_SPACING'));
+  assert.equal(L.GAME.tankSway, num('TANK_SWAY'));
+  assert.equal(L.GAME.tankSwayFrequency, num('TANK_SWAY_FREQUENCY'));
+  assert.equal(L.GAME.orbitRadius, num('ORBIT_RADIUS'));
+  assert.equal(L.GAME.orbitSpeed, num('ORBIT_SPEED'));
+  assert.deepEqual([L.GAME.weaverSpeed, L.GAME.diverSpeed, L.GAME.strikerSpeed, L.GAME.tankSpeed, L.GAME.orbiterSpeed], [0, 1, 2, 3, 4].map(speed));
+});
+
+test('new enemy types: layout and motion', () => {
+  assert.deepEqual(L.TYPES, ['weaver', 'diver', 'striker', 'tank', 'orbiter']);
+  assert.deepEqual(L.groupLayout('striker', 3, 270), [{ x: 230, y: -40 }, { x: 270, y: -100 }, { x: 310, y: -160 }]);
+  assert.deepEqual(L.groupLayout('tank', 2, 270), [{ x: 210, y: -40 }, { x: 330, y: -40 }]);
+  const ring = L.groupLayout('orbiter', 4, 270);
+  for (const p of ring) assert.ok(Math.abs(Math.hypot(p.x - 270, p.y + 90) - 50) < 1e-9);
+  assert.equal(L.groupHalfWidth('orbiter', 4), 50);
+  assert.equal(L.groupHalfWidth('tank', 2), 85);
+  // Strikers: the front one lunges at 1.6 s, the next 0.35 s later.
+  const at = (t) => L.shipsAt({ type: 'striker', lane: 4, count: 2, dir: 1 }, t);
+  const fast = at(1.7)[0].y - at(1.6)[0].y, slow = at(1.7)[1].y - at(1.6)[1].y;
+  assert.ok(Math.abs(fast - 38) < 1e-9, String(fast));
+  assert.ok(slow < 10);
+  // Orbiters stay on a ring around the falling center.
+  const o = L.shipsAt({ type: 'orbiter', lane: 4, count: 4, dir: 1 }, 2);
+  const cy = -90 + L.fallDistance('orbiter', 2);
+  for (const p of o) assert.ok(Math.abs(Math.hypot(p.x - 270, p.y - cy) - 50) < 1e-9);
+  // crossTime: every ship is past the bottom by then.
+  for (const type of ['striker', 'tank', 'orbiter']) {
+    const t = L.crossTime(type, 4);
+    for (const p of L.shipsAt({ type, lane: 4, count: 4, dir: 1 }, t)) assert.ok(p.y >= 960 - 50 - 1e-6, type + ' ' + p.y);
+  }
+  L.validate({ name: 'x', length: 10, repeat: false, events: [{ time: 0, type: 'tank', lane: 4, count: 2, dir: 1 }] });
+});
+
+// ---- Obstacles ----
+const CATALOG = JSON.parse(require('node:fs').readFileSync(require('node:path').join(__dirname, '../../assets/obstacles/pieces.json'), 'utf8'));
+const MINI = {
+  scroll_speed: 50,
+  pieces: [
+    { id: 'rock', name: 'Rock', size: [40, 30], shape: 'circle', hp: 3, outline: [[0, -15], [20, 0], [0, 15], [-20, 0]] },
+    { id: 'bar', name: 'Bar', size: [64, 18], shape: 'rect', hp: 0, tile: true, caps: ['bar_l', 'bar_r'], outline: [[-32, -9], [32, -9], [32, 9], [-32, 9]] },
+    { id: 'bar_l', name: 'Bar L', size: [24, 18], shape: 'rect', hp: 0, cap: true, outline: [[-12, -9], [12, -9], [12, 9], [-12, 9]] },
+    { id: 'bar_r', name: 'Bar R', size: [10, 18], shape: 'rect', hp: 0, cap: true, outline: [[-5, -9], [5, -9], [5, 9], [-5, 9]] },
+    { id: 'plain', name: 'Plain tile', size: [30, 10], shape: 'rect', hp: 0, tile: true, outline: [[-15, -5], [15, -5], [15, 5], [-15, 5]] },
+    { id: 'huge', name: 'Huge', size: [520, 40], shape: 'rect', hp: 0, outline: [[-260, -20], [260, -20], [260, 20], [-260, 20]] },
+  ],
+};
+const ob = (over) => Object.assign({ time: 1, type: 'obstacle', piece: 'rock', lane: 2, count: 3, dir: -1 }, over);
+
+test('obstacle events validate with and without a catalog', () => {
+  L.setPieces(null);
+  try {
+    const v = L.validate(level({ events: [ob(), ob({ piece: 'anything_9', count: 7, dir: 1, lane: 8 })] }));
+    assert.deepEqual(v.events[0], ob());
+    for (const piece of ['', 'Rock', 'a-b', 'x'.repeat(41), 5, null]) assert.throws(() => L.validate(level({ events: [ob({ piece })] })), /piece/, String(piece));
+    // explicit catalog param
+    L.validate(level({ events: [ob({ piece: 'bar' })] }), MINI);
+    assert.throws(() => L.validate(level({ events: [ob({ piece: 'nope' })] }), MINI), /events\[0\]\.piece "nope" is not in the piece catalog/);
+    assert.throws(() => L.validate(level({ events: [ob({ piece: 'bar_l' })] }), MINI), /end cap/);
+    // catalog set with setPieces
+    L.setPieces(CATALOG);
+    L.validate(level({ events: [ob({ piece: 'girder' }), ob({ piece: 'asteroid_l' })] }));
+    assert.throws(() => L.validate(level({ events: [ob({ piece: 'rock' })] })), /not in the piece catalog/);
+    assert.throws(() => L.validate(level({ events: [ob({ piece: 'hull_end_r' })] })), /end cap/);
+    assert.throws(() => L.parse(L.serialize(level()).replace('"weaver"', '"obstacle", "piece": "girder_end_l"')), /end cap/);
+    // null overrides the set catalog
+    L.validate(level({ events: [ob({ piece: 'rock' })] }), null);
+  } finally { L.setPieces(null); }
+});
+
+test('obstacle field rules: piece only on obstacles, all fields required', () => {
+  assert.throws(() => L.validate(level({ events: [ev({ piece: 'rock' })] })), /"piece" is only allowed on obstacle events/);
+  assert.throws(() => L.validate(level({ events: [ev({ type: 'diver', piece: 'rock' })] })), /only allowed on obstacle/);
+  const noPiece = ob(); delete noPiece.piece;
+  assert.throws(() => L.validate(level({ events: [noPiece] })), /missing field "piece"/);
+  assert.throws(() => L.validate(level({ events: [ob({ spin: true })] })), /unknown field "spin"/);
+  for (const [over, re] of [[{ lane: 9 }, /lane/], [{ count: 0 }, /count/], [{ count: 8 }, /count/], [{ dir: 0 }, /dir/], [{ time: 32 }, /past the end/], [{ type: 'Obstacle' }, /type must be one of weaver, diver, striker, tank, orbiter, obstacle/]]) {
+    assert.throws(() => L.validate(level({ events: [ob(over)] })), re, JSON.stringify(over));
+  }
+});
+
+test('serialize writes obstacle keys in order: time, type, piece, lane, count, dir', () => {
+  const src = level({ events: [{ dir: 1, count: 2, lane: 0, piece: 'bar', type: 'obstacle', time: 2 }, { dir: 1, count: 1, lane: 3, type: 'weaver', time: 0 }] });
+  const text = L.serialize(src, MINI);
+  const parsed = JSON.parse(text);
+  assert.deepEqual(Object.keys(parsed.events[0]), ['time', 'type', 'lane', 'count', 'dir']);
+  assert.deepEqual(Object.keys(parsed.events[1]), ['time', 'type', 'piece', 'lane', 'count', 'dir']);
+  assert.match(text, /"time": 2,\n {6}"type": "obstacle",\n {6}"piece": "bar",\n {6}"lane": 0,/);
+  assert.deepEqual(L.parse(text, MINI), parsed);
+});
+
+test('catalog indexing: placeable pieces, scroll speed, bad catalogs', () => {
+  const c = L.indexCatalog(CATALOG);
+  assert.equal(c.scrollSpeed, 60);
+  assert.ok(c.placeable.every((p) => !p.cap));
+  assert.ok(c.placeable.some((p) => p.id === 'girder'));
+  assert.ok(!c.placeable.some((p) => p.id === 'girder_end_l'));
+  assert.equal(L.indexCatalog(c), c);
+  assert.equal(L.indexCatalog({ pieces: [] }).scrollSpeed, 60);
+  assert.throws(() => L.indexCatalog({}), /pieces/);
+  assert.throws(() => L.indexCatalog({ pieces: [{ id: 'A', size: [1, 1] }] }), /bad piece id/);
+  assert.throws(() => L.indexCatalog({ pieces: [{ id: 'a', size: [1, 1] }, { id: 'a', size: [1, 1] }] }), /duplicate/);
+  assert.throws(() => L.indexCatalog({ pieces: [{ id: 'a', size: [1] }] }), /size/);
+  assert.throws(() => L.indexCatalog({ pieces: [{ id: 'a', size: [1, 1], caps: ['a', 'zz'] }] }), /caps/);
+});
+
+test('obstacle layout: half width, center x, spawn y, time on screen', () => {
+  // tile with caps: (count*w + capsWidth)/2
+  assert.equal(L.obstacleHalfWidth('bar', 3, MINI), (3 * 64 + 24 + 10) / 2);
+  assert.equal(L.obstacleHalfWidth('plain', 2, MINI), 30);
+  assert.equal(L.obstacleHalfWidth('rock', 1, MINI), 20);
+  assert.equal(L.obstacleHalfWidth('rock', 4, MINI), 80);
+  // lerp(margin, width - margin, lane/8), margin = half + 20
+  assert.equal(L.obstacleCenterX('rock', 1, 0, MINI), 40);
+  assert.equal(L.obstacleCenterX('rock', 1, 8, MINI), 500);
+  assert.equal(L.obstacleCenterX('rock', 3, 4, MINI), 270);
+  assert.equal(L.obstacleCenterX('rock', 3, 2, MINI), 100 + 340 * 0.25);
+  assert.equal(L.obstacleCenterX('huge', 1, 0, MINI), 270);
+  assert.equal(L.obstacleCenterX('bar', 7, 0, MINI), 261); // 7*64+34 = 482 → margin 261, 522 < 540
+  assert.equal(L.obstacleCenterX('bar', 7, 8, MINI), 279);
+  assert.equal(L.obstacleSpawnY('rock', MINI), -25);
+  assert.equal(L.obstacleCrossTime('rock', MINI), (960 + 30 + 20) / 50);
+  assert.equal(L.obstacleCrossTime('girder', CATALOG), (960 + 18 + 20) / 60);
+  assert.equal(L.eventCrossTime(ob({ piece: 'rock' }), MINI), L.obstacleCrossTime('rock', MINI));
+  assert.equal(L.eventCrossTime(ev()), L.crossTime('weaver', 3));
+  // unknown piece / no catalog falls back to a 40x40 box at 60 px/s
+  assert.equal(L.obstacleCrossTime('mystery', null), (960 + 40 + 20) / 60);
+  assert.ok(L.pieceOf('mystery', null).unknown);
+});
+
+test('obstacle parts: tiled runs with caps, clusters, mirroring and falling', () => {
+  const run = L.obstacleParts('bar', 2, MINI);
+  assert.deepEqual(run.map((q) => [q.piece.id, q.x, q.y]), [['bar_l', -69, 0], ['bar', -25, 0], ['bar', 39, 0], ['bar_r', 76, 0]]);
+  assert.deepEqual(L.obstacleParts('plain', 3, MINI).map((q) => q.x), [-30, 0, 30]);
+  assert.deepEqual(L.obstacleParts('rock', 1, MINI).map((q) => [q.x, q.y]), [[0, 0]]);
+  const cl = L.obstacleParts('rock', 7, MINI);
+  assert.equal(cl.length, 7);
+  for (const q of cl) assert.ok(Math.hypot(q.x, q.y) <= 60 + 1e-9);
+  const ev2 = { time: 0, type: 'obstacle', piece: 'bar', lane: 4, count: 2, dir: -1 };
+  const a = L.obstaclesAt(ev2, 0, MINI), b = L.obstaclesAt({ ...ev2, dir: 1 }, 2, MINI);
+  const cx = L.obstacleCenterX('bar', 2, 4, MINI);
+  assert.deepEqual(a.map((q) => q.x), run.map((q) => cx - q.x));
+  assert.ok(a.every((q) => q.flip === -1 && q.y === -19));
+  assert.ok(b.every((q) => q.flip === 1 && q.y === -19 + 100));
+});

@@ -19,6 +19,7 @@ signal servers_updated(servers: Array)
 
 var player_name := "Player"
 const ALL_WEAPONS_NAME := "p4u1 "  # cheat: typed exactly (trailing space) as the name
+var ai_buddy := false  # host: add an AI wingman (Game.BUDDY_ID) when the game starts
 var all_weapons := false  # cheat on: the local ship spawns with every upgrade maxed
 var my_id := 0  # our peer id in the current session (still known after the host is gone)
 

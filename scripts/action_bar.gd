@@ -20,6 +20,7 @@ const ACTIONS: Array[Dictionary] = [
 	{"id": &"rescue", "label": "RESCUE", "cooldown": 0.5, "color": Color("8dff7a"), "hidden": true},
 	{"id": &"beam", "label": "BEAM", "cooldown": 3.0, "color": Color("ffd45a"), "hidden": true},
 	{"id": &"auto", "label": "AUTO", "cooldown": 0.3, "color": Color("ff9c5a"), "hidden": true},  # on/off
+	{"id": &"repair", "label": "REPAIR", "cooldown": 10.0, "color": Color("ff7ad9"), "hidden": true},
 ]
 const MOUSE_INDEX := -2
 
@@ -93,10 +94,11 @@ func button_rect(i: int) -> Rect2:
 	var slot := shown_actions().find(i)
 	if slot < 0:
 		return Rect2()
-	i = slot
 	var bar := bar_rect()
-	var x := MARGIN + i * (BUTTON_SIZE.x + MARGIN)
-	return Rect2(Vector2(x, bar.position.y + (BAR_HEIGHT - BUTTON_SIZE.y) / 2.0), BUTTON_SIZE)
+	var n := shown_actions().size()
+	var w := minf(BUTTON_SIZE.x, (bar.size.x - MARGIN * (n + 1)) / n)  # narrower when they wouldn't fit
+	var x := MARGIN + slot * (w + MARGIN)
+	return Rect2(Vector2(x, bar.position.y + (BAR_HEIGHT - BUTTON_SIZE.y) / 2.0), Vector2(w, BUTTON_SIZE.y))
 
 
 ## True if a screen position falls on the bar (so it isn't a move tap).
@@ -227,5 +229,8 @@ func _draw() -> void:
 		var text: String = a.label
 		var fs := 16
 		var tw := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+		while tw > r.size.x - 6.0 and fs > 10:  # shrink to fit a narrow button
+			fs -= 1
+			tw = font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
 		draw_string(font, r.position + Vector2((r.size.x - tw) / 2.0, r.size.y / 2.0 + fs / 3.0), text,
 			HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color.WHITE)

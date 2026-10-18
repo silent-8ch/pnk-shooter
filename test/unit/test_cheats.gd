@@ -32,6 +32,9 @@ func _player() -> Area2D:
 func _assert_maxed(p: Area2D) -> void:
 	assert_eq(p.tier, 2)
 	for s in PowerMeter.slots_for(2):
+		if s.id == &"ship":
+			assert_eq(p.level(s.id), 0, "spare ships are never given")
+			continue
 		assert_eq(p.level(s.id), PowerMeter.max_level(s.id, 2), String(s.id))
 		assert_false(p.can_upgrade(s.id), String(s.id) + " maxed")
 

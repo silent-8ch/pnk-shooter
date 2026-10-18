@@ -27,6 +27,18 @@ properties/5/replication_mode = 2
 properties/6/path = NodePath(".:drone_pos")
 properties/6/spawn = true
 properties/6/replication_mode = 1
+properties/7/path = NodePath(".:max_health")
+properties/7/spawn = true
+properties/7/replication_mode = 2
+properties/8/path = NodePath(".:tail")
+properties/8/spawn = true
+properties/8/replication_mode = 2
+properties/9/path = NodePath(".:beacon")
+properties/9/spawn = true
+properties/9/replication_mode = 2
+properties/10/path = NodePath(".:party_role")
+properties/10/spawn = true
+properties/10/replication_mode = 2
 
 [node name="Player" type="Area2D" groups=["player"]]
 collision_layer = 1

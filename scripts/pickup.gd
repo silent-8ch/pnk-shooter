@@ -144,7 +144,7 @@ func _process(delta: float) -> void:
 func _on_area_entered(area: Area2D) -> void:
 	if collected or multiplayer.multiplayer_peer == null:
 		return
-	if not area.is_in_group("player") or not area.is_local() or not area.is_alive():
+	if not area.is_in_group("player") or not area.is_local() or area.ai or not area.is_alive():
 		return
 	var game := get_tree().get_first_node_in_group("game")
 	if game:

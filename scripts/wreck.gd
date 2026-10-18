@@ -11,9 +11,9 @@ extends Node2D
 ## their own world-space motion.
 ##
 ## Chain reactions: while it veers the wreck is a hazard (Game.wreck_moved);
-## touching a ship or pod blows it up early, and its blast (Game.blast,
-## BLAST_RADIUS scaled by depth) takes out what's nearby, whose wrecks can
-## blow up more.
+## touching a player or pod blows it up early (other enemy ships it passes
+## through), and its blast (Game.blast, BLAST_RADIUS scaled by depth) hurts
+## players and pods nearby.
 
 const SpriteEffect := preload("res://scripts/sprite_effect.gd")
 const IMPLOSION_SOUND := preload("res://assets/sfx/implosion.tres")  # random pitch/volume per play

@@ -1,4 +1,4 @@
-[gd_scene load_steps=11 format=3]
+[gd_scene load_steps=13 format=3]
 
 [ext_resource type="Script" path="res://scripts/game.gd" id="1"]
 [ext_resource type="Script" path="res://scripts/starfield.gd" id="2"]
@@ -7,6 +7,8 @@
 [ext_resource type="AudioStream" path="res://assets/sfx/hit.tres" id="5"]
 [ext_resource type="Script" path="res://scripts/action_bar.gd" id="6"]
 [ext_resource type="Script" path="res://scripts/power_meter.gd" id="7"]
+[ext_resource type="Script" path="res://scripts/party_bars.gd" id="party_bars"]
+[ext_resource type="AudioStream" path="res://assets/sfx/game_over.wav" id="game_over"]
 
 [sub_resource type="Gradient" id="Gradient_shade"]
 colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 1)
@@ -20,6 +22,15 @@ height = 16
 properties/0/path = NodePath(".:score")
 properties/0/spawn = true
 properties/0/replication_mode = 2
+properties/1/path = NodePath(".:stage")
+properties/1/spawn = true
+properties/1/replication_mode = 2
+properties/2/path = NodePath(".:spares")
+properties/2/spawn = true
+properties/2/replication_mode = 2
+properties/3/path = NodePath(".:kills")
+properties/3/spawn = true
+properties/3/replication_mode = 2
 
 [node name="Game" type="Node2D" groups=["game"]]
 script = ExtResource("1")
@@ -42,6 +53,8 @@ texture = SubResource("GradientTexture2D_shade")
 texture_scale = 80.0
 height = 4096.0
 
+[node name="Obstacles" type="Node2D" parent="."]
+
 [node name="Players" type="Node2D" parent="."]
 
 [node name="Enemies" type="Node2D" parent="."]
@@ -51,6 +64,8 @@ height = 4096.0
 [node name="Effects" type="Node2D" parent="."]
 
 [node name="Pickups" type="Node2D" parent="."]
+
+[node name="Stations" type="Node2D" parent="."]
 
 [node name="Pods" type="Node2D" parent="."]
 
@@ -62,6 +77,9 @@ max_polyphony = 4
 stream = ExtResource("5")
 max_polyphony = 4
 
+[node name="GameOverSound" type="AudioStreamPlayer" parent="."]
+stream = ExtResource("game_over")
+
 [node name="ScoreSync" type="MultiplayerSynchronizer" parent="."]
 replication_config = SubResource("SceneReplicationConfig_1")
 
@@ -70,21 +88,28 @@ replication_config = SubResource("SceneReplicationConfig_1")
 [node name="ScoreLabel" type="Label" parent="HUD"]
 offset_left = 16.0
 offset_top = 12.0
-offset_right = 260.0
+offset_right = 524.0
 offset_bottom = 44.0
-theme_override_font_sizes/font_size = 24
+theme_override_font_sizes/font_size = 22
 text = "Score 0"
 
-[node name="HPLabel" type="Label" parent="HUD"]
-anchor_left = 1.0
-anchor_right = 1.0
-offset_left = -260.0
-offset_top = 12.0
-offset_right = -16.0
-offset_bottom = 44.0
-theme_override_font_sizes/font_size = 24
-text = "HP 3"
-horizontal_alignment = 2
+[node name="BossBar" type="ProgressBar" parent="HUD"]
+modulate = Color(1, 0.4, 0.45, 0.85)
+offset_left = 16.0
+offset_top = 42.0
+offset_right = 200.0
+offset_bottom = 47.0
+mouse_filter = 2
+max_value = 1.0
+show_percentage = false
+
+[node name="PartyBars" type="Control" parent="HUD"]
+offset_left = 16.0
+offset_top = 50.0
+offset_right = 220.0
+offset_bottom = 170.0
+mouse_filter = 2
+script = ExtResource("party_bars")
 
 [node name="InfoLabel" type="Label" parent="HUD"]
 anchor_top = 1.0

@@ -19,10 +19,11 @@ func after_each() -> void:
 	DirAccess.remove_absolute(TMP_CFG)
 
 
-func test_registry_has_both_ships() -> void:
-	assert_eq(Ships.count(), 2)
-	assert_eq(Ships.LIST[0].svg, "res://assets/ship01.svg")
-	assert_eq(Ships.LIST[1].svg, "res://assets/ship02.svg")
+func test_registry_has_every_ship() -> void:
+	assert_eq(Ships.count(), 5)
+	for i in Ships.count():
+		assert_eq(Ships.LIST[i].svg, "res://assets/ship%02d.svg" % (i + 1))
+		assert_eq(Ships.LIST[i].normal, "res://assets/ship%02d_normal.png" % (i + 1))
 	assert_not_null(Ships.get_texture(0))
 	assert_not_null(Ships.get_texture(1))
 	assert_ne(Ships.get_name_of(0), Ships.get_name_of(1))
@@ -30,11 +31,11 @@ func test_registry_has_both_ships() -> void:
 
 func test_index_validation() -> void:
 	assert_true(Ships.is_valid(0))
-	assert_true(Ships.is_valid(1))
+	assert_true(Ships.is_valid(Ships.count() - 1))
 	assert_false(Ships.is_valid(-1))
-	assert_false(Ships.is_valid(2))
+	assert_false(Ships.is_valid(Ships.count()))
 	assert_eq(Ships.clamp_index(-1), 0)
-	assert_eq(Ships.clamp_index(7), 0)
+	assert_eq(Ships.clamp_index(Ships.count()), 0)
 	assert_eq(Ships.clamp_index(1), 1)
 
 
@@ -192,15 +193,19 @@ func test_scale_for_height() -> void:
 
 # --- Thruster anchors -------------------------------------------------------
 
-func test_every_ship_has_thrusters_in_its_lower_half() -> void:
+func test_thrusters_only_in_the_lower_half() -> void:
+	var with_flames := 0
 	for ship in Ships.count():
 		var t := Ships.get_thrusters(ship)
-		assert_gt(t.size(), 0, "ship %d" % ship)
+		if not t.is_empty():
+			with_flames += 1
 		var h: float = Ships.get_texture(ship, 0).get_size().y
 		for a in t:
 			assert_gt(a.pos.y, 0.0, "below center")
 			assert_lte(a.pos.y, h / 2.0 + 1.0, "inside the texture")
 			assert_gte(a.width, 3.0)
+	assert_gt(with_flames, 1, "most ships have flames")
+	assert_true(Ships.get_thrusters(3).is_empty(), "ship 04 is painted with thruster color only up front")
 
 
 func test_thrusters_sorted_and_not_stacked() -> void:

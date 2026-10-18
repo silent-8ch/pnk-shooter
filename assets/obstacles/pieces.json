@@ -1,0 +1,135 @@
+{
+  "version": 1,
+  "scroll_speed": 60,
+  "pieces": [
+    {
+      "id": "asteroid_s",
+      "name": "Small asteroid",
+      "description": "Small lumpy rock, a few craters. Drawn top-down; it spins in game, so no lighting direction baked in. Can be shot apart.",
+      "size": [36, 36],
+      "shape": "circle",
+      "hp": 3,
+      "spin": true,
+      "outline": [[0, -18], [12, -14], [18, -2], [14, 12], [2, 18], [-11, 15], [-18, 3], [-14, -11]]
+    },
+    {
+      "id": "asteroid_m",
+      "name": "Medium asteroid",
+      "description": "Medium rock, deeper craters and a cracked face. Spins in game. Can be shot apart.",
+      "size": [60, 60],
+      "shape": "circle",
+      "hp": 8,
+      "spin": true,
+      "outline": [[2, -30], [20, -24], [30, -6], [26, 14], [10, 28], [-10, 29], [-26, 16], [-30, -4], [-20, -24]]
+    },
+    {
+      "id": "asteroid_l",
+      "name": "Large asteroid",
+      "description": "Big boulder you must fly around. Heavy craters, maybe a mineral vein. Spins slowly in game. Indestructible.",
+      "size": [100, 100],
+      "shape": "circle",
+      "hp": 0,
+      "spin": true,
+      "outline": [[0, -50], [28, -42], [46, -20], [50, 6], [38, 32], [14, 48], [-14, 47], [-38, 34], [-50, 8], [-45, -22], [-26, -44]]
+    },
+    {
+      "id": "debris",
+      "name": "Debris chunk",
+      "description": "Twisted scrap of station metal: bent plate with a torn edge and a dangling cable. Spins in game. Can be shot apart.",
+      "size": [28, 28],
+      "shape": "circle",
+      "hp": 2,
+      "spin": true,
+      "outline": [[-12, -10], [4, -14], [14, -4], [8, 6], [12, 13], [-4, 10], [-14, 4]]
+    },
+    {
+      "id": "girder",
+      "name": "Girder segment",
+      "description": "One segment of a lattice truss (two rails with X bracing). TILES left-to-right: the left and right edges must line up seamlessly with the next copy. Indestructible.",
+      "size": [64, 18],
+      "shape": "rect",
+      "hp": 0,
+      "tile": true,
+      "caps": ["girder_end_l", "girder_end_r"],
+      "outline": [[-32, -9], [32, -9], [32, 9], [-32, 9]]
+    },
+    {
+      "id": "girder_end_l",
+      "name": "Girder broken end (left)",
+      "description": "Left end cap of a girder run: the truss snapped off, bent rails and a jagged break facing left. Its right edge joins a girder segment seamlessly.",
+      "size": [24, 18],
+      "shape": "rect",
+      "hp": 0,
+      "cap": true,
+      "outline": [[-12, -5], [-4, -9], [12, -9], [12, 9], [-6, 9], [-10, 3]]
+    },
+    {
+      "id": "girder_end_r",
+      "name": "Girder broken end (right)",
+      "description": "Right end cap of a girder run: the truss snapped off with a jagged break facing right. Its left edge joins a girder segment seamlessly.",
+      "size": [24, 18],
+      "shape": "rect",
+      "hp": 0,
+      "cap": true,
+      "outline": [[-12, -9], [6, -9], [12, -2], [8, 4], [10, 9], [-12, 9]]
+    },
+    {
+      "id": "hull",
+      "name": "Station hull segment",
+      "description": "One section of space-station hull seen from above: plating panels, a row of windows (some dark, some lit), pipes. TILES left-to-right seamlessly. Indestructible.",
+      "size": [64, 56],
+      "shape": "rect",
+      "hp": 0,
+      "tile": true,
+      "caps": ["hull_end_l", "hull_end_r"],
+      "outline": [[-32, -28], [32, -28], [32, 28], [-32, 28]]
+    },
+    {
+      "id": "hull_end_l",
+      "name": "Hull broken end (left)",
+      "description": "Left end of a hull run, torn open: ragged plating, exposed ribs and floors, sparks optional. Its right edge joins a hull segment seamlessly.",
+      "size": [32, 56],
+      "shape": "rect",
+      "hp": 0,
+      "cap": true,
+      "outline": [[-6, -28], [16, -28], [16, 28], [-2, 28], [-10, 16], [-4, 6], [-16, -4], [-8, -14]]
+    },
+    {
+      "id": "hull_end_r",
+      "name": "Hull broken end (right)",
+      "description": "Right end of a hull run, torn open (mirror the idea of the left end, but draw it separately). Its left edge joins a hull segment seamlessly.",
+      "size": [32, 56],
+      "shape": "rect",
+      "hp": 0,
+      "cap": true,
+      "outline": [[-16, -28], [8, -28], [14, -16], [6, -6], [16, 4], [10, 18], [2, 28], [-16, 28]]
+    },
+    {
+      "id": "solar_panel",
+      "name": "Solar panel wing",
+      "description": "Detached solar array: grid of dark blue cells on a frame, one corner crumpled. Tall and narrow. Indestructible.",
+      "size": [44, 88],
+      "shape": "rect",
+      "hp": 0,
+      "outline": [[-22, -44], [22, -44], [22, 36], [14, 44], [-22, 44]]
+    },
+    {
+      "id": "ring_arc",
+      "name": "Station ring fragment",
+      "description": "Piece of a broken habitat ring: a curved band (bowing upward) with windows along it, both ends sheared off. Indestructible.",
+      "size": [120, 44],
+      "shape": "rect",
+      "hp": 0,
+      "outline": [[-60, 22], [-48, -4], [-24, -18], [0, -22], [24, -18], [48, -4], [60, 22], [44, 22], [32, 6], [0, -4], [-32, 6], [-44, 22]]
+    },
+    {
+      "id": "reactor",
+      "name": "Reactor core",
+      "description": "Round reactor module ripped from a station: concentric rings, a glowing center, stubs of pipes around the rim. Indestructible.",
+      "size": [70, 70],
+      "shape": "circle",
+      "hp": 0,
+      "outline": [[0, -35], [25, -25], [35, 0], [25, 25], [0, 35], [-25, 25], [-35, 0], [-25, -25]]
+    }
+  ]
+}

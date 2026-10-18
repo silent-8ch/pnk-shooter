@@ -33,9 +33,9 @@ func after_each() -> void:
 
 
 func _buy_auto() -> void:
-	for i in PowerMeter.slot_index(&"auto", player.tier) + 1:
+	for i in player.price(&"auto"):
 		game.collect_pickup("none", 1)
-	assert_true(player.buy_upgrade())
+	assert_true(player.buy_upgrade(&"auto"))
 
 
 func _enemy(pos: Vector2) -> Area2D:
@@ -172,13 +172,13 @@ func test_rounds_add_up_to_a_kill() -> void:
 	assert_true(e.is_queued_for_deletion() or e.hp <= 0)
 
 
-func test_rounds_add_up_on_friendlies_too() -> void:
+func test_rounds_chip_at_friendlies_too() -> void:
 	var per: float = BulletScript.KINDS[BulletScript.VULCAN].damage
+	player.take_damage(per)
+	assert_almost_eq(player.hp, PlayerScript.MAX_HP - per * PlayerScript.HIT_HP, 0.001, "each round shows")
 	for i in int(ceil(1.0 / per)) - 1:
 		player.take_damage(per)
-	assert_eq(player.hp, PlayerScript.MAX_HP)
-	player.take_damage(per)
-	assert_eq(player.hp, PlayerScript.MAX_HP - 1)
+	assert_almost_eq(player.hp, PlayerScript.MAX_HP - PlayerScript.HIT_HP, 0.001, "a laser's worth")
 
 
 func test_lasers_still_go_straight_up() -> void:

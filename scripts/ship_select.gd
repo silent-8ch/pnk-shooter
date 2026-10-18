@@ -4,7 +4,7 @@ extends CanvasLayer
 signal ship_chosen(index: int)
 signal back_pressed
 
-@onready var ship_row: HBoxContainer = %ShipRow
+@onready var ship_row: GridContainer = %ShipRow  # rows of 3 so it fits the portrait screen
 @onready var ship_name_label: Label = %ShipNameLabel
 @onready var confirm_button: Button = %ConfirmButton
 @onready var back_button: Button = %BackButton
@@ -35,7 +35,7 @@ func _build_buttons() -> void:
 		var button := Button.new()
 		button.name = "Ship%d" % i
 		button.toggle_mode = true
-		button.custom_minimum_size = Vector2(150, 170)
+		button.custom_minimum_size = Vector2(140, 150)
 		button.focus_mode = Control.FOCUS_NONE
 
 		var vbox := VBoxContainer.new()
@@ -48,7 +48,7 @@ func _build_buttons() -> void:
 		icon.texture = Ships.get_texture(i)
 		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		icon.custom_minimum_size = Vector2(0, 110)
+		icon.custom_minimum_size = Vector2(0, 100)
 		icon.size_flags_vertical = Control.SIZE_EXPAND_FILL
 		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		vbox.add_child(icon)

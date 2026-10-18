@@ -9,6 +9,8 @@
 //   GET    /api/level?slug=…     the level JSON
 //   PUT    /api/level?slug=…     body: level JSON; validated, then written atomically (creates or overwrites)
 //   DELETE /api/level?slug=…     removes the file
+//   GET    /api/pieces           the obstacle piece catalog (assets/obstacles/pieces.json); 404 if missing
+// Levels are validated against the piece catalog when it exists (re-read on every request).
 'use strict';
 
 const http = require('node:http');
@@ -20,6 +22,7 @@ const Level = require('./level.js');
 
 const DEFAULT_PORT = 5175;
 const LEVELS_DIR = 'levels';
+const PIECES_FILE = path.join('assets', 'obstacles', 'pieces.json');
 const MAX_BODY = 1024 * 1024;
 const STATIC = {
   '/': ['index.html', 'text/html; charset=utf-8'],
@@ -64,7 +67,23 @@ async function writeAtomic(abs, text) {
   }
 }
 
-async function listLevels(root) {
+// Reads the piece catalog. Returns { raw, cat } or null when the file does not exist.
+async function loadPieces(root) {
+  let text;
+  try { text = await fsp.readFile(path.join(root, PIECES_FILE), 'utf8'); } catch (e) {
+    if (e.code === 'ENOENT') return null;
+    throw e;
+  }
+  try {
+    const raw = JSON.parse(text);
+    return { raw, cat: Level.indexCatalog(raw) };
+  } catch (e) {
+    throw new HttpError(422, 'assets/obstacles/pieces.json: ' + (e instanceof SyntaxError ? 'not valid JSON' : e.message));
+  }
+}
+
+async function listLevels(root, cat) {
+  if (cat === undefined) { const p = await loadPieces(root); cat = p ? p.cat : null; }
   let entries;
   try { entries = await fsp.readdir(path.join(root, LEVELS_DIR), { withFileTypes: true }); } catch { return []; }
   const out = [];
@@ -75,7 +94,7 @@ async function listLevels(root) {
     let name = slug;
     let error;
     try {
-      name = Level.parse(await fsp.readFile(path.join(root, LEVELS_DIR, e.name), 'utf8')).name;
+      name = Level.parse(await fsp.readFile(path.join(root, LEVELS_DIR, e.name), 'utf8'), cat).name;
     } catch (err) { error = err.message; }
     out.push(error ? { slug, name, error } : { slug, name });
   }
@@ -112,10 +131,16 @@ function createServer(opts) {
     return job;
   }
 
+  async function catalog() {
+    const p = await loadPieces(root);
+    return p ? p.cat : null;
+  }
+
   async function saveLevel(slug, body) {
     if (!Level.isSlug(slug)) throw new HttpError(400, 'bad slug');
+    const cat = await catalog();
     let text;
-    try { text = Level.serialize(JSON.parse(body)); } catch (e) {
+    try { text = Level.serialize(JSON.parse(body), cat); } catch (e) {
       throw new HttpError(400, e instanceof SyntaxError ? 'body must be JSON' : e.message);
     }
     return queue(async () => {
@@ -140,13 +165,19 @@ function createServer(opts) {
       res.end(text);
       return;
     }
-    if (req.method === 'GET' && url.pathname === '/api/levels') return sendJson(res, 200, { levels: await listLevels(root) });
+    if (req.method === 'GET' && url.pathname === '/api/levels') return sendJson(res, 200, { levels: await listLevels(root, await catalog()) });
+    if (req.method === 'GET' && url.pathname === '/api/pieces') {
+      const p = await loadPieces(root);
+      if (!p) throw new HttpError(404, 'no piece catalog (assets/obstacles/pieces.json)');
+      return sendJson(res, 200, p.raw);
+    }
     if (url.pathname === '/api/level') {
       const slug = url.searchParams.get('slug');
       if (req.method === 'GET') {
         const abs = await resolveLevel(root, slug, { mustExist: true });
         let level;
-        try { level = Level.parse(await fsp.readFile(abs, 'utf8')); } catch (e) { throw new HttpError(422, slug + '.json: ' + e.message); }
+        const cat = await catalog();
+        try { level = Level.parse(await fsp.readFile(abs, 'utf8'), cat); } catch (e) { throw new HttpError(422, slug + '.json: ' + e.message); }
         return sendJson(res, 200, level);
       }
       if (req.method === 'PUT') {
@@ -199,4 +230,4 @@ if (require.main === module) {
   server.listen(opts.port, '127.0.0.1', () => console.log('Level Designer: http://127.0.0.1:' + server.address().port));
 }
 
-module.exports = { createServer, resolveLevel, listLevels, parseArgs, HttpError, LEVELS_DIR };
+module.exports = { createServer, resolveLevel, listLevels, loadPieces, parseArgs, HttpError, LEVELS_DIR, PIECES_FILE };

@@ -1,7 +1,7 @@
 extends GutTest
-## Chain reactions: out-of-control wrecks collide with ships and pods and blow
-## up early; blasts destroy enemies and pods nearby (whose wrecks can blow up
-## more) and hurt players; escape pods can be shot and blow up small.
+## Chain reactions: out-of-control wrecks collide with players and pods (not
+## other enemy ships) and blow up early; blasts destroy pods nearby and hurt
+## players; escape pods can be shot and blow up small, which can chain.
 
 const EnemyScene := preload("res://scenes/enemy.tscn")
 const BulletScene := preload("res://scenes/bullet.tscn")
@@ -49,21 +49,20 @@ func _wrecks() -> Array:
 	return game.get_node("Effects").get_children().filter(func(n): return n is WreckScript)
 
 
-func test_wreck_hitting_an_enemy_destroys_it_and_blows_up() -> void:
+func test_wreck_passes_through_other_enemy_ships() -> void:
 	var w := _wreck(Vector2(270, 300))
 	var e := _enemy(w.hull_position())
 	w._process(0.001)
-	assert_true(e.is_queued_for_deletion(), "the other ship goes too")
-	assert_true(w.exploded, "blown up early")
-	assert_eq(_wrecks().size(), 2, "its own wreck carries the chain on")
+	assert_false(e.is_queued_for_deletion(), "other ships don't explode")
+	assert_false(w.exploded)
 
 
-func test_wreck_hitting_a_player_hurts_and_blows_up() -> void:
+func test_wreck_hitting_a_player_hurts_once_and_blows_up() -> void:
 	var w := _wreck(Vector2(270, 300))
 	var p := _player(w.hull_position())
 	w._process(0.001)
 	assert_true(w.exploded)
-	assert_lt(p.hp, PlayerScript.MAX_HP)
+	assert_eq(p.hp, PlayerScript.MAX_HP - PlayerScript.HIT_HP, "the blast does the damage, once")
 
 
 func test_wreck_hitting_a_pod_destroys_it() -> void:
@@ -84,36 +83,26 @@ func test_wreck_ignores_its_own_pod() -> void:
 	assert_true(game.get_node("Pods").has_node("PodOwn"), "its blast spares it too")
 
 
-func test_blast_takes_out_nearby_ships_but_not_far_ones() -> void:
+func test_blast_leaves_enemy_ships_alone() -> void:
 	var w := _wreck(Vector2(270, 300))
+	var near := _enemy(w.hull_position() + Vector2(10, 0))
 	w.explode()
-	var at: Vector2 = w.hull_position()
-	var near := _enemy(at + Vector2(w.blast_radius() * 0.8, 0))
-	var far := _enemy(at + Vector2(w.blast_radius() + 80, 0))
-	game.blast(at, w.blast_radius())
-	assert_true(near.is_queued_for_deletion())
-	assert_false(far.is_queued_for_deletion())
+	assert_false(near.is_queued_for_deletion())
+	assert_eq(_wrecks().size(), 1, "no chain through ships")
 
 
 func test_blast_hurts_the_local_player() -> void:
 	var p := _player(Vector2(270, 300))
 	game.blast(Vector2(280, 300), WreckScript.BLAST_RADIUS)
-	assert_eq(p.hp, PlayerScript.MAX_HP - 1)
+	assert_eq(p.hp, PlayerScript.MAX_HP - PlayerScript.HIT_HP)
 
 
-func test_chain_reaction_carries_on() -> void:
-	var a := _enemy(Vector2(100, 300))
-	a.take_damage(1)
-	var w1: Node2D = _wrecks()[0]
-	var b := _enemy(w1.hull_position() + Vector2(10, 0))  # in the first blast
-	w1.explode()
-	assert_true(b.is_queued_for_deletion(), "set off by a")
-	var w2: Node2D = _wrecks().filter(func(w): return not w.exploded)[0]
-	w2._process(0.001)
-	var c := _enemy(w2.hull_position() + Vector2(10, 0))  # in the second
-	w2.explode()
-	assert_true(c.is_queued_for_deletion(), "set off by b")
-	assert_eq(game.score, a.points() * 3, "chain kills score")
+func test_blast_takes_out_nearby_pods_but_not_far_ones() -> void:
+	game.spawn_pod(Vector2(200, 300), 0, "Near")
+	game.spawn_pod(Vector2(400, 300), 0, "Far")
+	game.blast(Vector2(210, 300), WreckScript.BLAST_RADIUS)
+	assert_false(game.get_node("Pods").has_node("Near"))
+	assert_true(game.get_node("Pods").has_node("Far"))
 
 
 func test_shot_pod_blows_up_small() -> void:

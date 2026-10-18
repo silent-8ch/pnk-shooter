@@ -30,9 +30,9 @@ func after_each() -> void:
 
 
 func _buy_beam() -> void:
-	for i in PowerMeter.slot_index(&"beam", 2) + 1:
+	for i in player.price(&"beam"):
 		game.collect_pickup("none", 1)
-	assert_true(player.buy_upgrade())
+	assert_true(player.buy_upgrade(&"beam"))
 
 
 func _bullets() -> Array:

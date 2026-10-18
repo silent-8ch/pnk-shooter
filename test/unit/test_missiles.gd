@@ -1,7 +1,8 @@
 extends GutTest
 ## Seeking missiles: a meter slot that adds a MISSILE button; each press fires a
 ## smaller, darker (player-colored) laser from the ship and each option that
-## turns toward the nearest enemy. Same damage as a laser, twice its cooldown.
+## turns toward the nearest enemy. Same damage as a laser, twice its cooldown at
+## level 1. Levels, salvos and smoke trails: test_missile_tiers.gd.
 
 const PlayerScript := preload("res://scripts/player.gd")
 const BulletScript := preload("res://scripts/bullet.gd")
@@ -33,9 +34,9 @@ func after_each() -> void:
 
 
 func _buy(id: StringName) -> void:
-	for i in PowerMeter.slot_index(id, player.tier) + 1:
+	for i in player.price(id):
 		game.collect_pickup("none", 1)
-	assert_true(player.buy_upgrade(), "bought %s" % id)
+	assert_true(player.buy_upgrade(id), "bought %s" % id)
 
 
 func _bullets() -> Array:

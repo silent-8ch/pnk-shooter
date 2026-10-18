@@ -3,15 +3,48 @@ extends Area2D
 ##   WEAVER (ship 01): weaves side to side as it drifts down; comes in lines.
 ##   DIVER  (ship 02): faster; comes in Vs that zigzag down together, bouncing
 ##                     off the screen edges while holding formation.
+##   STRIKER (ship 03): comes in a slanted line, creeps in slowly, then each ship
+##                      lunges straight down in turn, front ship first.
+##   TANK    (ship 04): big and slow, takes TANK hp hits; sways gently, in pairs.
+##   ORBITER (ship 05): a ring of ships circling a center that drifts down.
+##   BOSS    (ship 05, big): sent in by Game after enough kills (Game.boss_kills_needed). Glides down
+##           to BOSS_Y, then weaves there and fires aimed spreads of hostile
+##           bullets at the nearest player (host decides when). Never leaves;
+##           its hp shows as a bar (the host sends it, see Game.boss_hp).
+## `stage` (Game.stage at spawn, 0 first) makes every enemy tougher: more hp
+## (STAGE_HP), faster (STAGE_SPEED, capped) and worth more (STAGE_POINTS), and
+## changes its colors (Ships.enemy_colors).
+## Shots hit the ship's outline, traced from its art (Ships.apply_hitbox).
 ## The host spawns enemies and decides damage and death; movement is deterministic
 ## from the spawn data, so every peer runs it locally with no per-frame sync.
 
-enum { WEAVER, DIVER }
+enum { WEAVER, DIVER, STRIKER, TANK, ORBITER, BOSS }
 
+## `group`: default [min, max] ships when a group is sent in without a count.
+## `height`: on-screen height (px); defaults to HEIGHT.
 const TYPES: Array[Dictionary] = [
-	{"ship": 0, "hp": 1, "points": 10, "speed": 90.0},
-	{"ship": 1, "hp": 1, "points": 15, "speed": 130.0},
+	{"ship": 0, "hp": 1, "points": 10, "speed": 90.0, "group": [3, 5]},
+	{"ship": 1, "hp": 1, "points": 15, "speed": 130.0, "group": [3, 3]},
+	{"ship": 2, "hp": 1, "points": 20, "speed": 70.0, "group": [2, 4]},
+	{"ship": 3, "hp": 4, "points": 40, "speed": 50.0, "group": [1, 2], "height": 42.0},
+	{"ship": 4, "hp": 1, "points": 25, "speed": 80.0, "group": [4, 4]},
+	{"ship": 4, "hp": 40, "points": 500, "speed": 90.0, "group": [1, 1], "height": 130.0, "boss": true},
 ]
+const WAVE_TYPES := 5  # TYPES before BOSS: the ones waves and levels send in
+const STAGE_HP := 0.6  # hp x (1 + this per stage), rounded up
+const STAGE_SPEED := 0.08  # speed x (1 + this per stage) ...
+const STAGE_SPEED_MAX := 1.4  # ... up to this
+const STAGE_POINTS := 1.0  # points x (1 + this per stage)
+const BOSS_Y := 170.0  # where the boss hovers
+const BOSS_SWAY := 150.0  # px either side of center
+const BOSS_SWAY_FREQUENCY := 0.6
+const BOSS_BOB := 18.0
+const BOSS_FIRE_INTERVAL := 1.8  # s between spreads at stage 0 ...
+const BOSS_FIRE_MIN := 0.8  # ... shrinking with stage down to this
+const BOSS_SPREAD := 0.22  # rad between bullets in a spread
+const BOSS_RAM_DAMAGE := 2  # ramming the boss chips it instead of killing it
+const BOSS_BAR := Vector2(110, 6)
+const GLOW_SPEED := 5.0  # rad/s of the pulse once the stage colors loop
 const HEIGHT := 36.0
 const WEAVE_AMPLITUDE := 60.0
 const WEAVE_FREQUENCY := 2.5  # radians per second
@@ -27,43 +60,73 @@ const WEAVER_GROUP_MAX := 5
 const DIVER_GROUP := 3
 const DIVER_V_OFFSET := Vector2(50, 40)  # each wing is this far out and back
 const SPAWN_Y := -40.0
+const STRIKER_GAP := Vector2(40, 60)  # each striker is this far right of and behind the one before
+const LUNGE_TIME := 1.6  # s the front striker creeps before lunging
+const LUNGE_STAGGER := 0.35  # s later each following striker lunges
+const LUNGE_SPEED := 380.0
+const TANK_SPACING := 120.0
+const TANK_SWAY := 25.0
+const TANK_SWAY_FREQUENCY := 1.2  # radians per second
+const ORBIT_RADIUS := 50.0
+const ORBIT_SPEED := 2.2  # radians per second; `zig_dir` picks the direction
+const ORBIT_CENTER_Y := SPAWN_Y - ORBIT_RADIUS  # ring center at spawn
 
 @export var type := WEAVER
 @export var group_x := -1.0  # group center at spawn; < 0 means this ship's x
 @export var zig_dir := 1.0  # initial horizontal direction of the group
+@export var stage := 0  # Game.stage when it was sent in
+
+var max_hp := 0
+var shown_hp := 0  # boss: hp for its bar (the host's, sent to every peer)
+var _fire_timer := 0.0
 
 var hp := 0
 var _damage_carry := 0.0  # fractions of a hit (vulcan rounds) not yet adding up to one
 var _spawn_pos := Vector2.ZERO
 var _base_x := 0.0
 var _time := 0.0
+var _orbit_angle := 0.0  # orbiter: angle around the ring center at spawn
 
 @onready var body: Sprite2D = $Body
 
 
 func _ready() -> void:
 	type = clampi(type, 0, TYPES.size() - 1)
-	hp = TYPES[type].hp
+	hp = ceili(TYPES[type].hp * (1.0 + STAGE_HP * stage))
+	max_hp = hp
+	shown_hp = hp
 	_spawn_pos = position
 	_base_x = position.x
-	var tex := Ships.get_lit_enemy_texture(TYPES[type].ship)
+	var center := group_x if group_x >= 0.0 else _base_x
+	_orbit_angle = atan2(_spawn_pos.y - ORBIT_CENTER_Y, _spawn_pos.x - center)
+	var tex := Ships.get_lit_enemy_texture(TYPES[type].ship, stage)
 	body.texture = tex
-	body.scale = Ships.scale_for(tex, HEIGHT)
+	body.scale = Ships.scale_for(tex, TYPES[type].get("height", HEIGHT))
 	# Godot flips the normal map's Y along with flip_v (checked empirically on 4.6), so
 	# the shared normal map lights correctly upside down; no flipped variant needed.
 	body.flip_v = true
 	body.light_mask = Ships.LIGHT_MASK
+	Ships.apply_hitbox(self, TYPES[type].ship, body)  # shots hit the art, not a circle
 	area_entered.connect(_on_area_entered)
 
 
 func points() -> int:
-	return TYPES[type].points
+	return roundi(TYPES[type].points * (1.0 + STAGE_POINTS * stage))
+
+
+func is_boss() -> bool:
+	return TYPES[type].get("boss", false)
+
+
+## Speed multiplier for this enemy's stage (same on every peer: it's in the spawn data).
+func speed_mult() -> float:
+	return minf(1.0 + STAGE_SPEED * stage, STAGE_SPEED_MAX)
 
 
 ## Spawn data plus where this ship is in its flight, for a player joining late.
 func snapshot() -> Dictionary:
 	return {"x": _spawn_pos.x, "y": _spawn_pos.y, "type": type, "group_x": group_x, "dir": zig_dir,
-		"id": String(name).trim_prefix("Enemy").to_int(), "time": _time, "pos": position}
+		"id": String(name).trim_prefix("Enemy").to_int(), "time": _time, "pos": position, "stage": stage}
 
 
 ## Picks up a flight from a snapshot (see snapshot()).
@@ -72,16 +135,37 @@ func restore(time: float, pos: Vector2) -> void:
 	position = pos
 
 
+func _process(_delta: float) -> void:
+	if Ships.enemy_glows(stage):  # the color ramp has looped: these ones pulse
+		body.self_modulate = Color.WHITE * (1.15 + 0.35 * sin(Time.get_ticks_msec() / 1000.0 * GLOW_SPEED))
+
+
 func _physics_process(delta: float) -> void:
 	if multiplayer.multiplayer_peer == null:
 		return
 	simulate(delta)
+	if is_boss():
+		queue_redraw()  # hp bar
+		if multiplayer.is_server():
+			_boss_fire(delta)
 	if position.y > EXIT_Y:
 		queue_free()  # same on every peer: the paths are deterministic
 
 
 func simulate(delta: float) -> void:
 	_time += delta
+	match type:
+		STRIKER:
+			position.y = _spawn_pos.y + striker_fall(_time, lunge_time(), speed_mult())
+			return
+		BOSS:
+			position = boss_position(_spawn_pos, _time, speed_mult())
+			return
+		ORBITER:
+			var center := Vector2(group_x if group_x >= 0.0 else _base_x, ORBIT_CENTER_Y + fall_distance(type, _time, speed_mult()))
+			var a := _orbit_angle + signf(zig_dir) * ORBIT_SPEED * _time
+			position = center + Vector2(cos(a), sin(a)) * ORBIT_RADIUS
+			return
 	position.y += speed_now() * delta
 	match type:
 		WEAVER:
@@ -90,19 +174,101 @@ func simulate(delta: float) -> void:
 		DIVER:
 			var center := group_x if group_x >= 0.0 else _base_x
 			position.x = zigzag_center(center, zig_dir, _time) + (_base_x - center)
+		TANK:
+			position.x = _base_x + sin(_time * TANK_SWAY_FREQUENCY) * TANK_SWAY
 
 
 ## Current falling speed: eases in from RAMP_START over RAMP_TIME.
 func speed_now() -> float:
 	var t := clampf(_time / RAMP_TIME, 0.0, 1.0)
-	return TYPES[type].speed * lerpf(RAMP_START, 1.0, t)
+	return TYPES[type].speed * speed_mult() * lerpf(RAMP_START, 1.0, t)
 
 
-## Spawn positions for a group: weavers in a horizontal line, divers in a V
-## (leader in front). Centered on center_x.
+## Distance fallen after `time` s at the type's speed (x `mult`), easing in like speed_now().
+static func fall_distance(t_type: int, time: float, mult := 1.0) -> float:
+	var v: float = TYPES[t_type].speed * mult
+	if time <= 0.0:
+		return 0.0
+	if time <= RAMP_TIME:
+		return v * (RAMP_START * time + (1.0 - RAMP_START) * time * time / (2.0 * RAMP_TIME))
+	return v * (RAMP_START * RAMP_TIME + (1.0 - RAMP_START) * RAMP_TIME / 2.0 + time - RAMP_TIME)
+
+
+## Striker: creeps (normal ramp) until `lunge`, then drops at LUNGE_SPEED.
+static func striker_fall(time: float, lunge: float, mult := 1.0) -> float:
+	if time <= lunge:
+		return fall_distance(STRIKER, time, mult)
+	return fall_distance(STRIKER, lunge, mult) + LUNGE_SPEED * mult * (time - lunge)
+
+
+## Boss: glides down from `spawn` to BOSS_Y, then weaves across the top.
+static func boss_position(spawn: Vector2, time: float, mult := 1.0) -> Vector2:
+	var y := minf(spawn.y + fall_distance(BOSS, time, mult), BOSS_Y)
+	var settled := maxf(0.0, time - _boss_arrival(spawn, mult))
+	var x := ARENA_WIDTH / 2.0 + sin(settled * BOSS_SWAY_FREQUENCY) * BOSS_SWAY
+	return Vector2(x, y + sin(settled * BOSS_SWAY_FREQUENCY * 2.2) * BOSS_BOB * minf(settled, 1.0))
+
+
+## Seconds until the boss reaches BOSS_Y.
+static func _boss_arrival(spawn: Vector2, mult: float) -> float:
+	var d := BOSS_Y - spawn.y
+	var v: float = TYPES[BOSS].speed * mult
+	var ramp := v * (RAMP_START * RAMP_TIME + (1.0 - RAMP_START) * RAMP_TIME / 2.0)
+	if d <= ramp:  # within the ramp; close enough for when the weave starts
+		return RAMP_TIME * d / ramp
+	return RAMP_TIME + (d - ramp) / v
+
+
+func fire_interval() -> float:
+	return maxf(BOSS_FIRE_MIN, BOSS_FIRE_INTERVAL * pow(0.85, stage))
+
+
+## Host: once settled, fires a spread at the nearest living player now and then.
+## Stage n fires 3 + n bullets (up to 7).
+func _boss_fire(delta: float) -> void:
+	if position.y < BOSS_Y - 1.0:
+		return
+	_fire_timer += delta
+	if _fire_timer < fire_interval():
+		return
+	_fire_timer = 0.0
+	var target: Node2D = null
+	var best := INF
+	for p in get_tree().get_nodes_in_group("player"):
+		if p.is_alive() and position.distance_to(p.position) < best:
+			best = position.distance_to(p.position)
+			target = p
+	var game := get_tree().get_first_node_in_group("game")
+	if target == null or game == null:
+		return
+	var aim := (target.position - position).normalized()
+	var n := mini(3 + stage, 7)
+	for i in n:
+		game.fire_enemy_bullet.rpc(position + aim * 50.0, aim.rotated((i - (n - 1) / 2.0) * BOSS_SPREAD))
+
+
+## When this striker lunges: the front ship at LUNGE_TIME, each one behind it later.
+func lunge_time() -> float:
+	return LUNGE_TIME + LUNGE_STAGGER * maxf(0.0, roundf((SPAWN_Y - _spawn_pos.y) / STRIKER_GAP.y))
+
+
+## Spawn positions for a group, centered on center_x: weavers and tanks in a
+## horizontal line, divers in a V (leader in front), strikers in a slanted line
+## (front ship on the left), orbiters evenly around a ring.
 static func group_layout(group_type: int, count: int, center_x: float) -> Array[Vector2]:
 	var out: Array[Vector2] = []
-	if group_type == DIVER:
+	if group_type == STRIKER:
+		for i in count:
+			out.append(Vector2(center_x + STRIKER_GAP.x * (i - (count - 1) / 2.0), SPAWN_Y - STRIKER_GAP.y * i))
+	elif group_type == ORBITER:
+		for i in count:
+			var a := TAU * i / count - PI / 2.0
+			out.append(Vector2(center_x, ORBIT_CENTER_Y) + Vector2(cos(a), sin(a)) * ORBIT_RADIUS)
+	elif group_type == TANK:
+		var left := center_x - TANK_SPACING * (count - 1) / 2.0
+		for i in count:
+			out.append(Vector2(left + TANK_SPACING * i, SPAWN_Y))
+	elif group_type == DIVER:
 		out.append(Vector2(center_x, SPAWN_Y))
 		for i in range(1, count):
 			var rank := ceili(i / 2.0)
@@ -119,6 +285,12 @@ static func group_layout(group_type: int, count: int, center_x: float) -> Array[
 static func group_half_width(group_type: int, count: int) -> float:
 	if group_type == DIVER:
 		return DIVER_V_OFFSET.x * floorf(count / 2.0)
+	if group_type == STRIKER:
+		return STRIKER_GAP.x * (count - 1) / 2.0
+	if group_type == TANK:
+		return TANK_SPACING * (count - 1) / 2.0 + TANK_SWAY
+	if group_type == ORBITER:
+		return ORBIT_RADIUS
 	return WEAVER_SPACING * (count - 1) / 2.0 + WEAVE_AMPLITUDE
 
 
@@ -151,11 +323,16 @@ func take_damage(amount: float) -> void:
 		var game := get_tree().get_first_node_in_group("game")
 		if game:
 			game.play_hit.rpc()
+			if is_boss():
+				game.boss_hp.rpc(String(name), hp)
 
 
-## Rammed by a player: destroyed without scoring.
+## Rammed by a player: destroyed without scoring (the boss just takes BOSS_RAM_DAMAGE).
 func ram() -> void:
 	if multiplayer.multiplayer_peer == null or not multiplayer.is_server() or hp <= 0:
+		return
+	if is_boss():
+		take_damage(BOSS_RAM_DAMAGE)
 		return
 	hp = 0
 	_destroy(false)
@@ -171,10 +348,18 @@ func _destroy(award_points: bool) -> void:
 
 ## Every peer removes a bullet that hits; only the shooter's copy reports the hit.
 func _on_area_entered(area: Area2D) -> void:
-	if multiplayer.multiplayer_peer == null or not area.is_in_group("bullet"):
+	if multiplayer.multiplayer_peer == null or not area.is_in_group("bullet") or area.is_hostile():
 		return
 	area.queue_free()
 	if area.is_mine():
 		var game := get_tree().get_first_node_in_group("game")
 		if game:
 			game.report_hit.rpc_id(1, String(name), area.damage())
+
+
+func _draw() -> void:
+	if not is_boss() or max_hp <= 0:
+		return
+	var r := Rect2(Vector2(-BOSS_BAR.x / 2.0, -TYPES[BOSS].height / 2.0 - 16.0), BOSS_BAR)
+	draw_rect(r.grow(1.0), Color(0, 0, 0, 0.6))
+	draw_rect(Rect2(r.position, Vector2(r.size.x * clampf(float(shown_hp) / max_hp, 0.0, 1.0), r.size.y)), Color("ff4d6d"))

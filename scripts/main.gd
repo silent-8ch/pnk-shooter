@@ -19,6 +19,7 @@ func _ready() -> void:
 	pause_menu.resume_pressed.connect(set_paused.bind(false))
 	pause_menu.leave_pressed.connect(leave_game)
 	pause_menu.quit_pressed.connect(quit)
+	game.run_ended.connect(_on_run_ended)
 	show_screen(main_menu)
 	_handle_cmdline()
 
@@ -34,7 +35,7 @@ func is_paused() -> bool:
 
 
 func set_paused(paused: bool) -> void:
-	if paused and not game.active:
+	if paused and (not game.active or game.over):
 		return
 	pause_menu.visible = paused
 	game.input_enabled = not paused
@@ -76,6 +77,14 @@ func _on_game_started() -> void:
 	show_screen(null)
 	set_paused(false)
 	game.start()
+
+
+## The results of a finished run were up long enough: the host starts the next
+## run for everyone still connected (fresh ships, spares and score).
+func _on_run_ended() -> void:
+	set_paused(false)
+	if multiplayer.multiplayer_peer != null and multiplayer.is_server():
+		game.restart_run.rpc()
 
 
 ## The host left. In a game, keep playing solo; otherwise back to the lobby.
