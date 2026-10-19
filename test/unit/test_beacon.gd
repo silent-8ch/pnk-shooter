@@ -1,5 +1,5 @@
 extends GutTest
-## Friendly beacon: a BEACON upgrade in the meter. A ship showing it is skipped
+## Friendly beacon: PILOTING 2 powered. A ship showing it is skipped
 ## by other players' autocannons and missiles; without it, they can target you
 ## (friendly fire is on).
 
@@ -41,27 +41,47 @@ func _missile_from(shooter: int, pos: Vector2) -> Area2D:
 	return b
 
 
-func test_beacon_is_an_upgrade_in_both_tiers() -> void:
-	assert_eq(PowerMeter.max_level(&"beacon", 1), 1)
-	assert_eq(PowerMeter.max_level(&"beacon", 2), 1)
-	assert_gte(PowerMeter.slot_index(&"beacon", 1), 0)
+## PILOTING 2 bought and powered on our ship (the one we fly), so the beacon is on.
+func _beacon() -> void:
+	me.levels[&"reactor"] = 4
+	me.levels[&"piloting"] = 2
+	assert_true(me.add_power(&"piloting"))
+	assert_true(me.add_power(&"piloting"))
+	me._simulate(0.016)
 
 
-func test_buying_it_turns_the_beacon_on_and_it_replicates() -> void:
-	assert_false(mate.beacon)
-	mate.levels[&"beacon"] = 1
-	mate._simulate(0.016)
-	assert_true(mate.beacon)
-	var cfg: SceneReplicationConfig = mate.get_node("Sync").replication_config
+func test_beacon_is_piloting_2() -> void:
+	assert_eq(Systems.max_level(&"piloting"), 2)
+	me.levels[&"reactor"] = 4
+	me.levels[&"piloting"] = 2
+	me.add_power(&"piloting")
+	me._simulate(0.016)
+	assert_false(me.beacon, "PILOTING 1 is only the autopilot")
+	me.add_power(&"piloting")
+	me._simulate(0.016)
+	assert_true(me.beacon)
+
+
+func test_powering_it_turns_the_beacon_on_and_it_replicates() -> void:
+	assert_false(me.beacon)
+	_beacon()
+	assert_true(me.beacon)
+	var cfg: SceneReplicationConfig = me.get_node("Sync").replication_config
 	assert_true(cfg.has_property(NodePath(".:beacon")))
 
 
+func test_beacon_goes_off_with_its_power() -> void:
+	_beacon()
+	me.drain_power(&"piloting")
+	me._simulate(0.016)
+	assert_false(me.beacon)
+
+
 func test_beacon_is_lost_with_the_ship() -> void:
-	mate.levels[&"beacon"] = 1
-	mate._simulate(0.016)
-	mate._lose_upgrades()
-	mate._simulate(0.016)
-	assert_false(mate.beacon)
+	_beacon()
+	me._lose_upgrades()
+	me._simulate(0.016)
+	assert_false(me.beacon)
 
 
 func test_autocannon_targets_a_teammate_without_a_beacon() -> void:
@@ -98,3 +118,24 @@ func test_missile_skips_dead_ships() -> void:
 	mate.hp = 0
 	var m := _missile_from(1, Vector2(330, 650))
 	assert_null(m.seek_target())
+
+
+func test_missiles_and_rounds_fly_through_a_beacon() -> void:
+	_beacon()
+	var hp: float = me.hp
+	for kind in [BulletScript.MISSILE, BulletScript.VULCAN]:
+		game.fire_bullet(me.position, Color.WHITE, Vector2.UP, kind)
+		var b: Area2D = game.get_node("Bullets").get_children().back()
+		b.shooter = 7  # the mate's
+		me._on_area_entered(b)
+		assert_false(b.is_queued_for_deletion(), "kind %d passes through" % kind)
+	assert_eq(me.hp, hp)
+
+
+func test_lasers_still_hit_a_beacon() -> void:
+	_beacon()
+	game.fire_bullet(me.position, Color.WHITE, Vector2.UP, BulletScript.LASER)
+	var b: Area2D = game.get_node("Bullets").get_children().back()
+	b.shooter = 7  # the mate's
+	me._on_area_entered(b)
+	assert_true(b.is_queued_for_deletion(), "only the auto-aimed weapons skip it")

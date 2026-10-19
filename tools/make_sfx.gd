@@ -97,6 +97,38 @@ const SOUNDS := {
 		{wave = "triangle", at = 0.045, dur = 0.18, f0 = 1318.5, f1 = 1318.5, v0 = 0.3, v1 = 0.0, curve = 0.6},
 		{wave = "pulse12", at = 0.09, dur = 0.14, f0 = 1760.0, f1 = 1760.0, v0 = 0.18, v1 = 0.0, curve = 0.5, vib = [30.0, 0.15]},
 	],
+	# A ship heals: a soft rising triangle sparkle C6 E6 G6, the top note shimmering out.
+	"heal": [
+		{wave = "triangle", dur = 0.15, f0 = 1046.5, f1 = 1046.5, v0 = 0.5, v1 = 0.5, arp = [0, 4, 7], arp_step = 0.05},
+		{wave = "triangle", at = 0.15, dur = 0.25, f0 = 1568.0, f1 = 1568.0, v0 = 0.5, v1 = 0.0, curve = 0.8, vib = [12.0, 0.3]},
+		{wave = "pulse12", at = 0.05, dur = 0.3, f0 = 2093.0, f1 = 2093.0, v0 = 0.12, v1 = 0.0, curve = 0.6, vib = [24.0, 0.2]},
+	],
+	# A rescue drone grabs someone: a quick "boop-bip" up an octave, G5 then G6.
+	"rescue": [
+		{wave = "pulse25", dur = 0.06, f0 = 784.0, f1 = 784.0, v0 = 0.4, v1 = 0.35},
+		{wave = "pulse25", at = 0.06, dur = 0.12, f0 = 1568.0, f1 = 1568.0, v0 = 0.4, v1 = 0.0, curve = 1.2},
+		{wave = "triangle", at = 0.06, dur = 0.16, f0 = 1568.0, f1 = 1568.0, v0 = 0.25, v1 = 0.0, curve = 0.6},
+	],
+	# Rescued handed over at a station: a bright "ta-da" chime, E5 G5 C6 then a ringing E6.
+	"dock": [
+		{wave = "pulse25", dur = 0.21, f0 = 659.25, f1 = 659.25, v0 = 0.4, v1 = 0.4, arp = [0, 3, 8], arp_step = 0.07},
+		{wave = "pulse25", at = 0.21, dur = 0.4, f0 = 1318.5, f1 = 1318.5, v0 = 0.4, v1 = 0.0, curve = 1.4, vib = [6.0, 0.2]},
+		{wave = "triangle", at = 0.21, dur = 0.45, f0 = 659.25, f1 = 659.25, v0 = 0.35, v1 = 0.0, curve = 1.2},
+	],
+	# Rescue drones launch: a "wee-woo" emergency siren, B5 down to F#5 and back, twice,
+	# each note bending a little as it holds.
+	"siren": [
+		{wave = "pulse25", dur = 0.96, f0 = 987.77, f1 = 960.0, v0 = 0.35, v1 = 0.25, arp = [0, -5, 0, -5], arp_step = 0.24, vib = [7.0, 0.15]},
+		{wave = "triangle", dur = 0.96, f0 = 987.77, f1 = 960.0, v0 = 0.3, v1 = 0.2, arp = [0, -5, 0, -5], arp_step = 0.24},
+	],
+	# Heal beam stream: a low, wet burble. A deep triangle wobbling fast in pitch (the
+	# bubbles), a soft square an octave up chopped into blips, and a dull noise
+	# underneath, all easing in and out so back-to-back bursts run together.
+	"healbeam": [
+		{wave = "triangle", dur = 0.6, f0 = 98.0, f1 = 92.0, v0 = 0.55, v1 = 0.45, curve = 1.5, vib = [16.0, 3.0]},
+		{wave = "square", dur = 0.6, f0 = 196.0, f1 = 175.0, v0 = 0.18, v1 = 0.1, vib = [11.0, 2.0], gate = [13.0, 0.4]},
+		{wave = "noise", dur = 0.6, f0 = 260.0, f1 = 200.0, v0 = 0.12, v1 = 0.08, gate = [9.0, 0.5]},
+	],
 	# Menu button tap: very short thin blip.
 	"ui_click": [
 		{wave = "pulse12", dur = 0.035, f0 = 1760.0, f1 = 1760.0, v0 = 0.4, v1 = 0.0},

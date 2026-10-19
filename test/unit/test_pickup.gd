@@ -49,6 +49,9 @@ func test_idle_holds_first_frame_and_cycles_palette_without_spinning() -> void:
 	assert_eq(p.sprite.frame, 0)
 	assert_false(p.sprite.is_playing())
 	assert_eq(p.rotation, 0.0, "no spin")
+	var angle: float = p.sprite.rotation
+	p._process(0.5)
+	assert_eq(p.sprite.rotation, angle, "the art doesn't spin either")
 	assert_gte(steps.size(), 4, "rapid palette cycle")
 
 
@@ -212,3 +215,72 @@ func test_stop_clears_pickups() -> void:
 	game.spawn_pickup(Vector2(100, 100), "Pickup1")
 	game.stop()
 	assert_false(game.has_node("Pickups/Pickup1"))
+
+
+
+func _named(n: String) -> Area2D:
+	var p: Area2D = PickupScript.new()
+	p.name = n
+	add_child_autofree(p)
+	return p
+
+
+func test_lands_at_a_random_angle_the_same_on_every_peer() -> void:
+	var angles := {}
+	for i in 12:
+		angles[snappedf(_named("Pickup%d" % i).sprite.rotation, 0.001)] = true
+	assert_gt(angles.size(), 8, "angles vary")
+	var first := _named("Pickup77")
+	var angle: float = first.sprite.rotation
+	remove_child(first)
+	first.free()
+	assert_eq(_named("Pickup77").sprite.rotation, angle, "same from the same name")
+
+
+func test_each_collect_frame_gets_its_own_angle() -> void:
+	var p := _named("Pickup5")
+	p.collect()
+	var distinct := {}
+	for f in 4:
+		p.sprite.frame = f
+		p._process(0.0)
+		distinct[snappedf(p.sprite.rotation, 0.001)] = true
+	assert_eq(distinct.size(), 4, "a new angle each frame")
+
+
+func test_pulses_and_wanders_around_its_spot() -> void:
+	var p := _named("Pickup3")
+	p.position = Vector2(200, 300)
+	var sizes := {}
+	var far := 0.0
+	for i in 120:
+		p._process(1.0 / 60.0)
+		sizes[snappedf(p.sprite.scale.x, 0.0001)] = true
+		far = maxf(far, p.sprite.position.length())
+		assert_lte(absf(p.sprite.position.x), PickupScript.DRIFT.x + 0.001)
+		assert_lte(absf(p.sprite.position.y), PickupScript.DRIFT.y + 0.001)
+	var base := PickupScript.DISPLAY_SCALE / PickupScript.RENDER_SCALE
+	assert_gt(sizes.size(), 10, "pulses")
+	for sz in sizes:
+		assert_between(sz, base * (1.0 - PickupScript.PULSE) - 0.0001, base * (1.0 + PickupScript.PULSE) + 0.0001)
+	assert_gt(far, 1.0, "wanders")
+	assert_eq(p.position, Vector2(200, 300), "its reach stays put")
+
+
+
+func test_last_frame_shrinks_away_as_it_is_shown() -> void:
+	var p := _named("Pickup9")
+	p.collect()
+	p.sprite.stop()
+	p.sprite.frame = 3
+	var base := PickupScript.DISPLAY_SCALE / PickupScript.RENDER_SCALE * (1.0 + PickupScript.PULSE)
+	var last := INF
+	var t := 0.0
+	while t < PickupScript.HOLD_TIME + PickupScript.FADE_TIME - 0.05:
+		var before: float = p.shrink()
+		p._process(0.05)
+		t += 0.05
+		assert_lt(p.shrink(), last, "smaller every step")
+		last = p.shrink()
+		assert_lte(p.sprite.scale.x, base * before + 0.0001, "drawn at its shrunken size")
+	assert_lt(last, 0.15, "almost gone by the end")

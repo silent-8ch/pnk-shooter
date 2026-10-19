@@ -1,0 +1,19 @@
+[remap]
+
+importer="mp3"
+type="AudioStreamMP3"
+uid="uid://rkdh55np2yiv"
+path="res://.godot/imported/less to deceit inst mix ab oz.mp3-e0ccf58a878a08924414ba98d607ef09.mp3str"
+
+[deps]
+
+source_file="res://assets/music/less to deceit inst mix ab oz.mp3"
+dest_files=["res://.godot/imported/less to deceit inst mix ab oz.mp3-e0ccf58a878a08924414ba98d607ef09.mp3str"]
+
+[params]
+
+loop=true
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

@@ -1,0 +1,19 @@
+[remap]
+
+importer="mp3"
+type="AudioStreamMP3"
+uid="uid://bq2vufa0t1xa5"
+path="res://.godot/imported/asteroid b inst mix ab oz.mp3-53b2a8b5ea8195b890d2b01c51c3a85f.mp3str"
+
+[deps]
+
+source_file="res://assets/music/asteroid b inst mix ab oz.mp3"
+dest_files=["res://.godot/imported/asteroid b inst mix ab oz.mp3-53b2a8b5ea8195b890d2b01c51c3a85f.mp3str"]
+
+[params]
+
+loop=true
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

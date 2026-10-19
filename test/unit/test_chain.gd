@@ -1,7 +1,7 @@
 extends GutTest
-## Chain reactions: out-of-control wrecks collide with players and pods (not
-## other enemy ships) and blow up early; blasts destroy pods nearby and hurt
-## players; escape pods can be shot and blow up small, which can chain.
+## Wrecks (broken enemies) are non-combatants: they pass through everything
+## and their explosions hurt nothing. Escape pods can be shot and blow up small,
+## which can chain to nearby pods (never hurting ships).
 
 const EnemyScene := preload("res://scenes/enemy.tscn")
 const BulletScene := preload("res://scenes/bullet.tscn")
@@ -57,30 +57,21 @@ func test_wreck_passes_through_other_enemy_ships() -> void:
 	assert_false(w.exploded)
 
 
-func test_wreck_hitting_a_player_hurts_once_and_blows_up() -> void:
+func test_wreck_passes_through_players_harmlessly() -> void:
 	var w := _wreck(Vector2(270, 300))
 	var p := _player(w.hull_position())
 	w._process(0.001)
-	assert_true(w.exploded)
-	assert_eq(p.hp, PlayerScript.MAX_HP - PlayerScript.HIT_HP, "the blast does the damage, once")
+	assert_false(w.exploded, "no early blow-up")
+	w.explode()
+	assert_eq(p.hp, PlayerScript.MAX_HP, "its explosion hurts nothing")
 
 
-func test_wreck_hitting_a_pod_destroys_it() -> void:
+func test_wreck_explosion_spares_pods() -> void:
 	var w := _wreck(Vector2(270, 300))
 	game.spawn_pod(w.hull_position(), 0, "PodX")
 	w._process(0.001)
-	assert_true(w.exploded)
-	assert_false(game.get_node("Pods").has_node("PodX"))
-
-
-func test_wreck_ignores_its_own_pod() -> void:
-	game.play_wreck(Vector2(270, 300), 0, 7, "WreckT", "PodOwn")
-	game.spawn_pod(Vector2(270, 300), 0, "PodOwn", "WreckT")
-	var w: Node2D = game.get_node("Effects/WreckT")
-	w._process(0.001)
-	assert_false(w.exploded)
 	w.explode()
-	assert_true(game.get_node("Pods").has_node("PodOwn"), "its blast spares it too")
+	assert_true(game.get_node("Pods").has_node("PodX"))
 
 
 func test_blast_leaves_enemy_ships_alone() -> void:
@@ -91,10 +82,10 @@ func test_blast_leaves_enemy_ships_alone() -> void:
 	assert_eq(_wrecks().size(), 1, "no chain through ships")
 
 
-func test_blast_hurts_the_local_player() -> void:
+func test_blasts_never_hurt_ships() -> void:
 	var p := _player(Vector2(270, 300))
 	game.blast(Vector2(280, 300), WreckScript.BLAST_RADIUS)
-	assert_eq(p.hp, PlayerScript.MAX_HP - PlayerScript.HIT_HP)
+	assert_eq(p.hp, PlayerScript.MAX_HP)
 
 
 func test_blast_takes_out_nearby_pods_but_not_far_ones() -> void:

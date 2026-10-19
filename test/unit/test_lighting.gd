@@ -191,7 +191,7 @@ func test_no_canvas_modulate() -> void:
 
 func test_non_ship_items_are_off_the_ship_bit() -> void:
 	var game := _game()
-	for path in ["Background", "Starfield", "HUD/ScoreLabel", "HUD/PartyBars", "HUD/InfoLabel", "PointerControls/Control"]:
+	for path in ["Background", "Starfield", "HUD/StatusBar", "HUD/PartyBars", "HUD/InfoLabel", "PointerControls/Control"]:
 		var item: CanvasItem = game.get_node(path)
 		assert_eq(item.light_mask & Ships.LIGHT_MASK, 0, path)
 

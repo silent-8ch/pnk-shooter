@@ -1,6 +1,6 @@
 extends GutTest
-## ARMOR (more max hp) and REPAIR (a button that drops a repair kit shaped like
-## your ship; the first damaged ship over it heals).
+## ARMOR (more max hp) and REPAIR (MEDBAY 1: a button that drops a repair kit
+## shaped like your ship; the first damaged ship over it heals).
 
 const PlayerScript := preload("res://scripts/player.gd")
 const RepairScript := preload("res://scripts/repair_kit.gd")
@@ -35,6 +35,14 @@ func _buy(id: StringName) -> void:
 	assert_true(player.buy_upgrade(id), "bought %s" % id)
 
 
+## MEDBAY bought and powered up to `bars` (REPAIR at 1).
+func _medbay(bars: int) -> void:
+	player.levels[&"reactor"] = 2 + bars
+	for i in bars:
+		_buy(&"medbay")
+		assert_true(player.add_power(&"medbay"))
+
+
 func _kits() -> Array:
 	return game.get_node("Pickups").get_children().filter(func(n): return n.is_in_group("repair_kit"))
 
@@ -43,8 +51,8 @@ func test_armor_adds_max_hp() -> void:
 	_buy(&"armor")
 	assert_eq(player.max_hp(), PlayerScript.MAX_HP + PlayerScript.HIT_HP)
 	assert_eq(player.hp, PlayerScript.MAX_HP + PlayerScript.HIT_HP)
-	assert_false(player.can_upgrade(&"armor"), "tier I max 1")
-	assert_eq(PowerMeter.max_level(&"armor", 2), 2)
+	assert_true(player.can_upgrade(&"armor"))
+	assert_eq(Systems.max_level(&"armor"), 4)
 
 
 func test_armor_is_lost_with_the_ship() -> void:
@@ -57,13 +65,13 @@ func test_armor_is_lost_with_the_ship() -> void:
 func test_repair_slot_adds_the_button() -> void:
 	player._gather_input()
 	assert_false(bar.is_shown(&"repair"))
-	_buy(&"repair")
+	_medbay(1)
 	player._gather_input()
 	assert_true(bar.is_shown(&"repair"))
 
 
 func test_button_drops_a_kit_that_looks_like_you() -> void:
-	_buy(&"repair")
+	_medbay(1)
 	player._gather_input()
 	assert_true(bar.press(&"repair"))
 	player._gather_input()
@@ -77,7 +85,7 @@ func test_button_drops_a_kit_that_looks_like_you() -> void:
 
 func test_cannot_drop_without_repair_or_during_cooldown() -> void:
 	assert_false(player.drop_repair())
-	_buy(&"repair")
+	_medbay(1)
 	assert_true(player.drop_repair())
 	assert_false(player.drop_repair(), "cooling down")
 	player._simulate(PlayerScript.REPAIR_COOLDOWN + 0.01)
@@ -86,8 +94,21 @@ func test_cannot_drop_without_repair_or_during_cooldown() -> void:
 	assert_ne(_kits()[0].name, _kits()[1].name)
 
 
+func test_repair_goes_with_medbay_power() -> void:
+	_medbay(1)
+	player.drain_power(&"medbay")
+	assert_false(player.drop_repair())
+
+
+func test_medbay_3_kits_come_back_twice_as_fast() -> void:
+	_medbay(3)
+	assert_true(player.drop_repair())
+	player._simulate(PlayerScript.REPAIR_COOLDOWN * 0.5 + 0.01)
+	assert_true(player.drop_repair())
+
+
 func test_damaged_ship_heals_from_a_kit() -> void:
-	_buy(&"repair")
+	_medbay(1)
 	player.drop_repair()
 	var kit: Node = _kits()[0]
 	player.take_damage(2)
@@ -98,7 +119,7 @@ func test_damaged_ship_heals_from_a_kit() -> void:
 
 
 func test_full_health_ship_leaves_it() -> void:
-	_buy(&"repair")
+	_medbay(1)
 	player.drop_repair()
 	var kit: Node = _kits()[0]
 	kit._age = RepairScript.ARM_TIME
@@ -107,7 +128,7 @@ func test_full_health_ship_leaves_it() -> void:
 
 
 func test_kit_waits_before_it_can_be_taken() -> void:
-	_buy(&"repair")
+	_medbay(1)
 	player.drop_repair()
 	player.take_damage(1)
 	var kit: Node = _kits()[0]

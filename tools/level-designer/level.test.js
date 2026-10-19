@@ -5,7 +5,7 @@ const L = require('./level.js');
 
 function level(over) {
   return Object.assign({
-    name: 'Level 1', length: 32, repeat: true,
+    name: 'Level 1', length: 32, repeat: true, kind: 'deep_space',
     events: [{ time: 0, type: 'weaver', lane: 4, count: 3, dir: 1 }],
   }, over);
 }
@@ -91,7 +91,7 @@ test('serialize writes sorted, 2-space pretty JSON with a trailing newline', () 
   assert.ok(!text.endsWith('\n\n'));
   const parsed = JSON.parse(text);
   assert.equal(text, JSON.stringify(parsed, null, 2) + '\n');
-  assert.deepEqual(Object.keys(parsed), ['name', 'length', 'repeat', 'events']);
+  assert.deepEqual(Object.keys(parsed), ['name', 'length', 'repeat', 'kind', 'events']);
   assert.deepEqual(Object.keys(parsed.events[0]), ['time', 'type', 'lane', 'count', 'dir']);
   assert.deepEqual(parsed.events.map((e) => e.time), [0, 1]);
   assert.match(text, /^\{\n {2}"name": "Level 1",\n {2}"length": 32,\n/);
@@ -181,10 +181,16 @@ test('new enemy types: constants match scripts/enemy.gd', () => {
   assert.equal(L.GAME.orbitRadius, num('ORBIT_RADIUS'));
   assert.equal(L.GAME.orbitSpeed, num('ORBIT_SPEED'));
   assert.deepEqual([L.GAME.weaverSpeed, L.GAME.diverSpeed, L.GAME.strikerSpeed, L.GAME.tankSpeed, L.GAME.orbiterSpeed], [0, 1, 2, 3, 4].map(speed));
+  // Turret: TYPES[6] (after BOSS) by position, since it may reuse a ship index.
+  const types = /const TYPES: Array\[Dictionary\] = \[\n([\s\S]*?)\n\]/.exec(src)[1].split('\n').filter((l) => l.includes('"speed"'));
+  assert.ok(types.length > 6, 'enemy.gd TYPES has no entry 6 (turret)');
+  assert.equal(L.GAME.turretSpeed, Number(/"speed": ([0-9.]+)/.exec(types[6])[1]));
+  assert.equal(L.GAME.turretSpacing, num('TURRET_SPACING'));
+  assert.equal(L.GAME.turretSpeed, L.GAME.scrollSpeed);
 });
 
 test('new enemy types: layout and motion', () => {
-  assert.deepEqual(L.TYPES, ['weaver', 'diver', 'striker', 'tank', 'orbiter']);
+  assert.deepEqual(L.TYPES, ['weaver', 'diver', 'striker', 'tank', 'orbiter', 'turret']);
   assert.deepEqual(L.groupLayout('striker', 3, 270), [{ x: 230, y: -40 }, { x: 270, y: -100 }, { x: 310, y: -160 }]);
   assert.deepEqual(L.groupLayout('tank', 2, 270), [{ x: 210, y: -40 }, { x: 330, y: -40 }]);
   const ring = L.groupLayout('orbiter', 4, 270);
@@ -201,11 +207,33 @@ test('new enemy types: layout and motion', () => {
   const cy = -90 + L.fallDistance('orbiter', 2);
   for (const p of o) assert.ok(Math.abs(Math.hypot(p.x - 270, p.y - cy) - 50) < 1e-9);
   // crossTime: every ship is past the bottom by then.
-  for (const type of ['striker', 'tank', 'orbiter']) {
+  for (const type of ['striker', 'tank', 'orbiter', 'turret']) {
     const t = L.crossTime(type, 4);
     for (const p of L.shipsAt({ type, lane: 4, count: 4, dir: 1 }, t)) assert.ok(p.y >= 960 - 50 - 1e-6, type + ' ' + p.y);
   }
   L.validate({ name: 'x', length: 10, repeat: false, events: [{ time: 0, type: 'tank', lane: 4, count: 2, dir: 1 }] });
+});
+
+test('turret: line layout, constant 60 px/s scroll, no sideways motion', () => {
+  assert.deepEqual(L.groupLayout('turret', 3, 270), [{ x: 130, y: -40 }, { x: 270, y: -40 }, { x: 410, y: -40 }]);
+  assert.deepEqual(L.groupLayout('turret', 1, 100), [{ x: 100, y: -40 }]);
+  assert.equal(L.groupHalfWidth('turret', 3), 140);
+  assert.equal(L.groupHalfWidth('turret', 1), 0);
+  assert.equal(L.GAME.turretSpeed, 60);
+  // No ramp: distance is 60 * t from the first frame.
+  for (const t of [0.1, 0.5, 1, 2.5, 10]) assert.ok(Math.abs(L.fallDistance('turret', t) - 60 * t) < 1e-9, String(t));
+  assert.equal(L.fallDistance('turret', 0), 0);
+  assert.ok(Math.abs(L.timeToFall('turret', 300) - 5) < 1e-9);
+  const ev = { type: 'turret', lane: 4, count: 2, dir: 1 };
+  const a = L.shipsAt(ev, 0), b = L.shipsAt(ev, 3);
+  for (let i = 0; i < 2; i++) {
+    assert.equal(b[i].x, a[i].x);
+    assert.ok(Math.abs(b[i].y - a[i].y - 180) < 1e-9);
+  }
+  assert.ok(Math.abs(b[1].x - b[0].x - 140) < 1e-9);
+  // Off the bottom in (960 + 40) / 60 s.
+  assert.ok(Math.abs(L.crossTime('turret', 3) - 1000 / 60) < 1e-9);
+  L.validate({ name: 'x', length: 10, repeat: false, events: [{ time: 0, type: 'turret', lane: 0, count: 3, dir: -1 }] });
 });
 
 // ---- Obstacles ----
@@ -250,7 +278,7 @@ test('obstacle field rules: piece only on obstacles, all fields required', () =>
   const noPiece = ob(); delete noPiece.piece;
   assert.throws(() => L.validate(level({ events: [noPiece] })), /missing field "piece"/);
   assert.throws(() => L.validate(level({ events: [ob({ spin: true })] })), /unknown field "spin"/);
-  for (const [over, re] of [[{ lane: 9 }, /lane/], [{ count: 0 }, /count/], [{ count: 8 }, /count/], [{ dir: 0 }, /dir/], [{ time: 32 }, /past the end/], [{ type: 'Obstacle' }, /type must be one of weaver, diver, striker, tank, orbiter, obstacle/]]) {
+  for (const [over, re] of [[{ lane: 9 }, /lane/], [{ count: 0 }, /count/], [{ count: 8 }, /count/], [{ dir: 0 }, /dir/], [{ time: 32 }, /past the end/], [{ type: 'Obstacle' }, /type must be one of weaver, diver, striker, tank, orbiter, turret, obstacle/]]) {
     assert.throws(() => L.validate(level({ events: [ob(over)] })), re, JSON.stringify(over));
   }
 });
@@ -318,4 +346,31 @@ test('obstacle parts: tiled runs with caps, clusters, mirroring and falling', ()
   assert.deepEqual(a.map((q) => q.x), run.map((q) => cx - q.x));
   assert.ok(a.every((q) => q.flip === -1 && q.y === -19));
   assert.ok(b.every((q) => q.flip === 1 && q.y === -19 + 100));
+});
+
+test('kind is optional and defaults to deep_space', () => {
+  const src = level(); delete src.kind;
+  assert.equal(L.validate(src).kind, 'deep_space');
+  assert.equal(JSON.parse(L.serialize(src)).kind, 'deep_space');
+  assert.deepEqual(Object.keys(L.validate(src)), ['name', 'length', 'repeat', 'kind', 'events']);
+});
+
+test('every kind round-trips through serialize and parse', () => {
+  assert.deepEqual(L.KINDS, ['deep_space', 'asteroid_belt', 'starbase', 'orbit', 'surface', 'storm']);
+  for (const k of L.KINDS) {
+    assert.equal(typeof L.KIND_NAMES[k], 'string');
+    assert.equal(L.parse(L.serialize(level({ kind: k }))).kind, k);
+  }
+  assert.equal(L.KIND_NAMES.starbase, 'Ruined Starbase');
+});
+
+test('validate rejects a bad kind', () => {
+  for (const k of ['nebula', '', null, 1, 'Deep Space', ['deep_space']]) {
+    assert.throws(() => L.validate(level({ kind: k })), /kind must be one of deep_space/, JSON.stringify(k));
+  }
+});
+
+test('empty() has a kind', () => {
+  assert.equal(L.empty().kind, 'deep_space');
+  L.validate(L.empty());
 });

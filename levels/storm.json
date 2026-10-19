@@ -1,0 +1,211 @@
+{
+  "name": "Ion Storm",
+  "length": 106,
+  "repeat": true,
+  "kind": "storm",
+  "events": [
+    {
+      "time": 0,
+      "type": "weaver",
+      "lane": 4,
+      "count": 3,
+      "dir": 1
+    },
+    {
+      "time": 5,
+      "type": "diver",
+      "lane": 2,
+      "count": 3,
+      "dir": 1
+    },
+    {
+      "time": 8,
+      "type": "obstacle",
+      "piece": "debris",
+      "lane": 6,
+      "count": 2,
+      "dir": 1
+    },
+    {
+      "time": 10.5,
+      "type": "weaver",
+      "lane": 7,
+      "count": 2,
+      "dir": -1
+    },
+    {
+      "time": 15,
+      "type": "orbiter",
+      "lane": 4,
+      "count": 2,
+      "dir": 1
+    },
+    {
+      "time": 20,
+      "type": "diver",
+      "lane": 6,
+      "count": 3,
+      "dir": -1
+    },
+    {
+      "time": 23,
+      "type": "obstacle",
+      "piece": "debris",
+      "lane": 1,
+      "count": 3,
+      "dir": 1
+    },
+    {
+      "time": 25.5,
+      "type": "weaver",
+      "lane": 2,
+      "count": 3,
+      "dir": 1
+    },
+    {
+      "time": 30,
+      "type": "diver",
+      "lane": 4,
+      "count": 3,
+      "dir": 1
+    },
+    {
+      "time": 35,
+      "type": "orbiter",
+      "lane": 2,
+      "count": 2,
+      "dir": 1
+    },
+    {
+      "time": 38,
+      "type": "obstacle",
+      "piece": "debris",
+      "lane": 7,
+      "count": 2,
+      "dir": -1
+    },
+    {
+      "time": 40,
+      "type": "weaver",
+      "lane": 6,
+      "count": 3,
+      "dir": -1
+    },
+    {
+      "time": 45.5,
+      "type": "diver",
+      "lane": 1,
+      "count": 3,
+      "dir": 1
+    },
+    {
+      "time": 50,
+      "type": "orbiter",
+      "lane": 6,
+      "count": 3,
+      "dir": 1
+    },
+    {
+      "time": 53,
+      "type": "obstacle",
+      "piece": "debris",
+      "lane": 3,
+      "count": 3,
+      "dir": 1
+    },
+    {
+      "time": 55.5,
+      "type": "weaver",
+      "lane": 4,
+      "count": 4,
+      "dir": 1
+    },
+    {
+      "time": 61,
+      "type": "diver",
+      "lane": 7,
+      "count": 3,
+      "dir": -1
+    },
+    {
+      "time": 66,
+      "type": "weaver",
+      "lane": 1,
+      "count": 3,
+      "dir": 1
+    },
+    {
+      "time": 69,
+      "type": "obstacle",
+      "piece": "debris",
+      "lane": 5,
+      "count": 2,
+      "dir": -1
+    },
+    {
+      "time": 71,
+      "type": "orbiter",
+      "lane": 4,
+      "count": 3,
+      "dir": 1
+    },
+    {
+      "time": 76.5,
+      "type": "diver",
+      "lane": 3,
+      "count": 3,
+      "dir": 1
+    },
+    {
+      "time": 81,
+      "type": "weaver",
+      "lane": 6,
+      "count": 4,
+      "dir": -1
+    },
+    {
+      "time": 84,
+      "type": "obstacle",
+      "piece": "debris",
+      "lane": 2,
+      "count": 2,
+      "dir": 1
+    },
+    {
+      "time": 86.5,
+      "type": "diver",
+      "lane": 5,
+      "count": 3,
+      "dir": 1
+    },
+    {
+      "time": 92,
+      "type": "orbiter",
+      "lane": 3,
+      "count": 2,
+      "dir": 1
+    },
+    {
+      "time": 97,
+      "type": "weaver",
+      "lane": 5,
+      "count": 3,
+      "dir": -1
+    },
+    {
+      "time": 100,
+      "type": "obstacle",
+      "piece": "debris",
+      "lane": 7,
+      "count": 3,
+      "dir": -1
+    },
+    {
+      "time": 102,
+      "type": "diver",
+      "lane": 2,
+      "count": 3,
+      "dir": 1
+    }
+  ]
+}

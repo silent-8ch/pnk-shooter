@@ -6,8 +6,15 @@ extends Control
 ## Touches are read directly so a button works with any finger, even while
 ## another finger is steering the ship; PointerControls ignores touches here.
 ## Buttons marked "hidden" appear (left to right, after the others) once
-## set_shown; set_enabled greys one out without moving it; set_lit marks a
-## switched-on toggle (AUTO).
+## set_shown; set_enabled greys one out without moving it; set_lit marks an
+## armed gun (or a switched-on toggle), and a gun button that isn't lit shows
+## OFF; set_power shows the WEAPONS bars it needs as pips.
+## Holding a button for LONG_PRESS (or right-clicking it, or Shift + its number
+## key) counts a long press in `holds[id]` as well, which disarms a gun.
+## Drawn LCARS-style (see LCARS): rounded pills on a black strip, lit ones
+## solid with black labels, an unarmed gun outlined with OFF.
+## Right-handed controls (Settings) line the buttons up from the right edge
+## instead, LASERS rightmost.
 ## On desktop the number keys press the shown buttons left to right (1 = LASERS,
 ## 2 = the next one, ...); each button shows its key where there's no touchscreen.
 
@@ -15,14 +22,16 @@ const BAR_HEIGHT := 96.0
 const BUTTON_SIZE := Vector2(88, 72)
 const MARGIN := 12.0
 const ACTIONS: Array[Dictionary] = [
-	{"id": &"lasers", "label": "LASERS", "cooldown": 0.45, "color": Color("5ad1ff")},
-	{"id": &"missile", "label": "MISSILE", "cooldown": 0.9, "color": Color("c08dff"), "hidden": true},  # 2x lasers
-	{"id": &"rescue", "label": "RESCUE", "cooldown": 0.5, "color": Color("8dff7a"), "hidden": true},
-	{"id": &"beam", "label": "BEAM", "cooldown": 3.0, "color": Color("ffd45a"), "hidden": true},
-	{"id": &"auto", "label": "AUTO", "cooldown": 0.3, "color": Color("ff9c5a"), "hidden": true},  # on/off
-	{"id": &"repair", "label": "REPAIR", "cooldown": 10.0, "color": Color("ff7ad9"), "hidden": true},
+	{"id": &"lasers", "label": "PHOTONS", "cooldown": 0.45, "color": LCARS.ORANGE},
+	{"id": &"missile", "label": "MISSILE", "cooldown": 0.9, "color": LCARS.LAVENDER, "hidden": true},  # 2x lasers
+	{"id": &"rescue", "label": "RESCUE", "cooldown": 0.5, "color": LCARS.BLUE, "hidden": true},
+	{"id": &"beam", "label": "BEAM", "cooldown": 3.0, "color": LCARS.PEACH, "hidden": true},
+	{"id": &"auto", "label": "AUTO", "cooldown": 0.3, "color": LCARS.TAN, "hidden": true},  # on/off
+	{"id": &"repair", "label": "REPAIR", "cooldown": 10.0, "color": LCARS.RED, "hidden": true},
+	{"id": &"heal", "label": "HEAL", "cooldown": 0.3, "color": LCARS.LAVENDER, "hidden": true},  # on/off
 ]
 const MOUSE_INDEX := -2
+const LONG_PRESS := 0.45  # s a finger stays on a button for a long press
 
 var presses := {}  # action id -> total accepted presses
 var _cooldown := {}  # action id -> seconds left
@@ -31,12 +40,16 @@ var _held := {}  # pointer index -> action id, while a finger is on a button
 var _shown := {}  # action id -> bool
 var _enabled := {}  # action id -> bool
 var _lit := {}  # action id -> bool: a toggle that's on
+var _power := {}  # action id -> WEAPONS bars its gun needs (0 = not a gun)
+var holds := {}  # action id -> total long presses
+var _held_for := {}  # pointer index -> s it has been down on its button (-1 once it counted as a long press)
 
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	for a in ACTIONS:
 		presses[a.id] = 0
+		holds[a.id] = 0
 		_cooldown[a.id] = 0.0
 		_shown[a.id] = not a.get("hidden", false)
 		_enabled[a.id] = true
@@ -70,6 +83,21 @@ func set_lit(id: StringName, on: bool) -> void:
 		queue_redraw()
 
 
+func set_power(id: StringName, bars: int) -> void:
+	if _power.get(id, 0) != bars:
+		_power[id] = bars
+		queue_redraw()
+
+
+## Counts a long press on `id` (shown buttons only).
+func hold(id: StringName) -> bool:
+	if not holds.has(id) or not _shown[id] or not _accepting_input():
+		return false
+	holds[id] += 1
+	queue_redraw()
+	return true
+
+
 func set_enabled(id: StringName, on: bool) -> void:
 	if _enabled.get(id) != on:
 		_enabled[id] = on
@@ -98,6 +126,8 @@ func button_rect(i: int) -> Rect2:
 	var n := shown_actions().size()
 	var w := minf(BUTTON_SIZE.x, (bar.size.x - MARGIN * (n + 1)) / n)  # narrower when they wouldn't fit
 	var x := MARGIN + slot * (w + MARGIN)
+	if not Settings.left_handed:
+		x = bar.size.x - MARGIN - w - slot * (w + MARGIN)
 	return Rect2(Vector2(x, bar.position.y + (BAR_HEIGHT - BUTTON_SIZE.y) / 2.0), Vector2(w, BUTTON_SIZE.y))
 
 
@@ -112,6 +142,7 @@ func is_active() -> bool:
 
 func reset() -> void:
 	_held.clear()
+	_held_for.clear()
 	for id in _cooldown:
 		_cooldown[id] = 0.0
 	queue_redraw()
@@ -166,10 +197,18 @@ func _input(event: InputEvent) -> void:
 		_pointer(event.pressed, event.index, event.position)
 	elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		_pointer(event.pressed, MOUSE_INDEX, event.position)
+	elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_RIGHT and event.pressed:
+		var i := _action_at(event.position) if is_active() else -1
+		if i >= 0:
+			hold(ACTIONS[i].id)
+			get_viewport().set_input_as_handled()
 	elif event is InputEventKey and event.pressed and not event.echo:
 		var id := action_for_key(event.keycode)
 		if id != &"" and is_active():
-			press(id)
+			if event.shift_pressed:
+				hold(id)
+			else:
+				press(id)
 			get_viewport().set_input_as_handled()
 
 
@@ -187,6 +226,7 @@ func action_for_key(keycode: Key) -> StringName:
 func _pointer(pressed: bool, index: int, screen_pos: Vector2) -> void:
 	if not pressed:
 		_held.erase(index)
+		_held_for.erase(index)
 		queue_redraw()
 		return
 	if not is_active():
@@ -195,11 +235,19 @@ func _pointer(pressed: bool, index: int, screen_pos: Vector2) -> void:
 	if i < 0:
 		return
 	_held[index] = ACTIONS[i].id
+	_held_for[index] = 0.0
 	press(ACTIONS[i].id)
 	get_viewport().set_input_as_handled()
 
 
 func _process(delta: float) -> void:
+	for index in _held_for:
+		if _held_for[index] < 0.0:
+			continue
+		_held_for[index] += delta
+		if _held_for[index] >= LONG_PRESS:
+			_held_for[index] = -1.0  # once per hold
+			hold(_held[index])
 	var changed := false
 	for id in _cooldown:
 		if _cooldown[id] > 0.0:
@@ -211,26 +259,35 @@ func _process(delta: float) -> void:
 
 func _draw() -> void:
 	var font := get_theme_default_font()
+	var strip := bar_rect()
+	draw_rect(strip, Color(0, 0, 0, 0.85))
+	LCARS.pill(self, Rect2(strip.position + Vector2(MARGIN, 3), Vector2(strip.size.x - 2.0 * MARGIN, 5)), Color(LCARS.ORANGE, 0.8))
 	for i in shown_actions():
 		var a: Dictionary = ACTIONS[i]
 		var r := button_rect(i)
 		var held: bool = _held.values().has(a.id)
 		var lit: bool = _lit.get(a.id, false)
-		draw_rect(r, Color(a.color, 0.7 if lit else (0.35 if held else 0.2)))
-		draw_rect(r, Color(a.color, 0.9), false, 2.0)
+		var bars: int = _power.get(a.id, 0)
+		var off := bars > 0 and not lit  # a gun that isn't armed
+		var c: Color = a.color.lightened(0.25) if held else a.color
+		var radius := minf(LCARS.RADIUS, r.size.x / 2.0)
+		if off:
+			draw_style_box(LCARS.box(c, radius), r)
+			draw_style_box(LCARS.box(LCARS.BLACK, radius - 2.0), r.grow(-2.0))
+		else:
+			draw_style_box(LCARS.box(c, radius), r)
 		var left := cooldown_left(a.id) / maxf(cooldown_for(a.id), 0.001)
 		if left > 0.0:  # draining overlay: full right after firing, gone when ready
-			draw_rect(Rect2(r.position, Vector2(r.size.x, r.size.y * left)), Color(0, 0, 0, 0.55))
+			draw_style_box(LCARS.box(Color(0, 0, 0, 0.55), minf(radius, r.size.y * left / 2.0)),
+				Rect2(r.position, Vector2(r.size.x, r.size.y * left)))
 		if not _enabled[a.id]:
-			draw_rect(r, Color(0, 0, 0, 0.6))
+			draw_style_box(LCARS.box(Color(0, 0, 0, 0.6), radius), r)
+		var ink := c if off else LCARS.BLACK
 		if not DisplayServer.is_touchscreen_available():  # key hint, top-left
-			draw_string(font, r.position + Vector2(5, 14), str(shown_actions().find(i) + 1),
-				HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(1, 1, 1, 0.6))
-		var text: String = a.label
-		var fs := 16
-		var tw := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
-		while tw > r.size.x - 6.0 and fs > 10:  # shrink to fit a narrow button
-			fs -= 1
-			tw = font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
-		draw_string(font, r.position + Vector2((r.size.x - tw) / 2.0, r.size.y / 2.0 + fs / 3.0), text,
-			HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color.WHITE)
+			draw_string(font, r.position + Vector2(10, 16), str(shown_actions().find(i) + 1),
+				HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(ink, 0.7))
+		for k in bars:  # WEAPONS bars it needs, top right
+			draw_rect(Rect2(r.end.x - 14.0 - k * 7.0, r.position.y + 7.0, 5.0, 8.0), ink)
+		if off:
+			LCARS.label(self, Rect2(r.position + Vector2(0, r.size.y - 22.0), Vector2(r.size.x, 16)), "OFF", font, c, 11)
+		LCARS.label(self, r, a.label, font, ink, 16)

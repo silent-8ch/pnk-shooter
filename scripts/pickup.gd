@@ -5,8 +5,11 @@ extends Area2D
 ## while its painted color slots cycle through STAR_COLORS (a Mario-star
 ## palette cycle: each step shifts every slot to the next color). When
 ## the host says a player took it, it plays through to the last frame (each frame
-## drawn fainter than the one before), holds there, then fades out, with an xp
-## sound. It doesn't spin. Uncollected, it blinks out after LIFETIME.
+## drawn fainter than the one before), holds there shrinking away as it fades
+## out, with an xp sound. It doesn't spin: it lands at a random angle, and each frame of the
+## collect animation shows at its own random angle (seeded from its name, so
+## every peer sees the same). It pulses a little in size and wanders a little
+## around its spot. Uncollected, it blinks out after LIFETIME.
 ##
 ## Each palette step is the painted frames re-rendered by PaletteFrames (cached).
 ## Every slot cycles, outline included.
@@ -27,6 +30,10 @@ const HOLD_TIME := 0.6  # on the last frame before fading
 const FADE_TIME := 0.3
 const LIFETIME := 8.0
 const BLINK_TIME := 2.0  # blinks during the last this-many seconds
+const PULSE := 0.08  # it grows and shrinks this much either way
+const PULSE_RATE := 2.2  # pulses per second
+const DRIFT := Vector2(3.0, 2.5)  # px it wanders either way around its spot
+const DRIFT_RATE := Vector2(0.9, 1.3)  # wander cycles per second, x and y
 
 static var _frames: SpriteFrames
 
@@ -36,6 +43,9 @@ var sound := AudioStreamPlayer.new()
 var _age := 0.0
 var _collect_age := 0.0
 var _step := -1  # current palette step
+var _shown_frame := -1  # collect animation frame last given its own angle
+var _rng := RandomNumberGenerator.new()  # seeded from the name: every peer sees the same angles
+var _drift_phase := Vector2.ZERO
 
 
 ## The william frames in play order (reversed from their file numbering).
@@ -89,6 +99,12 @@ func _init() -> void:
 	_apply_color()
 
 
+func _ready() -> void:
+	_rng.seed = hash([String(name), "pickup"])
+	sprite.rotation = _rng.randf() * TAU  # each one lands at its own angle
+	_drift_phase = Vector2(_rng.randf(), _rng.randf()) * TAU
+
+
 func palette_step() -> int:
 	return _step
 
@@ -119,9 +135,29 @@ func collect() -> void:
 		sound.play()
 
 
+## 1, down to 0 as the collect animation's last frame is shown (held, then faded).
+func shrink() -> float:
+	if not collected or sprite.is_playing():
+		return 1.0
+	return 1.0 - clampf(_collect_age / (HOLD_TIME + FADE_TIME), 0.0, 1.0)
+
+
+## Pulses a little in size and wanders a little around its spot (the
+## pickup's reach stays put).
+func _wobble() -> void:
+	sprite.scale = Vector2.ONE * (DISPLAY_SCALE / RENDER_SCALE) * (1.0 + PULSE * sin(_age * TAU * PULSE_RATE)) * shrink()
+	sprite.position = Vector2(sin(_age * TAU * DRIFT_RATE.x + _drift_phase.x) * DRIFT.x,
+		sin(_age * TAU * DRIFT_RATE.y + _drift_phase.y) * DRIFT.y)
+
+
 func _process(delta: float) -> void:
 	_age += delta
 	_apply_color()
+	_wobble()
+	if collected and sprite.frame != _shown_frame:
+		_shown_frame = sprite.frame
+		if _shown_frame > 0:
+			sprite.rotation = _rng.randf() * TAU  # every frame of the collect animation at its own angle
 	if not collected:
 		var left := LIFETIME - _age
 		if left <= 0.0:

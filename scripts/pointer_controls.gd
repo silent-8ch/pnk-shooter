@@ -1,7 +1,8 @@
 extends Control
 ## Tap/click-to-move controls for touch and mouse: pressing sets a destination
 ## the ship flies to and dragging moves it. Firing is on the ActionBar; presses
-## that land on the bar or the PowerMeter are left to them.
+## that land on the bar, the RefitPanel or the ShipPanel (its tab, or anywhere while a popup
+## is open) are left to them.
 
 const TOUCH_OFFSET := Vector2(0, -80)  # keep the ship above the finger
 const MOUSE_INDEX := -2  # pointer index used for the mouse
@@ -24,6 +25,11 @@ func _ready() -> void:
 ## CanvasLayer visibility does not reliably propagate to is_visible_in_tree().
 func is_active() -> bool:
 	return visible and get_parent().visible
+
+
+## A finger (or the mouse button) is down steering the ship.
+func is_touching() -> bool:
+	return _pointer_index != -1
 
 
 func reset() -> void:
@@ -64,7 +70,7 @@ func _handle_press(pressed: bool, index: int, screen_pos: Vector2, touch_pos: Ve
 
 
 func _on_action_bar(screen_pos: Vector2) -> bool:
-	for group in [&"action_bar", &"power_meter"]:
+	for group in [&"action_bar", &"ship_panel", &"refit_panel"]:
 		var c := get_tree().get_first_node_in_group(group)
 		if c != null and c.contains(screen_pos):
 			return true

@@ -1,0 +1,436 @@
+{
+  "name": "Asteroid Belt",
+  "length": 108,
+  "repeat": true,
+  "kind": "asteroid_belt",
+  "events": [
+    {
+      "time": 0,
+      "type": "weaver",
+      "lane": 4,
+      "count": 2,
+      "dir": 1
+    },
+    {
+      "time": 2.5,
+      "type": "obstacle",
+      "piece": "asteroid_s",
+      "lane": 1,
+      "count": 2,
+      "dir": 1
+    },
+    {
+      "time": 5.5,
+      "type": "obstacle",
+      "piece": "asteroid_m",
+      "lane": 6,
+      "count": 2,
+      "dir": -1
+    },
+    {
+      "time": 5.5,
+      "type": "weaver",
+      "lane": 7,
+      "count": 3,
+      "dir": -1
+    },
+    {
+      "time": 8,
+      "type": "obstacle",
+      "piece": "asteroid_s",
+      "lane": 3,
+      "count": 4,
+      "dir": 1
+    },
+    {
+      "time": 10.25,
+      "type": "tank",
+      "lane": 2,
+      "count": 1,
+      "dir": 1
+    },
+    {
+      "time": 11.5,
+      "type": "obstacle",
+      "piece": "debris",
+      "lane": 8,
+      "count": 2,
+      "dir": -1
+    },
+    {
+      "time": 14.25,
+      "type": "obstacle",
+      "piece": "asteroid_l",
+      "lane": 2,
+      "count": 1,
+      "dir": 1
+    },
+    {
+      "time": 16.5,
+      "type": "weaver",
+      "lane": 5,
+      "count": 2,
+      "dir": -1
+    },
+    {
+      "time": 17.25,
+      "type": "obstacle",
+      "piece": "asteroid_m",
+      "lane": 5,
+      "count": 2,
+      "dir": -1
+    },
+    {
+      "time": 19.75,
+      "type": "obstacle",
+      "piece": "asteroid_s",
+      "lane": 0,
+      "count": 2,
+      "dir": 1
+    },
+    {
+      "time": 21.5,
+      "type": "weaver",
+      "lane": 8,
+      "count": 3,
+      "dir": 1
+    },
+    {
+      "time": 23.25,
+      "type": "obstacle",
+      "piece": "asteroid_m",
+      "lane": 7,
+      "count": 2,
+      "dir": -1
+    },
+    {
+      "time": 26,
+      "type": "obstacle",
+      "piece": "debris",
+      "lane": 4,
+      "count": 4,
+      "dir": 1
+    },
+    {
+      "time": 27,
+      "type": "tank",
+      "lane": 1,
+      "count": 2,
+      "dir": -1
+    },
+    {
+      "time": 29,
+      "type": "obstacle",
+      "piece": "asteroid_s",
+      "lane": 2,
+      "count": 2,
+      "dir": -1
+    },
+    {
+      "time": 31.5,
+      "type": "obstacle",
+      "piece": "asteroid_l",
+      "lane": 6,
+      "count": 1,
+      "dir": 1
+    },
+    {
+      "time": 31.75,
+      "type": "weaver",
+      "lane": 6,
+      "count": 2,
+      "dir": 1
+    },
+    {
+      "time": 35,
+      "type": "obstacle",
+      "piece": "asteroid_s",
+      "lane": 1,
+      "count": 4,
+      "dir": -1
+    },
+    {
+      "time": 37.75,
+      "type": "obstacle",
+      "piece": "asteroid_m",
+      "lane": 8,
+      "count": 1,
+      "dir": 1
+    },
+    {
+      "time": 38,
+      "type": "weaver",
+      "lane": 3,
+      "count": 3,
+      "dir": -1
+    },
+    {
+      "time": 40.75,
+      "type": "obstacle",
+      "piece": "asteroid_s",
+      "lane": 3,
+      "count": 3,
+      "dir": -1
+    },
+    {
+      "time": 43,
+      "type": "tank",
+      "lane": 0,
+      "count": 1,
+      "dir": 1
+    },
+    {
+      "time": 43.25,
+      "type": "obstacle",
+      "piece": "debris",
+      "lane": 5,
+      "count": 4,
+      "dir": 1
+    },
+    {
+      "time": 46.75,
+      "type": "obstacle",
+      "piece": "asteroid_l",
+      "lane": 1,
+      "count": 1,
+      "dir": -1
+    },
+    {
+      "time": 48.5,
+      "type": "weaver",
+      "lane": 5,
+      "count": 2,
+      "dir": -1
+    },
+    {
+      "time": 49.5,
+      "type": "obstacle",
+      "piece": "asteroid_m",
+      "lane": 6,
+      "count": 1,
+      "dir": 1
+    },
+    {
+      "time": 52.5,
+      "type": "obstacle",
+      "piece": "asteroid_s",
+      "lane": 3,
+      "count": 4,
+      "dir": -1
+    },
+    {
+      "time": 53.25,
+      "type": "weaver",
+      "lane": 2,
+      "count": 3,
+      "dir": 1
+    },
+    {
+      "time": 55,
+      "type": "obstacle",
+      "piece": "asteroid_m",
+      "lane": 8,
+      "count": 1,
+      "dir": 1
+    },
+    {
+      "time": 58.5,
+      "type": "obstacle",
+      "piece": "debris",
+      "lane": 2,
+      "count": 3,
+      "dir": -1
+    },
+    {
+      "time": 59.5,
+      "type": "tank",
+      "lane": 7,
+      "count": 2,
+      "dir": -1
+    },
+    {
+      "time": 61.25,
+      "type": "obstacle",
+      "piece": "asteroid_s",
+      "lane": 5,
+      "count": 4,
+      "dir": 1
+    },
+    {
+      "time": 64.25,
+      "type": "obstacle",
+      "piece": "asteroid_l",
+      "lane": 0,
+      "count": 1,
+      "dir": -1
+    },
+    {
+      "time": 64.5,
+      "type": "weaver",
+      "lane": 4,
+      "count": 2,
+      "dir": 1
+    },
+    {
+      "time": 66.75,
+      "type": "obstacle",
+      "piece": "asteroid_s",
+      "lane": 7,
+      "count": 3,
+      "dir": 1
+    },
+    {
+      "time": 70,
+      "type": "weaver",
+      "lane": 1,
+      "count": 3,
+      "dir": -1
+    },
+    {
+      "time": 70.25,
+      "type": "obstacle",
+      "piece": "asteroid_m",
+      "lane": 4,
+      "count": 2,
+      "dir": -1
+    },
+    {
+      "time": 73,
+      "type": "obstacle",
+      "piece": "asteroid_s",
+      "lane": 2,
+      "count": 2,
+      "dir": 1
+    },
+    {
+      "time": 74.75,
+      "type": "tank",
+      "lane": 6,
+      "count": 1,
+      "dir": 1
+    },
+    {
+      "time": 76,
+      "type": "obstacle",
+      "piece": "debris",
+      "lane": 6,
+      "count": 3,
+      "dir": -1
+    },
+    {
+      "time": 78.5,
+      "type": "obstacle",
+      "piece": "asteroid_l",
+      "lane": 1,
+      "count": 1,
+      "dir": 1
+    },
+    {
+      "time": 81,
+      "type": "weaver",
+      "lane": 3,
+      "count": 2,
+      "dir": -1
+    },
+    {
+      "time": 82,
+      "type": "obstacle",
+      "piece": "asteroid_m",
+      "lane": 8,
+      "count": 2,
+      "dir": -1
+    },
+    {
+      "time": 84.75,
+      "type": "obstacle",
+      "piece": "asteroid_s",
+      "lane": 3,
+      "count": 3,
+      "dir": 1
+    },
+    {
+      "time": 86,
+      "type": "weaver",
+      "lane": 8,
+      "count": 3,
+      "dir": 1
+    },
+    {
+      "time": 87.75,
+      "type": "obstacle",
+      "piece": "asteroid_m",
+      "lane": 5,
+      "count": 2,
+      "dir": -1
+    },
+    {
+      "time": 90.25,
+      "type": "obstacle",
+      "piece": "debris",
+      "lane": 1,
+      "count": 2,
+      "dir": 1
+    },
+    {
+      "time": 91.5,
+      "type": "tank",
+      "lane": 4,
+      "count": 2,
+      "dir": -1
+    },
+    {
+      "time": 93.75,
+      "type": "obstacle",
+      "piece": "asteroid_s",
+      "lane": 6,
+      "count": 3,
+      "dir": -1
+    },
+    {
+      "time": 96.25,
+      "type": "weaver",
+      "lane": 2,
+      "count": 2,
+      "dir": 1
+    },
+    {
+      "time": 96.5,
+      "type": "obstacle",
+      "piece": "asteroid_l",
+      "lane": 3,
+      "count": 1,
+      "dir": 1
+    },
+    {
+      "time": 99.5,
+      "type": "obstacle",
+      "piece": "asteroid_s",
+      "lane": 8,
+      "count": 2,
+      "dir": -1
+    },
+    {
+      "time": 102,
+      "type": "obstacle",
+      "piece": "asteroid_m",
+      "lane": 2,
+      "count": 1,
+      "dir": 1
+    },
+    {
+      "time": 102.5,
+      "type": "weaver",
+      "lane": 4,
+      "count": 3,
+      "dir": -1
+    },
+    {
+      "time": 105.5,
+      "type": "obstacle",
+      "piece": "asteroid_s",
+      "lane": 5,
+      "count": 4,
+      "dir": -1
+    }
+  ]
+}

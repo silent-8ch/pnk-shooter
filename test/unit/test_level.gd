@@ -116,6 +116,7 @@ func test_game_spawns_groups_from_the_score() -> void:
 	var game: Node2D = load("res://scenes/game.tscn").instantiate()
 	add_child_autofree(game)
 	game.active = true
+	game.stage_time = game.PACE_RAMP * 2.0  # full pace
 	game.level = _level({"repeat": false})
 	game._physics_process(0.01)
 	var enemies := game.get_node("Enemies")
@@ -135,6 +136,7 @@ func test_game_falls_back_to_random_waves_after_a_one_shot_score() -> void:
 	var game: Node2D = load("res://scenes/game.tscn").instantiate()
 	add_child_autofree(game)
 	game.active = true
+	game.stage_time = game.PACE_RAMP * 2.0  # full pace
 	game.level = _level({"repeat": false, "events": []})
 	game.level_time = 4.0  # past the end
 	game._physics_process(game.GROUP_INTERVAL)

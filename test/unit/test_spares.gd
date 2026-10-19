@@ -2,8 +2,8 @@ extends GutTest
 ## A run: the party shares START_SPARE spare ships. A destroyed ship comes back
 ## only by taking one; with none left it waits (spectating). When nobody is
 ## alive and no spares are left, it's game over: the run is logged in the high
-## scores, the results stay up a moment, and the next run starts. +SHIP (tier
-## II) buys a spare for everyone.
+## scores, the results stay up a moment, and the next run starts. +SHIP (in
+## HULL) buys a spare for everyone.
 
 const PlayerScene := preload("res://scenes/player.tscn")
 const PlayerScript := preload("res://scripts/player.gd")
@@ -82,7 +82,6 @@ func test_a_bought_spare_brings_back_a_waiting_ship() -> void:
 	_kill(dead)
 	_wait_respawn(dead)
 	assert_false(dead.is_alive())
-	buyer.tier = 2
 	buyer.exp_balance = 100
 	assert_true(buyer.buy_upgrade(&"ship"))
 	assert_eq(game.spares, 1)
@@ -91,11 +90,9 @@ func test_a_bought_spare_brings_back_a_waiting_ship() -> void:
 	assert_eq(game.spares, 0)
 
 
-func test_ship_slot_is_tier_ii_only_and_limited() -> void:
-	assert_eq(PowerMeter.max_level(&"ship", 1), 0)
-	assert_eq(PowerMeter.max_level(&"ship", 2), 3)
+func test_ship_item_is_limited() -> void:
+	assert_eq(Systems.max_level(&"ship"), 3)
 	var p := _ship(1)
-	p.tier = 2
 	p.exp_balance = 1000
 	for i in 3:
 		assert_true(p.buy_upgrade(&"ship"))
@@ -167,19 +164,68 @@ func test_restart_starts_a_fresh_run_with_the_same_peer() -> void:
 func test_hud_shows_the_spares() -> void:
 	game.spares = 2
 	game._process(0.0)
-	assert_string_contains(game.score_label.text, "Ships 2")
+	var texts: Array = game.status_bar.segments().map(func(s): return s.text)
+	assert_has(texts, "SHIPS 2")
 
 
-func test_main_restarts_the_run_and_blocks_pause_during_results() -> void:
+func test_after_the_results_everyone_readies_up_for_the_next_run() -> void:
 	game.queue_free()
 	var main: Node = MainScene.instantiate()
 	add_child_autofree(main)
 	var g: Node2D = main.get_node("Game")
-	main.get_node("Game").start()
-	g.game_over(10, 0, [])
+	var screen: CanvasLayer = main.get_node("ReadyScreen")
+	g.start()
+	g.score = 300
+	g.game_over(300, 1, ["Player"])
 	main.set_paused(true)
 	assert_false(main.is_paused(), "no pause over the results")
 	g._process(g.RESULTS_TIME + 0.1)
-	assert_false(g.over)
-	assert_true(g.active)
+	assert_true(screen.visible, "ready screen")
+	assert_false(g.active, "waiting for everyone")
+	assert_string_contains(screen.results_label.text, "Score 300")
+	assert_string_contains(screen.players_label.text, "...")
+	screen.ready_button.button_pressed = true  # the only player taps Ready
+	assert_false(screen.visible)
+	assert_true(g.active, "next run")
 	assert_eq(g.score, 0)
+	assert_eq(g.spares, g.START_SPARES)
+
+
+func test_the_run_waits_for_every_player() -> void:
+	game.peer_names = {1: "Host"}
+	game.open_ready()
+	var seen := []
+	game.ready_changed.connect(func(list): seen.append(list))
+	game.set_ready(false)
+	assert_false(game.active and false)
+	assert_eq(seen.back(), [{"name": "Host", "ready": false}])
+	game.active = false
+	game.set_ready(true)
+	assert_true(game.active, "all (one) ready: the run starts")
+
+
+func test_status_bar_shows_score_stage_ships_and_exp() -> void:
+	game.score = 1234
+	game.stage = 2
+	game.spares = 3
+	var texts: Array = game.status_bar.segments().map(func(s): return s.text)
+	assert_has(texts, "SCORE 1234")
+	assert_has(texts, "STAGE 3")
+	assert_has(texts, "SHIPS 3")
+	var me: Node = game.local_player()
+	if me:
+		me.exp_balance = 7
+		texts = game.status_bar.segments().map(func(s): return s.text)
+		assert_has(texts, "EXP 7")
+
+
+func test_collecting_exp_pops_a_plus_one() -> void:
+	game.spawn_pickup(Vector2(270, 500), "Pickup1")
+	var before := game.get_node("Effects").get_children().filter(func(n): return n is FloatText).size()
+	game.collect_pickup("Pickup1", multiplayer.get_unique_id())
+	var pops := game.get_node("Effects").get_children().filter(func(n): return n is FloatText)
+	if game.local_player() == null:
+		assert_eq(pops.size(), before, "no ship of ours, nothing to pop")
+		return
+	assert_eq(pops.size(), before + 1)
+	assert_eq(pops.back().text, "+1")

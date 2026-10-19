@@ -3,8 +3,9 @@
 // Pure logic (no fs, no DOM) so it runs in the browser (window.LevelFormat), the server and node tests.
 //
 // Format (shared with the game; do not change):
-//   { name, length, repeat, events: [{ time, type, lane, count, dir }] }
-//   enemy events:    { time, type: "weaver"|"diver"|"striker"|"tank"|"orbiter", lane, count, dir }
+//   { name, length, repeat, kind, events: [{ time, type, lane, count, dir }] }
+//   kind (optional, default "deep_space"): "deep_space"|"asteroid_belt"|"starbase"|"orbit"|"surface"|"storm"
+//   enemy events:    { time, type: "weaver"|"diver"|"striker"|"tank"|"orbiter"|"turret", lane, count, dir }
 //   obstacle events: { time, type: "obstacle", piece, lane, count, dir }
 // Times are in seconds. Lane 0 enters at the left edge of the screen, lane 8 at the right edge.
 // `piece` is a non-cap id from assets/obstacles/pieces.json. For a tile piece, count is the number
@@ -17,7 +18,7 @@
   'use strict';
 
   const SLUG_RE = /^[a-z0-9][a-z0-9_-]{0,39}$/;
-  const TYPES = ['weaver', 'diver', 'striker', 'tank', 'orbiter'];
+  const TYPES = ['weaver', 'diver', 'striker', 'tank', 'orbiter', 'turret'];
   const OBSTACLE = 'obstacle';
   const ALL_TYPES = TYPES.concat([OBSTACLE]);
   const PIECE_RE = /^[a-z0-9_]{1,40}$/;
@@ -26,7 +27,14 @@
   const MAX_EVENTS = 2000;
   const LENGTH_MIN = 1, LENGTH_MAX = 1800;
   const COUNT_MIN = 1, COUNT_MAX = 7;
-  const TOP_KEYS = ['name', 'length', 'repeat', 'events'];
+  const KINDS = ['deep_space', 'asteroid_belt', 'starbase', 'orbit', 'surface', 'storm'];
+  const KIND_NAMES = {
+    deep_space: 'Deep Space', asteroid_belt: 'Asteroid Belt', starbase: 'Ruined Starbase',
+    orbit: 'Planet Orbit', surface: 'Planet Surface', storm: 'Ion Storm',
+  };
+  const DEFAULT_KIND = 'deep_space';
+  const TOP_KEYS = ['name', 'length', 'repeat', 'kind', 'events'];
+  const OPTIONAL_TOP_KEYS = ['kind'];
   const EVENT_KEYS = ['time', 'type', 'lane', 'count', 'dir'];
   const OBSTACLE_KEYS = ['time', 'type', 'piece', 'lane', 'count', 'dir'];
   const OLD_KEYS = ['bpm', 'beats_per_bar', 'bars'];
@@ -40,6 +48,7 @@
     strikerSpeed: 70, strikerGapX: 40, strikerGapY: 60, lungeTime: 1.6, lungeStagger: 0.35, lungeSpeed: 380,
     tankSpeed: 50, tankSpacing: 120, tankSway: 25, tankSwayFrequency: 1.2,
     orbiterSpeed: 80, orbitRadius: 50, orbitSpeed: 2.2,
+    turretSpeed: 60, turretSpacing: 140,
     scrollSpeed: 60, clusterSpread: 60, obstacleSpawnGap: 10, obstacleExitGap: 20,
   };
 
@@ -80,9 +89,9 @@
 
   function fail(msg) { throw new Error(msg); }
 
-  function checkKeys(obj, allowed, where) {
+  function checkKeys(obj, allowed, where, optional) {
     for (const k of Object.keys(obj)) if (!allowed.includes(k)) fail(where + ': unknown field "' + k + '"');
-    for (const k of allowed) if (!(k in obj)) fail(where + ': missing field "' + k + '"');
+    for (const k of allowed) if (!(k in obj) && !(optional && optional.includes(k))) fail(where + ': missing field "' + k + '"');
   }
 
   // Seconds rounded to 2 decimals (the saved precision).
@@ -125,15 +134,17 @@
     const cat = catalogOf(pieces);
     if (!obj || typeof obj !== 'object' || Array.isArray(obj)) fail('level must be an object');
     if (OLD_KEYS.some((k) => k in obj)) fail('old score format (bpm/beats_per_bar/bars); levels now use "length" and event "time" in seconds');
-    checkKeys(obj, TOP_KEYS, 'level');
+    checkKeys(obj, TOP_KEYS, 'level', OPTIONAL_TOP_KEYS);
     if (typeof obj.name !== 'string' || obj.name.trim() === '') fail('name must be a non-empty string');
     if (obj.name.length > MAX_NAME) fail('name must be at most ' + MAX_NAME + ' characters');
     if (!isNum(obj.length) || obj.length < LENGTH_MIN || obj.length > LENGTH_MAX) fail('length must be a number of seconds from 1 to 1800');
     if (typeof obj.repeat !== 'boolean') fail('repeat must be true or false');
+    const kind = obj.kind === undefined ? DEFAULT_KIND : obj.kind;
+    if (!KINDS.includes(kind)) fail('kind must be one of ' + KINDS.join(', '));
     if (!Array.isArray(obj.events)) fail('events must be an array');
     if (obj.events.length > MAX_EVENTS) fail('at most ' + MAX_EVENTS + ' events are allowed');
     const events = obj.events.map((e, i) => validateEvent(e, i, obj.length, cat)).sort(compareEvents);
-    return { name: obj.name, length: obj.length, repeat: obj.repeat, events };
+    return { name: obj.name, length: obj.length, repeat: obj.repeat, kind, events };
   }
 
   // Pretty JSON (2-space indent, trailing newline), events sorted by time then lane.
@@ -148,7 +159,7 @@
   }
 
   function empty(name) {
-    return { name: name || 'New level', length: 32, repeat: true, events: [] };
+    return { name: name || 'New level', length: 32, repeat: true, kind: DEFAULT_KIND, events: [] };
   }
 
   function isSlug(s) { return typeof s === 'string' && SLUG_RE.test(s); }
@@ -161,7 +172,7 @@
   // ---- Game layout and motion (preview) ----
 
   function speedOf(type) {
-    return { diver: GAME.diverSpeed, striker: GAME.strikerSpeed, tank: GAME.tankSpeed, orbiter: GAME.orbiterSpeed }[type] || GAME.weaverSpeed;
+    return { diver: GAME.diverSpeed, striker: GAME.strikerSpeed, tank: GAME.tankSpeed, orbiter: GAME.orbiterSpeed, turret: GAME.turretSpeed }[type] || GAME.weaverSpeed;
   }
 
   function groupHalfWidth(type, count) {
@@ -169,6 +180,7 @@
     if (type === 'striker') return GAME.strikerGapX * (count - 1) / 2;
     if (type === 'tank') return GAME.tankSpacing * (count - 1) / 2 + GAME.tankSway;
     if (type === 'orbiter') return GAME.orbitRadius;
+    if (type === 'turret') return GAME.turretSpacing * (count - 1) / 2;
     return GAME.weaverSpacing * (count - 1) / 2 + GAME.weaveAmplitude;
   }
 
@@ -191,6 +203,9 @@
     } else if (type === 'tank') {
       const left = centerX - GAME.tankSpacing * (count - 1) / 2;
       for (let i = 0; i < count; i++) out.push({ x: left + GAME.tankSpacing * i, y: GAME.spawnY });
+    } else if (type === 'turret') {
+      const left = centerX - GAME.turretSpacing * (count - 1) / 2;
+      for (let i = 0; i < count; i++) out.push({ x: left + GAME.turretSpacing * i, y: GAME.spawnY });
     } else if (type === 'diver') {
       out.push({ x: centerX, y: GAME.spawnY });
       for (let i = 1; i < count; i++) {
@@ -206,10 +221,12 @@
   }
 
   // Distance fallen after t seconds with the 50%→100% speed ramp over rampTime.
+  // Turrets are fixed to the ground and scroll at a constant speed (no ramp).
   function fallDistance(type, t) {
     const v = speedOf(type);
     const r = GAME.rampTime, s = GAME.rampStart;
     if (t <= 0) return 0;
+    if (type === 'turret') return v * t;
     if (t <= r) return v * (s * t + (1 - s) * t * t / (2 * r));
     return v * (s * r + (1 - s) * r / 2 + (t - r));
   }
@@ -219,6 +236,7 @@
     const v = speedOf(type);
     const r = GAME.rampTime, s = GAME.rampStart;
     if (d <= 0) return 0;
+    if (type === 'turret') return d / v;
     const dRamp = v * (s * r + (1 - s) * r / 2);
     if (d >= dRamp) return r + (d - dRamp) / v;
     const a = (1 - s) * v / (2 * r), b = s * v;
@@ -267,6 +285,7 @@
         return { x: cx + Math.cos(a) * GAME.orbitRadius, y: cy + Math.sin(a) * GAME.orbitRadius };
       });
     }
+    if (ev.type === 'turret') return start.map((p) => ({ x: p.x, y: p.y + dy }));
     if (ev.type === 'tank') {
       const w = GAME.tankSway * Math.sin(t * GAME.tankSwayFrequency);
       return start.map((p) => ({ x: p.x + w, y: p.y + dy }));
@@ -361,7 +380,7 @@
   }
 
   return {
-    SLUG_RE: SLUG_RE, TYPES: TYPES, OBSTACLE: OBSTACLE, ALL_TYPES: ALL_TYPES, PIECE_RE: PIECE_RE, LANES: LANES, MAX_NAME: MAX_NAME, MAX_EVENTS: MAX_EVENTS, LENGTH_MIN: LENGTH_MIN, LENGTH_MAX: LENGTH_MAX, GAME: GAME,
+    SLUG_RE: SLUG_RE, TYPES: TYPES, OBSTACLE: OBSTACLE, ALL_TYPES: ALL_TYPES, KINDS: KINDS, KIND_NAMES: KIND_NAMES, DEFAULT_KIND: DEFAULT_KIND, PIECE_RE: PIECE_RE, LANES: LANES, MAX_NAME: MAX_NAME, MAX_EVENTS: MAX_EVENTS, LENGTH_MIN: LENGTH_MIN, LENGTH_MAX: LENGTH_MAX, GAME: GAME,
     round2: r2,
     validate: validate,
     serialize: serialize,

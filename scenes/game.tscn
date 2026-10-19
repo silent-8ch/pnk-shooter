@@ -1,4 +1,4 @@
-[gd_scene load_steps=13 format=3]
+[gd_scene load_steps=21 format=3]
 
 [ext_resource type="Script" path="res://scripts/game.gd" id="1"]
 [ext_resource type="Script" path="res://scripts/starfield.gd" id="2"]
@@ -6,9 +6,17 @@
 [ext_resource type="AudioStream" path="res://assets/sfx/shoot.tres" id="4"]
 [ext_resource type="AudioStream" path="res://assets/sfx/hit.tres" id="5"]
 [ext_resource type="Script" path="res://scripts/action_bar.gd" id="6"]
-[ext_resource type="Script" path="res://scripts/power_meter.gd" id="7"]
+[ext_resource type="Script" path="res://scripts/ship_panel.gd" id="7"]
+[ext_resource type="Script" path="res://scripts/refit_panel.gd" id="refit_panel"]
 [ext_resource type="Script" path="res://scripts/party_bars.gd" id="party_bars"]
+[ext_resource type="Script" path="res://scripts/status_bar.gd" id="status_bar"]
 [ext_resource type="AudioStream" path="res://assets/sfx/game_over.wav" id="game_over"]
+[ext_resource type="AudioStream" path="res://assets/sfx/vulcan.tres" id="vulcan"]
+[ext_resource type="AudioStream" path="res://assets/sfx/heal.wav" id="heal"]
+[ext_resource type="AudioStream" path="res://assets/sfx/rescue.wav" id="rescue"]
+[ext_resource type="AudioStream" path="res://assets/sfx/dock.wav" id="dock"]
+[ext_resource type="AudioStream" path="res://assets/sfx/siren.wav" id="siren"]
+[ext_resource type="AudioStream" path="res://assets/sfx/healbeam.wav" id="healbeam"]
 
 [sub_resource type="Gradient" id="Gradient_shade"]
 colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 1)
@@ -31,6 +39,9 @@ properties/2/replication_mode = 2
 properties/3/path = NodePath(".:kills")
 properties/3/spawn = true
 properties/3/replication_mode = 2
+properties/4/path = NodePath(".:kind")
+properties/4/spawn = true
+properties/4/replication_mode = 2
 
 [node name="Game" type="Node2D" groups=["game"]]
 script = ExtResource("1")
@@ -77,21 +88,44 @@ max_polyphony = 4
 stream = ExtResource("5")
 max_polyphony = 4
 
+[node name="VulcanSound" type="AudioStreamPlayer" parent="."]
+stream = ExtResource("vulcan")
+max_polyphony = 3
+
 [node name="GameOverSound" type="AudioStreamPlayer" parent="."]
 stream = ExtResource("game_over")
+
+[node name="HealSound" type="AudioStreamPlayer" parent="."]
+stream = ExtResource("heal")
+max_polyphony = 2
+
+[node name="RescueSound" type="AudioStreamPlayer" parent="."]
+stream = ExtResource("rescue")
+max_polyphony = 4
+
+[node name="DockSound" type="AudioStreamPlayer" parent="."]
+stream = ExtResource("dock")
+
+[node name="SirenSound" type="AudioStreamPlayer" parent="."]
+stream = ExtResource("siren")
+max_polyphony = 2
+
+[node name="HealBeamSound" type="AudioStreamPlayer" parent="."]
+stream = ExtResource("healbeam")
+max_polyphony = 3
 
 [node name="ScoreSync" type="MultiplayerSynchronizer" parent="."]
 replication_config = SubResource("SceneReplicationConfig_1")
 
 [node name="HUD" type="CanvasLayer" parent="."]
 
-[node name="ScoreLabel" type="Label" parent="HUD"]
+[node name="StatusBar" type="Control" parent="HUD"]
 offset_left = 16.0
-offset_top = 12.0
+offset_top = 10.0
 offset_right = 524.0
-offset_bottom = 44.0
-theme_override_font_sizes/font_size = 22
-text = "Score 0"
+offset_bottom = 36.0
+mouse_filter = 2
+script = ExtResource("status_bar")
 
 [node name="BossBar" type="ProgressBar" parent="HUD"]
 modulate = Color(1, 0.4, 0.45, 0.85)
@@ -136,8 +170,14 @@ anchor_bottom = 1.0
 mouse_filter = 2
 script = ExtResource("6")
 
-[node name="PowerMeter" type="Control" parent="PointerControls" groups=["power_meter"]]
+[node name="ShipPanel" type="Control" parent="PointerControls" groups=["ship_panel"]]
 anchor_right = 1.0
 anchor_bottom = 1.0
 mouse_filter = 2
 script = ExtResource("7")
+
+[node name="RefitPanel" type="Control" parent="PointerControls" groups=["refit_panel"]]
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+script = ExtResource("refit_panel")

@@ -1,0 +1,315 @@
+{
+  "name": "Ruined Starbase",
+  "length": 108,
+  "repeat": true,
+  "kind": "starbase",
+  "events": [
+    {
+      "time": 0,
+      "type": "weaver",
+      "lane": 4,
+      "count": 3,
+      "dir": 1
+    },
+    {
+      "time": 4,
+      "type": "obstacle",
+      "piece": "hull",
+      "lane": 0,
+      "count": 2,
+      "dir": 1
+    },
+    {
+      "time": 4,
+      "type": "obstacle",
+      "piece": "hull",
+      "lane": 8,
+      "count": 2,
+      "dir": -1
+    },
+    {
+      "time": 6,
+      "type": "turret",
+      "lane": 1,
+      "count": 1,
+      "dir": 1
+    },
+    {
+      "time": 10,
+      "type": "striker",
+      "lane": 6,
+      "count": 3,
+      "dir": 1
+    },
+    {
+      "time": 13,
+      "type": "obstacle",
+      "piece": "reactor",
+      "lane": 3,
+      "count": 1,
+      "dir": 1
+    },
+    {
+      "time": 15,
+      "type": "weaver",
+      "lane": 2,
+      "count": 3,
+      "dir": -1
+    },
+    {
+      "time": 19,
+      "type": "obstacle",
+      "piece": "girder",
+      "lane": 0,
+      "count": 3,
+      "dir": 1
+    },
+    {
+      "time": 19,
+      "type": "obstacle",
+      "piece": "hull",
+      "lane": 8,
+      "count": 1,
+      "dir": -1
+    },
+    {
+      "time": 21,
+      "type": "turret",
+      "lane": 7,
+      "count": 1,
+      "dir": 1
+    },
+    {
+      "time": 25,
+      "type": "tank",
+      "lane": 4,
+      "count": 2,
+      "dir": 1
+    },
+    {
+      "time": 28,
+      "type": "obstacle",
+      "piece": "solar_panel",
+      "lane": 6,
+      "count": 2,
+      "dir": 1
+    },
+    {
+      "time": 30,
+      "type": "striker",
+      "lane": 2,
+      "count": 3,
+      "dir": -1
+    },
+    {
+      "time": 34,
+      "type": "obstacle",
+      "piece": "hull",
+      "lane": 0,
+      "count": 1,
+      "dir": 1
+    },
+    {
+      "time": 34,
+      "type": "obstacle",
+      "piece": "girder",
+      "lane": 8,
+      "count": 3,
+      "dir": -1
+    },
+    {
+      "time": 36,
+      "type": "turret",
+      "lane": 1,
+      "count": 2,
+      "dir": 1
+    },
+    {
+      "time": 40,
+      "type": "weaver",
+      "lane": 6,
+      "count": 3,
+      "dir": 1
+    },
+    {
+      "time": 44,
+      "type": "obstacle",
+      "piece": "debris",
+      "lane": 4,
+      "count": 3,
+      "dir": 1
+    },
+    {
+      "time": 45,
+      "type": "striker",
+      "lane": 4,
+      "count": 2,
+      "dir": 1
+    },
+    {
+      "time": 50,
+      "type": "obstacle",
+      "piece": "hull",
+      "lane": 0,
+      "count": 2,
+      "dir": 1
+    },
+    {
+      "time": 50,
+      "type": "obstacle",
+      "piece": "hull",
+      "lane": 8,
+      "count": 2,
+      "dir": -1
+    },
+    {
+      "time": 52,
+      "type": "turret",
+      "lane": 7,
+      "count": 1,
+      "dir": 1
+    },
+    {
+      "time": 56,
+      "type": "tank",
+      "lane": 2,
+      "count": 2,
+      "dir": 1
+    },
+    {
+      "time": 60,
+      "type": "obstacle",
+      "piece": "reactor",
+      "lane": 6,
+      "count": 1,
+      "dir": 1
+    },
+    {
+      "time": 62,
+      "type": "weaver",
+      "lane": 4,
+      "count": 3,
+      "dir": -1
+    },
+    {
+      "time": 66,
+      "type": "obstacle",
+      "piece": "girder",
+      "lane": 0,
+      "count": 2,
+      "dir": 1
+    },
+    {
+      "time": 66,
+      "type": "obstacle",
+      "piece": "girder",
+      "lane": 8,
+      "count": 2,
+      "dir": -1
+    },
+    {
+      "time": 68,
+      "type": "turret",
+      "lane": 1,
+      "count": 1,
+      "dir": 1
+    },
+    {
+      "time": 68,
+      "type": "turret",
+      "lane": 7,
+      "count": 1,
+      "dir": 1
+    },
+    {
+      "time": 73,
+      "type": "striker",
+      "lane": 5,
+      "count": 3,
+      "dir": 1
+    },
+    {
+      "time": 77,
+      "type": "obstacle",
+      "piece": "solar_panel",
+      "lane": 2,
+      "count": 1,
+      "dir": 1
+    },
+    {
+      "time": 79,
+      "type": "weaver",
+      "lane": 6,
+      "count": 2,
+      "dir": 1
+    },
+    {
+      "time": 83,
+      "type": "obstacle",
+      "piece": "hull",
+      "lane": 0,
+      "count": 2,
+      "dir": 1
+    },
+    {
+      "time": 83,
+      "type": "obstacle",
+      "piece": "girder",
+      "lane": 8,
+      "count": 2,
+      "dir": -1
+    },
+    {
+      "time": 85,
+      "type": "turret",
+      "lane": 7,
+      "count": 1,
+      "dir": 1
+    },
+    {
+      "time": 89,
+      "type": "tank",
+      "lane": 4,
+      "count": 2,
+      "dir": 1
+    },
+    {
+      "time": 93,
+      "type": "obstacle",
+      "piece": "debris",
+      "lane": 2,
+      "count": 3,
+      "dir": 1
+    },
+    {
+      "time": 95,
+      "type": "striker",
+      "lane": 3,
+      "count": 3,
+      "dir": -1
+    },
+    {
+      "time": 100,
+      "type": "weaver",
+      "lane": 5,
+      "count": 3,
+      "dir": 1
+    },
+    {
+      "time": 104,
+      "type": "obstacle",
+      "piece": "hull",
+      "lane": 0,
+      "count": 1,
+      "dir": 1
+    },
+    {
+      "time": 104,
+      "type": "obstacle",
+      "piece": "hull",
+      "lane": 8,
+      "count": 1,
+      "dir": -1
+    }
+  ]
+}

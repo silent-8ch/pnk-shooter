@@ -38,6 +38,10 @@ func test_durations_fit_their_use() -> void:
 	assert_lt(len.call("xp"), 0.3, "picked up in quick runs")
 	assert_gt(len.call("explosion"), len.call("hit"))
 	assert_lt(len.call("implosion"), len.call("explosion"), "a quick lead-in to the explosion")
+	assert_lt(len.call("rescue"), 0.3, "drones grab in quick runs")
+	assert_lt(len.call("heal"), 0.5, "healer pulses every few seconds")
+	assert_gt(len.call("siren"), 0.8, "a full wee-woo, twice")
+	assert_gt(len.call("healbeam"), preload("res://scripts/game.gd").HEALBEAM_BURST - 0.01, "covers its burst")
 	assert_gt(len.call("player_death"), len.call("explosion"))
 
 

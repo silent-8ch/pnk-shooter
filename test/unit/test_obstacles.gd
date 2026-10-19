@@ -99,6 +99,7 @@ func test_game_spawns_obstacles_from_the_level() -> void:
 
 func test_random_obstacles_without_a_level() -> void:
 	game.active = true
+	game.stage_time = game.PACE_RAMP * 2.0  # full pace
 	game.level = null
 	game._physics_process(game.OBSTACLE_INTERVAL)
 	assert_gt(game.get_node("Obstacles").get_child_count(), 0)
@@ -200,3 +201,82 @@ func test_stop_clears_obstacles() -> void:
 	var o := _obstacle("asteroid_m", Vector2(100, 100))
 	game.stop()
 	assert_true(o.is_queued_for_deletion())
+
+
+# --- Exp inside -----------------------------------------------------------------------
+
+## The next obstacle name that does (or doesn't) carry exp.
+func _loot_obstacle(piece: String, pos: Vector2, want: bool) -> Area2D:
+	while ObstacleScript.carries_loot("Obstacle%d" % (game._obstacle_count + 1)) != want:
+		game._obstacle_count += 1
+	return _obstacle(piece, pos)
+
+
+func test_about_one_breakable_piece_in_six_carries_exp() -> void:
+	var n := 0
+	for i in 600:
+		if ObstacleScript.carries_loot("Obstacle%d" % i):
+			n += 1
+	assert_between(n, 70, 130)
+	assert_true(_loot_obstacle("asteroid_m", Vector2(270, 300), true).loot)
+	assert_false(_loot_obstacle("asteroid_m", Vector2(270, 300), false).loot)
+
+
+func test_any_breakable_piece_can_carry_it_but_not_solid_ones() -> void:
+	var solid := ""
+	var breakable: Array = []
+	for id in ObstacleScript.catalog():
+		if not ObstacleScript.placeable(id):
+			continue
+		if ObstacleScript.piece(id).get("hp", 0.0) > 0.0:
+			breakable.append(id)
+		else:
+			solid = id
+	assert_gt(breakable.size(), 1)
+	for id in breakable:
+		assert_true(_loot_obstacle(id, Vector2(270, 300), true).loot, id)
+	if solid != "":
+		assert_false(_loot_obstacle(solid, Vector2(270, 300), true).loot, "can't be broken open")
+
+
+func test_every_peer_agrees_which_carry_it() -> void:
+	for i in 50:
+		var n := "Obstacle%d" % i
+		assert_eq(ObstacleScript.carries_loot(n), ObstacleScript.carries_loot(n))
+
+
+func test_it_flashes_through_the_exp_colors() -> void:
+	var o := _loot_obstacle("asteroid_m", Vector2(270, 300), true)
+	var seen := {}
+	for i in 30:
+		o._process(1.0 / 30.0)
+		seen[o.modulate] = true
+	assert_gt(seen.size(), 2, "cycles")
+	var plain := _loot_obstacle("asteroid_m", Vector2(100, 300), false)
+	plain._process(0.1)
+	assert_eq(plain.modulate, Color.WHITE)
+
+
+func test_breaking_it_drops_an_exp_where_it_was() -> void:
+	var o := _loot_obstacle("asteroid_s", Vector2(200, 300), true)
+	var n := String(o.name)
+	var before := game.get_node("Pickups").get_child_count()
+	for i in 20:
+		if o.is_queued_for_deletion():
+			break
+		game.report_obstacle_hit(n, 1.0)
+	assert_true(o.is_queued_for_deletion(), "broken")
+	var pickups := game.get_node("Pickups").get_children()
+	assert_eq(pickups.size(), before + 1)
+	assert_true(pickups.back().position.distance_to(Vector2(200, 300)) < 40.0)
+
+
+func test_a_plain_one_drops_nothing() -> void:
+	var o := _loot_obstacle("asteroid_s", Vector2(200, 300), false)
+	var n := String(o.name)
+	for i in 20:
+		if o.is_queued_for_deletion():
+			break
+		game.report_obstacle_hit(n, 1.0)
+	assert_true(o.is_queued_for_deletion(), "broken")
+	assert_eq(game.get_node("Pickups").get_child_count(), 0)

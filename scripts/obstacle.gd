@@ -15,6 +15,9 @@ extends Area2D
 ## crushed. Blocks every bullet. Destructible pieces take shots like enemies
 ## (the host keeps their hp). Local on every peer: the host announces each one
 ## (Game.spawn_obstacle) and every peer scrolls it the same way.
+## About one breakable piece in LOOT_ODDS carries an exp inside (`loot`, from
+## its name, so every peer agrees): it flashes through the exp pickup's colors,
+## and breaking it drops an exp pickup where it was (Game.report_obstacle_hit).
 
 const PIECES_PATH := "res://assets/obstacles/pieces.json"
 const ART_DIR := "res://assets/obstacles/"
@@ -28,6 +31,9 @@ const OUTLINE_COLOR := Color(0.75, 0.68, 0.6, 0.9)
 const FILL_COLOR := Color(0.2, 0.18, 0.17, 0.95)
 const LABEL_COLOR := Color(1, 1, 1, 0.55)
 const FLASH_TIME := 0.08
+const LOOT_ODDS := 6  # one breakable piece in this many carries an exp
+const LOOT_TINT := 0.6  # how far its color cycle tints it
+const PickupScript := preload("res://scripts/pickup.gd")
 const SpriteEffect := preload("res://scripts/sprite_effect.gd")
 const WreckScript := preload("res://scripts/wreck.gd")
 
@@ -41,6 +47,8 @@ var hp := 0.0  # host: damage left (destructible pieces)
 var parts: Array[Dictionary] = []  # {piece, offset}
 var spin := 0.0
 var _flash := 0.0
+var loot := false  # carries an exp inside (see carries_loot)
+var _age := 0.0
 
 
 # --- Catalog --------------------------------------------------------------------
@@ -163,6 +171,7 @@ func _ready() -> void:
 	if p.is_empty():
 		return
 	hp = p.hp
+	loot = destructible() and carries_loot(String(name))
 	parts = layout(piece_id, count)
 	if p.spin and not p.tile:
 		var rng := RandomNumberGenerator.new()
@@ -194,12 +203,20 @@ func destructible() -> bool:
 	return piece(piece_id).get("hp", 0.0) > 0.0
 
 
+## Whether the obstacle named `obstacle_name` carries an exp (if it's breakable).
+static func carries_loot(obstacle_name: String) -> bool:
+	return posmod(hash([obstacle_name, "loot"]), LOOT_ODDS) == 0
+
+
 func _process(delta: float) -> void:
+	_age += delta
 	position.y += scroll_speed() * delta
 	rotation += spin * delta
 	if _flash > 0.0:
 		_flash -= delta
 		modulate = Color(3, 3, 3) if _flash > 0.0 else Color.WHITE
+	elif loot:
+		modulate = loot_color(_age)
 	if position.y > ARENA_HEIGHT + piece(piece_id).get("size", Vector2.ZERO).y + SPAWN_GAP:
 		queue_free()
 	queue_redraw()
@@ -241,6 +258,12 @@ func touches(at: Vector2, r: float) -> bool:
 	return push_out(at, r).distance_to(at) > 0.01
 
 
+## The exp pickup's color cycle at `age`, as a tint.
+static func loot_color(age: float) -> Color:
+	var colors := PickupScript.STAR_COLORS
+	return Color.WHITE.lerp(colors[int(age * PickupScript.CYCLE_RATE) % colors.size()], LOOT_TINT)
+
+
 ## Took a hit without breaking (every peer, from Game.flash_obstacle).
 func flash() -> void:
 	_flash = FLASH_TIME
@@ -259,7 +282,7 @@ func _on_area_entered(area: Area2D) -> void:
 	if multiplayer.multiplayer_peer == null or not area.is_in_group("bullet"):
 		return
 	area.queue_free()
-	if destructible() and area.is_mine():
+	if destructible() and area.is_mine() and not area.is_heal():  # heal shots just stop
 		var game := get_tree().get_first_node_in_group("game")
 		if game:
 			game.report_obstacle_hit.rpc_id(1, String(name), area.damage())

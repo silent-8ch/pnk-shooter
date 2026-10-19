@@ -98,8 +98,10 @@ func test_drone_leaves_pods_when_the_tail_is_full() -> void:
 		many.append(EnemyScript.WEAVER)
 	_tail(many)
 	player.levels[&"rescue"] = 1
+	player.levels[&"drones"] = 1
+	assert_true(player.add_power(&"drones"))
 	game.spawn_pod(Vector2(270, 600), 0, "Pod1")
-	player.launch_drone()
+	assert_true(player.launch_drone())
 	for i in 120:
 		player._simulate(1.0 / 60.0)
 	assert_eq(game.get_node("Pods").get_child_count(), 1, "no room, left it")

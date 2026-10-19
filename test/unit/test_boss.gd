@@ -33,8 +33,9 @@ func _player(pos: Vector2) -> Area2D:
 	return p
 
 
+## The classic boss, in deep space (whose own boss is Tetran, see test_tetran.gd).
 func _boss() -> Area2D:
-	game.spawn_boss()
+	game.spawn_enemy({"x": 270.0, "y": EnemyScript.SPAWN_Y - 60.0, "type": EnemyScript.BOSS, "id": 900, "stage": game.stage})
 	return game.get_node("Enemies").get_children().back()
 
 
@@ -52,6 +53,7 @@ func _kill_weaver() -> void:
 func test_kills_bring_in_the_boss() -> void:
 	game.active = true
 	game.level = null
+	game._elite_done = true  # past this stage's mini boss (test_refit.gd)
 	_player(Vector2(270, 800))
 	for i in game.boss_kills_needed() - 1:
 		_kill_weaver()
@@ -181,7 +183,8 @@ func test_beating_the_boss_raises_the_stage_and_drops_loot() -> void:
 	assert_eq(game.stage, 1)
 	assert_eq(game.get_node("Pickups").get_child_count(), game.BOSS_PICKUPS)
 	assert_gt(game.score, 0)
-	assert_eq(get_tree().get_nodes_in_group("banner").size(), 2, "warning, then the new stage")
+	assert_eq(get_tree().get_nodes_in_group("banner").size(), 1, "the refit's")
+	assert_true(game.refit)
 
 
 func test_stage_replicates() -> void:
@@ -219,3 +222,26 @@ func test_stop_resets_the_stage() -> void:
 	game.stage = 3
 	game.stop()
 	assert_eq(game.stage, 0)
+
+
+# --- Pace ----------------------------------------------------------------------
+
+func test_a_run_starts_slow_and_ramps_up() -> void:
+	assert_almost_eq(game.pace(), game.PACE_START, 0.001)
+	game.stage_time = game.PACE_RAMP / 2.0
+	assert_between(game.pace(), game.PACE_START + 0.1, 0.9)
+	game.stage_time = game.PACE_RAMP * 2.0
+	assert_almost_eq(game.pace(), 1.0, 0.001)
+
+
+func test_later_stages_start_faster() -> void:
+	game.stage = 2
+	assert_almost_eq(game.pace(), game.PACE_START + 2 * game.PACE_STAGE, 0.001)
+
+
+func test_the_level_clock_runs_at_the_pace() -> void:
+	game.active = true
+	_player(Vector2(270, 800))
+	game._physics_process(1.0)
+	assert_almost_eq(game.level_time, game.PACE_START, 0.01)
+	assert_almost_eq(game.stage_time, 1.0, 0.001)

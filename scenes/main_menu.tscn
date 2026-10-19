@@ -33,6 +33,13 @@ horizontal_alignment = 1
 [node name="Spacer2" type="Control" parent="Margin/VBox"]
 size_flags_vertical = 3
 
+[node name="ContinueButton" type="Button" parent="Margin/VBox"]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(0, 72)
+theme_override_font_sizes/font_size = 30
+text = "Continue"
+
 [node name="PlayButton" type="Button" parent="Margin/VBox"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 72)
@@ -44,6 +51,18 @@ unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 64)
 theme_override_font_sizes/font_size = 26
 text = "Music"
+
+[node name="SfxToggle" type="CheckButton" parent="Margin/VBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 64)
+theme_override_font_sizes/font_size = 26
+text = "Sound FX"
+
+[node name="HandSide" type="Button" parent="Margin/VBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 64)
+theme_override_font_sizes/font_size = 26
+text = "Controls on: LEFT"
 
 [node name="QuitButton" type="Button" parent="Margin/VBox"]
 unique_name_in_owner = true

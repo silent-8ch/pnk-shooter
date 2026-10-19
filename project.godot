@@ -17,6 +17,7 @@ config/quit_on_go_back=false
 Net="*res://scripts/net.gd"
 Ships="*res://scripts/ships.gd"
 Music="*res://scripts/music.gd"
+Settings="*res://scripts/settings.gd"
 
 [display]
 

@@ -9,7 +9,7 @@
   :root {
     --bg: #0e0f14; --panel: #171922; --line: #2a2d3a; --text: #e6e6ee; --dim: #8a8ca0;
     --accent: #ff7ad9; --danger: #ff5c5c;
-    --weaver: #6fd3ff; --diver: #ffb454; --striker: #ff6b8b; --tank: #9be37a; --orbiter: #e58cff; --obstacle: #b9a184; --end: #a597ff;
+    --weaver: #6fd3ff; --diver: #ffb454; --striker: #ff6b8b; --tank: #9be37a; --orbiter: #e58cff; --turret: #ffd45a; --obstacle: #b9a184; --end: #a597ff;
     --tl-bg: #101117; --tl-row: #13141b; --tl-row-alt: #15161e; --tl-sep: #1d1f2a; --tl-ruler: #191b24;
     --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
     --row-h: 32px; --ruler-h: 28px;
@@ -68,6 +68,7 @@
   .sw.striker { background: var(--striker); }
   .sw.tank { background: var(--tank); }
   .sw.orbiter { background: var(--orbiter); }
+  .sw.turret { background: var(--turret); }
   .sw.obstacle { background: none; border: 1.5px solid var(--obstacle); }
   .transport { display: flex; gap: 6px; align-items: center; margin-left: auto; }
   .transport button { padding: 4px 9px; }
@@ -106,12 +107,14 @@
   #tl .clip.striker .tail { fill: rgba(255, 107, 139, .13); stroke: rgba(255, 107, 139, .45); }
   #tl .clip.tank .tail { fill: rgba(155, 227, 122, .13); stroke: rgba(155, 227, 122, .45); }
   #tl .clip.orbiter .tail { fill: rgba(229, 140, 255, .13); stroke: rgba(229, 140, 255, .45); }
+  #tl .clip.turret .tail { fill: rgba(255, 212, 90, .13); stroke: rgba(255, 212, 90, .45); }
   #tl .clip .tname { font: 11px ui-sans-serif, system-ui, sans-serif; pointer-events: none; }
   #tl .clip.weaver .tname { fill: rgba(111, 211, 255, .75); }
   #tl .clip.diver .tname { fill: rgba(255, 180, 84, .8); }
   #tl .clip.striker .tname { fill: rgba(255, 107, 139, .8); }
   #tl .clip.tank .tname { fill: rgba(155, 227, 122, .8); }
   #tl .clip.orbiter .tname { fill: rgba(229, 140, 255, .8); }
+  #tl .clip.turret .tname { fill: rgba(255, 212, 90, .8); }
   #tl .clip .head { cursor: grab; }
   #tl .clip .hd { stroke: rgba(0, 0, 0, .55); stroke-width: 1; }
   #tl .clip.weaver .hd { fill: var(--weaver); }
@@ -119,6 +122,7 @@
   #tl .clip.striker .hd { fill: var(--striker); }
   #tl .clip.tank .hd { fill: var(--tank); }
   #tl .clip.orbiter .hd { fill: var(--orbiter); }
+  #tl .clip.turret .hd { fill: var(--turret); }
   #tl .clip .grip { fill: rgba(0, 0, 0, .28); }
   #tl .clip .ico { fill: #0b0c10; }
   #tl .clip .badge { fill: #0b0c10; }
@@ -195,7 +199,7 @@
       <p><strong>Timeline</strong>: time runs left to right; each row is where a group enters the screen, L (left edge) at the top to R (right edge) at the bottom. A clip lasts as long as its group takes to cross the screen.</p>
       <p>Click an empty spot to add a group · drag a clip's head to move it · <kbd>Shift</kbd>+click or drag a box to multi-select · click the ruler to scrub · drag the purple end marker to set the length.</p>
       <p><kbd>Space</kbd> play/stop · <kbd>Home</kbd>/<kbd>End</kbd> jump · <kbd>Del</kbd>/<kbd>⌫</kbd> delete · <kbd>Esc</kbd> deselect</p>
-      <p><kbd>W</kbd> weaver · <kbd>D</kbd> diver · <kbd>K</kbd> striker · <kbd>T</kbd> tank · <kbd>R</kbd> orbiter · <kbd>O</kbd> obstacle · <kbd>1</kbd>–<kbd>7</kbd> count · <kbd>F</kbd> flip direction (all apply to the selection too)</p>
+      <p><kbd>W</kbd> weaver · <kbd>D</kbd> diver · <kbd>K</kbd> striker · <kbd>T</kbd> tank · <kbd>R</kbd> orbiter · <kbd>U</kbd> turret · <kbd>O</kbd> obstacle · <kbd>1</kbd>–<kbd>7</kbd> count · <kbd>F</kbd> flip direction (all apply to the selection too)</p>
       <p><strong>Obstacles</strong> scroll down slowly; pick a piece under Obstacles. Count is the number of segments for a tiling piece (girder, hull) or copies in a loose cluster otherwise; flipping mirrors it.</p>
       <p><kbd>S</kbd> cycle snap · <kbd>←</kbd><kbd>→</kbd> nudge by snap · <kbd>↑</kbd><kbd>↓</kbd> change lane · <kbd>+</kbd>/<kbd>−</kbd> or <kbd>⌘</kbd>+wheel zoom · <kbd>Z</kbd> fit</p>
       <p><kbd>⌘C</kbd>/<kbd>⌘X</kbd>/<kbd>⌘V</kbd> copy, cut, paste at playhead · <kbd>⌘A</kbd> all · <kbd>⌘Z</kbd> undo · <kbd>⇧⌘Z</kbd> redo · <kbd>⌘S</kbd> save · <kbd>M</kbd> sound</p>
@@ -209,6 +213,7 @@
         <button data-type="striker" title="Striker (K)"><i class="sw striker"></i>Striker</button>
         <button data-type="tank" title="Tank (T)"><i class="sw tank"></i>Tank</button>
         <button data-type="orbiter" title="Orbiter (R)"><i class="sw orbiter"></i>Orbiter</button>
+        <button data-type="turret" title="Turret (U)"><i class="sw turret"></i>Turret</button>
         <button data-type="obstacle" title="Obstacle: the piece picked under Obstacles (O)"><i class="sw obstacle"></i>Obstacle</button>
       </div>
       <div class="grp" id="countGrp"><span>Count</span></div>
@@ -259,7 +264,7 @@
     <h2>Preview</h2>
     <div class="preview-wrap">
       <canvas id="preview" width="270" height="480"></canvas>
-      <div class="legend"><span><i class="sw weaver"></i>weaver</span><span><i class="sw diver"></i>diver</span><span><i class="sw striker"></i>striker</span><span><i class="sw tank"></i>tank</span><span><i class="sw orbiter"></i>orbiter</span><span><i class="sw obstacle"></i>obstacle</span><span>540×960</span></div>
+      <div class="legend"><span><i class="sw weaver"></i>weaver</span><span><i class="sw diver"></i>diver</span><span><i class="sw striker"></i>striker</span><span><i class="sw tank"></i>tank</span><span><i class="sw orbiter"></i>orbiter</span><span><i class="sw turret"></i>turret</span><span><i class="sw obstacle"></i>obstacle</span><span>540×960</span></div>
     </div>
     <h2>Obstacles</h2>
     <div id="pieceGrid"></div>
@@ -274,7 +279,7 @@
       <label for="selLane">Lane</label>
       <select id="selLane"></select>
       <label for="selType">Type</label>
-      <select id="selType"><option value="weaver">Weaver</option><option value="diver">Diver</option><option value="striker">Striker</option><option value="tank">Tank</option><option value="orbiter">Orbiter</option><option value="obstacle">Obstacle</option><option value="" disabled>mixed</option></select>
+      <select id="selType"><option value="weaver">Weaver</option><option value="diver">Diver</option><option value="striker">Striker</option><option value="tank">Tank</option><option value="orbiter">Orbiter</option><option value="turret">Turret</option><option value="obstacle">Obstacle</option><option value="" disabled>mixed</option></select>
       <label for="selPiece" id="selPieceLbl">Piece</label>
       <select id="selPiece" title="Obstacle piece (applies to the selected obstacles)"></select>
       <label for="selCountSel">Count</label>
@@ -291,6 +296,8 @@
       <span class="unit"><input id="lvLength" type="number" min="1" max="1800" step="0.01"> s</span>
       <span class="k">Repeat</span>
       <label class="chk"><input id="lvRepeat" type="checkbox"> Loop when the timeline ends</label>
+      <label for="lvKind">Kind</label>
+      <select id="lvKind"></select>
       <span class="k">Groups</span><span id="lvCount"></span>
     </div>
   </aside>
@@ -503,6 +510,7 @@
     if (type === 'striker') return '<path class="ico" d="M' + cx + ' ' + (cy + 7) + 'L' + (cx + 4) + ' ' + (cy - 3) + 'L' + cx + ' ' + (cy - 7) + 'L' + (cx - 4) + ' ' + (cy - 3) + 'Z"/>';
     if (type === 'tank') return '<path class="ico" d="M' + (cx - 6) + ' ' + (cy - 4) + 'L' + (cx + 6) + ' ' + (cy - 4) + 'L' + (cx + 6) + ' ' + (cy + 3) + 'L' + cx + ' ' + (cy + 6) + 'L' + (cx - 6) + ' ' + (cy + 3) + 'Z"/>';
     if (type === 'orbiter') return '<circle class="ico" cx="' + cx + '" cy="' + cy + '" r="5"/>';
+    if (type === 'turret') return '<path class="ico" d="M' + (cx - 5) + ' ' + (cy - 5) + 'H' + (cx + 5) + 'V' + (cy + 3) + 'H' + (cx + 1.5) + 'V' + (cy + 7) + 'H' + (cx - 1.5) + 'V' + (cy + 3) + 'H' + (cx - 5) + 'Z"/>';
     if (type === 'diver') return '<path class="ico" d="M' + cx + ' ' + (cy + 6) + 'L' + (cx + 5) + ' ' + (cy - 2) + 'L' + cx + ' ' + (cy - 6) + 'L' + (cx - 5) + ' ' + (cy - 2) + 'Z"/>';
     return '<path class="ico" d="M' + cx + ' ' + (cy + 5) + 'L' + (cx + 6) + ' ' + (cy - 4) + 'L' + (cx + 2) + ' ' + (cy - 2) + 'L' + cx + ' ' + (cy - 5) + 'L' + (cx - 2) + ' ' + (cy - 2) + 'L' + (cx - 6) + ' ' + (cy - 4) + 'Z"/>';
   }
@@ -598,6 +606,7 @@
     set('lvName', level.name);
     set('lvLength', level.length);
     $('lvRepeat').checked = level.repeat;
+    set('lvKind', level.kind || L.DEFAULT_KIND);
     $('lvCount').textContent = level.events.length + ' / ' + L.MAX_EVENTS;
   }
   function uniform(key) {
@@ -1036,7 +1045,7 @@
       const x = palette.type === L.OBSTACLE ? L.obstacleCenterX(palette.piece, palette.count, lane) : L.groupCenterX(palette.type, palette.count, lane);
       ctx.fillRect(x - 1, 0, 2, lane % 4 ? 10 : 18);
     }
-    const col = { weaver: getVar('--weaver'), diver: getVar('--diver'), striker: getVar('--striker'), tank: getVar('--tank'), orbiter: getVar('--orbiter') };
+    const col = { weaver: getVar('--weaver'), diver: getVar('--diver'), striker: getVar('--striker'), tank: getVar('--tank'), orbiter: getVar('--orbiter'), turret: getVar('--turret') };
     const now = shipsAtTime(abs);
     for (const o of now.obstacles) drawObstacle(ctx, o);
     for (const s of now.ships) {
@@ -1047,6 +1056,7 @@
       else if (s.type === 'striker') { ctx.moveTo(0, 24); ctx.lineTo(9, -4); ctx.lineTo(0, -18); ctx.lineTo(-9, -4); }
       else if (s.type === 'tank') { ctx.moveTo(-20, -18); ctx.lineTo(20, -18); ctx.lineTo(24, 4); ctx.lineTo(0, 22); ctx.lineTo(-24, 4); }
       else if (s.type === 'orbiter') { ctx.arc(0, 0, 15, 0, Math.PI * 2); }
+      else if (s.type === 'turret') { ctx.rect(-14, -14, 28, 28); ctx.moveTo(-3, 14); ctx.lineTo(3, 14); ctx.lineTo(3, 30); ctx.lineTo(-3, 30); }
       else { ctx.moveTo(0, 20); ctx.lineTo(20, -12); ctx.lineTo(8, -6); ctx.lineTo(0, -16); ctx.lineTo(-8, -6); ctx.lineTo(-20, -12); }
       ctx.closePath();
       ctx.fillStyle = col[s.type];
@@ -1280,6 +1290,8 @@
     setLength(v);
   });
   $('lvRepeat').addEventListener('change', () => commit(() => { level.repeat = $('lvRepeat').checked; }));
+  $('lvKind').replaceChildren(...L.KINDS.map((k) => { const o = document.createElement('option'); o.value = k; o.textContent = L.KIND_NAMES[k]; return o; }));
+  $('lvKind').addEventListener('change', () => commit(() => { level.kind = $('lvKind').value; }));
 
   document.addEventListener('keydown', (e) => {
     const mod = e.metaKey || e.ctrlKey;
@@ -1319,6 +1331,7 @@
       case 'k': case 'K': setPalette('type', 'striker'); break;
       case 't': case 'T': setPalette('type', 'tank'); break;
       case 'r': case 'R': setPalette('type', 'orbiter'); break;
+      case 'u': case 'U': setPalette('type', 'turret'); break;
       case 'o': case 'O': setPalette('type', L.OBSTACLE); break;
       case 'f': case 'F': setPalette('dir', -palette.dir); break;
       case 's': case 'S': snap = SNAPS[(SNAPS.indexOf(snap) + 1) % SNAPS.length]; renderToolbar(); status('Snap ' + (snap ? snap + ' s' : 'off')); break;

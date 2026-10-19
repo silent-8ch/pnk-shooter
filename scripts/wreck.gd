@@ -10,10 +10,8 @@ extends Node2D
 ## The node itself stays put; the hull moves inside it so loose parts keep
 ## their own world-space motion.
 ##
-## Chain reactions: while it veers the wreck is a hazard (Game.wreck_moved);
-## touching a player or pod blows it up early (other enemy ships it passes
-## through), and its blast (Game.blast, BLAST_RADIUS scaled by depth) hurts
-## players and pods nearby.
+## Broken enemies are non-combatants: the wreck passes through everything and
+## its explosion hurts nothing.
 
 const SpriteEffect := preload("res://scripts/sprite_effect.gd")
 const IMPLOSION_SOUND := preload("res://assets/sfx/implosion.tres")  # random pitch/volume per play
@@ -133,10 +131,6 @@ func _process(delta: float) -> void:
 				_detach(hull.get_child(b.piece), kick, velocity)
 		if _time >= DURATION:
 			explode()
-			return
-		var game := _game()
-		if game:
-			game.wreck_moved(self)
 		return
 	_boom_time += delta
 	if _boom_time >= LINGER:
@@ -183,9 +177,6 @@ func explode() -> void:
 	explosion_sound.volume_db = clampf(linear_to_db(_boom_size), -8.0, 3.0)
 	if explosion_sound.is_inside_tree():
 		explosion_sound.play()
-	var game := _game()
-	if game:
-		game.blast(position + _boom_origin, blast_radius(), pod_name)
 
 
 ## Turns a hull part into a loose piece flying away from the hull center.

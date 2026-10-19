@@ -1,0 +1,189 @@
+{
+  "name": "Planet Orbit",
+  "length": 104,
+  "repeat": true,
+  "kind": "orbit",
+  "events": [
+    {
+      "time": 0,
+      "type": "weaver",
+      "lane": 4,
+      "count": 3,
+      "dir": 1
+    },
+    {
+      "time": 5,
+      "type": "orbiter",
+      "lane": 2,
+      "count": 2,
+      "dir": 1
+    },
+    {
+      "time": 10.5,
+      "type": "diver",
+      "lane": 6,
+      "count": 3,
+      "dir": -1
+    },
+    {
+      "time": 13,
+      "type": "obstacle",
+      "piece": "solar_panel",
+      "lane": 7,
+      "count": 1,
+      "dir": 1
+    },
+    {
+      "time": 16,
+      "type": "weaver",
+      "lane": 3,
+      "count": 3,
+      "dir": 1
+    },
+    {
+      "time": 21,
+      "type": "orbiter",
+      "lane": 6,
+      "count": 2,
+      "dir": -1
+    },
+    {
+      "time": 26.5,
+      "type": "diver",
+      "lane": 2,
+      "count": 3,
+      "dir": 1
+    },
+    {
+      "time": 30,
+      "type": "obstacle",
+      "piece": "ring_arc",
+      "lane": 4,
+      "count": 1,
+      "dir": 1
+    },
+    {
+      "time": 32,
+      "type": "weaver",
+      "lane": 6,
+      "count": 4,
+      "dir": 1
+    },
+    {
+      "time": 37.5,
+      "type": "orbiter",
+      "lane": 4,
+      "count": 3,
+      "dir": 1
+    },
+    {
+      "time": 43,
+      "type": "diver",
+      "lane": 5,
+      "count": 3,
+      "dir": -1
+    },
+    {
+      "time": 45,
+      "type": "obstacle",
+      "piece": "solar_panel",
+      "lane": 1,
+      "count": 1,
+      "dir": -1
+    },
+    {
+      "time": 48.5,
+      "type": "weaver",
+      "lane": 2,
+      "count": 3,
+      "dir": 1
+    },
+    {
+      "time": 54,
+      "type": "diver",
+      "lane": 3,
+      "count": 3,
+      "dir": 1
+    },
+    {
+      "time": 57,
+      "type": "obstacle",
+      "piece": "ring_arc",
+      "lane": 6,
+      "count": 1,
+      "dir": -1
+    },
+    {
+      "time": 59.5,
+      "type": "orbiter",
+      "lane": 5,
+      "count": 2,
+      "dir": 1
+    },
+    {
+      "time": 65,
+      "type": "weaver",
+      "lane": 5,
+      "count": 4,
+      "dir": -1
+    },
+    {
+      "time": 70.5,
+      "type": "orbiter",
+      "lane": 2,
+      "count": 3,
+      "dir": 1
+    },
+    {
+      "time": 73,
+      "type": "obstacle",
+      "piece": "solar_panel",
+      "lane": 6,
+      "count": 2,
+      "dir": 1
+    },
+    {
+      "time": 76,
+      "type": "diver",
+      "lane": 4,
+      "count": 3,
+      "dir": 1
+    },
+    {
+      "time": 81.5,
+      "type": "weaver",
+      "lane": 7,
+      "count": 3,
+      "dir": -1
+    },
+    {
+      "time": 85,
+      "type": "obstacle",
+      "piece": "ring_arc",
+      "lane": 2,
+      "count": 1,
+      "dir": 1
+    },
+    {
+      "time": 87,
+      "type": "orbiter",
+      "lane": 4,
+      "count": 3,
+      "dir": -1
+    },
+    {
+      "time": 92.5,
+      "type": "diver",
+      "lane": 6,
+      "count": 3,
+      "dir": 1
+    },
+    {
+      "time": 98,
+      "type": "weaver",
+      "lane": 3,
+      "count": 4,
+      "dir": 1
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 extends Node2D
 ## Rescue station: drifts slowly down the screen. A ship that flies within
-## RADIUS hands over its tail of rescued enemy pods (Player._dock_tail): they
+## RADIUS hands over its tail of rescued enemy pods and astronauts (Player._dock_tail): they
 ## pile in one after another, and the pilot gets an exp (the team
 ## Game.RESCUE_POINTS) for each. Local on every peer, like escape pods; the host
 ## sends it in (Game.spawn_station) and the ship's owner decides when it docks.
@@ -8,13 +8,14 @@ extends Node2D
 ## blinking lights around a core that flares as each pod arrives.
 
 const EnemyScript := preload("res://scripts/enemy.gd")
+const PlayerScript := preload("res://scripts/player.gd")
+const PodScript := preload("res://scripts/escape_pod.gd")
 const SPEED := 40.0  # px/s down the screen
 const RADIUS := 70.0  # px from the center: close enough to hand over a tail
 const SIZE := 34.0  # ring radius
 const OFFSCREEN := 80.0
 const FLY_TIME := 0.35  # s for a pod to fly in
 const FLY_STAGGER := 0.08  # s between pods
-const POD_SCALE := 0.5  # same size as in the tail (Player.TAIL_SCALE)
 const RING_COLOR := Color(0.45, 0.95, 0.85)
 const CORE_COLOR := Color(0.35, 1.0, 0.45)  # escape pod beacon green
 const SPIN := 0.6  # radians per second
@@ -46,11 +47,11 @@ func in_reach(pos: Vector2) -> bool:
 ## fly in one after another and vanish into the core.
 func receive(from: Array, types: Array) -> void:
 	for i in mini(from.size(), types.size()):
-		var tex := Ships.get_lit_enemy_texture(EnemyScript.TYPES[clampi(types[i], 0, EnemyScript.TYPES.size() - 1)].ship)
+		var entry := int(types[i])
 		var s := Sprite2D.new()
-		s.texture = tex
-		s.scale = Ships.scale_for(tex, EnemyScript.HEIGHT) * POD_SCALE
-		s.flip_v = true
+		s.texture = PlayerScript.tail_texture(entry)
+		s.scale = PlayerScript.tail_scale(entry)
+		s.flip_v = entry != PodScript.ASTRONAUT
 		s.light_mask = Ships.LIGHT_MASK
 		s.position = from[i] - position
 		add_child(s)

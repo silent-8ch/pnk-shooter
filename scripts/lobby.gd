@@ -11,6 +11,7 @@ signal back_pressed
 @onready var status_label: Label = %StatusLabel
 @onready var back_button: Button = %BackButton
 @onready var buddy_toggle: CheckButton = %BuddyToggle
+@onready var pilot_toggle: CheckButton = %PilotToggle
 @onready var high_scores_label: Label = %HighScoresLabel
 
 const HIGH_SCORES_SHOWN := 5
@@ -25,6 +26,8 @@ func _ready() -> void:
 	back_button.pressed.connect(back_pressed.emit)
 	buddy_toggle.set_pressed_no_signal(Net.ai_buddy)
 	buddy_toggle.toggled.connect(func(on: bool) -> void: Net.ai_buddy = on)
+	pilot_toggle.set_pressed_no_signal(Net.ai_pilot)
+	pilot_toggle.toggled.connect(func(on: bool) -> void: Net.ai_pilot = on)
 	server_list.item_selected.connect(_on_server_selected)
 	server_list.item_activated.connect(_on_server_activated)
 	Net.servers_updated.connect(_on_servers_updated)

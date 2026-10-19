@@ -2,7 +2,7 @@ extends RefCounted
 ## A level (levels/<slug>.json, made in tools/level-designer): enemy groups
 ## placed on a timeline. Each event:
 ##   time   when the group enters (seconds from the start)
-##   type   "weaver", "diver", "striker", "tank" or "orbiter"
+##   type   "weaver", "diver", "striker", "tank", "orbiter" or "turret"
 ##   lane   0..8, where it enters; 0 = left edge of the screen, 8 = right
 ##   count  ships in the group
 ##   dir    initial sideways direction (divers); -1 mirrors an obstacle
@@ -20,11 +20,12 @@ const LANES := 9
 const MAX_COUNT := 7
 const EDGE := 20.0  # same margin as random waves
 const TYPES := {"weaver": EnemyScript.WEAVER, "diver": EnemyScript.DIVER, "striker": EnemyScript.STRIKER,
-	"tank": EnemyScript.TANK, "orbiter": EnemyScript.ORBITER}
+	"tank": EnemyScript.TANK, "orbiter": EnemyScript.ORBITER, "turret": EnemyScript.TURRET}
 
 var name := ""
 var length := 1.0  # seconds
 var repeat := true
+var kind := "deep_space"  # LevelKinds id; the designer writes it
 var events: Array[Dictionary] = []  # {time, type (enemy enum or OBSTACLE), lane, count, dir[, piece]}, sorted by time
 
 
@@ -57,6 +58,7 @@ static func parse(text: String) -> RefCounted:
 	if l.length < 1.0:
 		return null
 	l.repeat = data.get("repeat", true) == true
+	l.kind = str(data.get("kind", "deep_space"))
 	for e in data.events:
 		if not e is Dictionary:
 			continue

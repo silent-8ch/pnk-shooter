@@ -36,6 +36,20 @@ func _buy(id: StringName) -> void:
 	assert_true(player.buy_upgrade(id), "bought %s" % id)
 
 
+## One more ENGINES bar, bought and powered: +1 speed.
+func _engines() -> void:
+	_buy(&"engines")
+	assert_true(player.add_power(&"engines"))
+
+
+## An option, with a reactor bar and a DRONES bar to run it.
+func _option() -> void:
+	_buy(&"reactor")
+	_buy(&"option")
+	_buy(&"drones")
+	assert_true(player.add_power(&"drones"))
+
+
 func _die() -> Node:
 	player.take_damage(player.hp + player.shield + player.rear_shield)
 	assert_false(player.is_alive())
@@ -114,18 +128,20 @@ func test_drifts_off_screen_in_reasonable_time() -> void:
 
 
 func test_upgrades_lost_on_respawn_come_back_when_you_touch_your_pod() -> void:
-	_buy(&"speed")
-	_buy(&"option")
+	_engines()
+	_option()
 	_buy(&"armor")
 	var pod := _die()
 	_respawn()
-	assert_eq(player.level(&"speed"), 0)
+	assert_eq(player.level(&"speed"), 1, "back to the start loadout")
 	assert_eq(player.options, 0)
+	assert_eq(player.level(&"option"), 0)
+	assert_eq(player.reactor(), Systems.start_level(&"reactor"))
 	assert_eq(player.hp, PlayerScript.MAX_HP)
 	pod.claim_from([player])
 	assert_false(game.get_node("Pods").has_node(String(pod.name)), "picked up")
-	assert_eq(player.level(&"speed"), 1)
-	assert_eq(player.options, 1)
+	assert_eq(player.level(&"speed"), 2, "ENGINES powered again")
+	assert_eq(player.level(&"option"), 1, "DRONES powered again")
 	assert_eq(player.level(&"armor"), 1)
 	assert_eq(player.max_hp(), PlayerScript.MAX_HP + PlayerScript.HIT_HP)
 	assert_eq(player.hp, PlayerScript.MAX_HP + PlayerScript.HIT_HP, "armor plating back too")
@@ -138,12 +154,12 @@ func test_dead_ship_cannot_pick_it_up() -> void:
 
 
 func test_rescued_by_another_player_while_dead_restores_at_respawn() -> void:
-	_buy(&"speed")
+	_engines()
 	var pod := _die()
 	game.rescue_pod(String(pod.name), 2, true, 1)  # peer 2's drone got it
 	assert_eq(player.drone_carrying, 0, "not our drone's haul")
 	_respawn()
-	assert_eq(player.level(&"speed"), 1)
+	assert_eq(player.level(&"speed"), 2)
 
 
 func test_another_ship_can_touch_it_but_drones_only_take_enemy_pods_by_touch() -> void:
@@ -156,26 +172,37 @@ func test_another_ship_can_touch_it_but_drones_only_take_enemy_pods_by_touch() -
 	assert_false(game.get_node("Pods").has_node(String(pod.name)))
 
 
-func test_destroyed_pod_forgets_the_upgrades() -> void:
-	_buy(&"speed")
+func test_destroyed_pods_astronauts_carry_the_upgrades() -> void:
+	_engines()
 	var pod := _die()
 	var pod_name := String(pod.name)
 	game.destroy_pod(pod_name)
+	assert_false(game.get_node("Pods").has_node(pod_name))
+	var a: Node = game.get_node("Pods/%s_A" % pod_name)
+	assert_true(a.astronaut)
+	assert_eq(a.owner_peer, 1)
+	assert_eq(a.stash, pod_name)
+	assert_eq(a.beacon_color, player.color)
 	_respawn()
-	game.rescue_pod(pod_name, 1, false, 1)
-	assert_eq(player.level(&"speed"), 0)
+	game.request_rescue(String(a.name), false)
+	assert_true(game.get_node("Pods").has_node(String(a.name)), "a ship can't pick up an astronaut")
+	game.request_rescue(String(a.name), true)
+	assert_eq(player.level(&"speed"), 2, "a drone saving either astronaut gives them back")
+	player.drain_power(&"engines")
+	game.request_rescue("%s_B" % pod_name, true)
+	assert_eq(player.level(&"speed"), 0, "only once")
 
 
 func test_restore_keeps_the_better_of_each_upgrade() -> void:
-	_buy(&"speed")
+	_engines()
 	var pod := _die()
 	_respawn()
-	_buy(&"speed")
-	_buy(&"speed")
-	_buy(&"option")
+	_buy(&"reactor")
+	_engines()
+	_engines()
 	pod.claim_from([player])
-	assert_eq(player.level(&"speed"), 2)
-	assert_eq(player.options, 1)
+	assert_eq(player.levels[&"engines"], 3, "ours: more than the pod had")
+	assert_eq(player.level(&"speed"), 3)
 
 
 func test_each_death_drops_its_own_pod() -> void:

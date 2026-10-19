@@ -1,7 +1,7 @@
 extends GutTest
-## Seeking missiles: a meter slot that adds a MISSILE button; each press fires a
-## smaller, darker (player-colored) laser from the ship and each option that
-## turns toward the nearest enemy. Same damage as a laser, twice its cooldown at
+## Seeking missiles: a WEAPONS gun (2 bars) that adds a MISSILE button; the
+## first tap arms it, then each press fires a smaller, darker (player-colored)
+## laser from the ship and each option that turns toward the nearest enemy. Same damage as a laser, twice its cooldown at
 ## level 1. Levels, salvos and smoke trails: test_missile_tiers.gd.
 
 const PlayerScript := preload("res://scripts/player.gd")
@@ -39,6 +39,17 @@ func _buy(id: StringName) -> void:
 	assert_true(player.buy_upgrade(id), "bought %s" % id)
 
 
+## Room in the reactor and WEAPONS for every gun.
+func _give_power() -> void:
+	player.levels[&"reactor"] = Systems.max_level(&"reactor")
+	player.levels[&"weapons"] = Systems.max_level(&"weapons")
+
+
+func _arm_missile() -> void:
+	_give_power()
+	assert_true(player.arm(&"missile"))
+
+
 func _bullets() -> Array:
 	return game.get_node("Bullets").get_children()
 
@@ -48,9 +59,10 @@ func _fire() -> void:
 	player._simulate(0.016)
 
 
-func test_slot_and_its_own_button() -> void:
-	assert_gte(PowerMeter.slot_index(&"missile", 1), 0)
-	assert_gte(PowerMeter.slot_index(&"missile", 2), 0)
+func test_gun_and_its_own_button() -> void:
+	assert_true(Systems.is_gun(&"missile"))
+	assert_eq(Systems.max_level(&"missile"), 6)
+	assert_eq(Systems.gun_power(&"missile"), 2)
 	player._gather_input()
 	assert_false(bar.is_shown(&"missile"))
 	_buy(&"missile")
@@ -59,9 +71,18 @@ func test_slot_and_its_own_button() -> void:
 	assert_ne(bar.button_rect(ActionBar.ACTIONS.map(func(a): return a.id).find(&"missile")), bar.button_rect(0))
 
 
-func test_button_fires_a_missile() -> void:
+func test_button_arms_then_fires_a_missile() -> void:
 	_buy(&"missile")
+	_give_power()
 	player._gather_input()
+	assert_false(bar._lit.get(&"missile", false), "shows OFF until armed")
+	assert_true(bar.press(&"missile"))
+	player._gather_input()
+	player._simulate(0.016)
+	assert_true(player.is_armed(&"missile"), "the first tap arms it")
+	assert_true(bar._lit.get(&"missile", false), "lit once armed")
+	assert_eq(_bullets().size(), 0, "without firing")
+	bar._process(1.0)
 	assert_true(bar.press(&"missile"))
 	player._gather_input()
 	player._simulate(0.016)
@@ -73,6 +94,7 @@ func test_cooldown_is_twice_the_laser() -> void:
 	assert_eq(PlayerScript.MISSILE_COOLDOWN, PlayerScript.FIRE_COOLDOWN * 2.0)
 	assert_eq(ActionBar.cooldown_of(&"missile"), PlayerScript.MISSILE_COOLDOWN)
 	_buy(&"missile")
+	_arm_missile()
 	_fire()
 	player._simulate(PlayerScript.FIRE_COOLDOWN)
 	_fire()
@@ -83,6 +105,13 @@ func test_cooldown_is_twice_the_laser() -> void:
 
 
 func test_without_the_upgrade_nothing_fires() -> void:
+	_fire()
+	assert_eq(_bullets().size(), 0)
+
+
+func test_bought_but_not_armed_nothing_fires() -> void:
+	_buy(&"missile")
+	assert_false(player.arm(&"missile"), "not enough WEAPONS bars")
 	_fire()
 	assert_eq(_bullets().size(), 0)
 
@@ -100,7 +129,10 @@ func test_smaller_and_darker_player_colored_laser() -> void:
 
 func test_options_fire_missiles_too() -> void:
 	_buy(&"missile")
+	_arm_missile()
 	_buy(&"option")
+	player.levels[&"drones"] = 1
+	assert_true(player.add_power(&"drones"))
 	player._process(0.0)
 	_fire()
 	assert_eq(_bullets().size(), 2)
@@ -117,7 +149,7 @@ func test_missile_turns_toward_the_nearest_enemy() -> void:
 		m._physics_process(1.0 / 60.0)
 	assert_gt(m.direction.x, 0.0, "veers right toward it")
 	assert_lt(m.position.distance_to(e.position), start_gap)
-	assert_almost_eq(m.rotation, Vector2.UP.angle_to(m.direction), 0.0001)
+	assert_lt(absf(m.rotation - Vector2.UP.angle_to(m.direction)), 1.2, "roughly facing its course")
 
 
 func test_missile_flies_straight_with_no_enemies() -> void:

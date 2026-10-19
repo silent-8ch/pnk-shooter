@@ -1,7 +1,8 @@
 extends GutTest
-## Autocannons: a meter slot in both tiers that adds an AUTO on/off button for
-## a vulcan cannon; while on, it hoses whatever is closest within a short range
-## (friendlies included) with lots of small, fast, low-damage rounds.
+## Autocannons: a WEAPONS gun that adds an AUTO on/off button for a vulcan
+## cannon; while armed (on), it shoots down enemy shots within a short range
+## first, then hoses whatever is closest (friendlies included) with small,
+## fast rounds.
 
 const PlayerScript := preload("res://scripts/player.gd")
 const EnemyScene := preload("res://scenes/enemy.tscn")
@@ -38,6 +39,17 @@ func _buy_auto() -> void:
 	assert_true(player.buy_upgrade(&"auto"))
 
 
+## Room in WEAPONS (and the reactor) for every gun.
+func _give_power() -> void:
+	player.levels[&"reactor"] = Systems.max_level(&"reactor")
+	player.levels[&"weapons"] = Systems.max_level(&"weapons")
+
+
+func _arm_auto() -> void:
+	_give_power()
+	assert_true(player.arm(&"auto"))
+
+
 func _enemy(pos: Vector2) -> Area2D:
 	var e: Area2D = EnemyScene.instantiate()
 	e.position = pos
@@ -58,11 +70,12 @@ func _bullets() -> Array:
 	return game.get_node("Bullets").get_children()
 
 
-func test_slot_in_both_tiers() -> void:
-	assert_eq(PowerMeter.max_level(&"auto", 1), 1)
-	assert_eq(PowerMeter.max_level(&"auto", 2), 2)
-	assert_eq(PowerMeter.SLOTS[PowerMeter.slot_index(&"auto")].label, "AUTOCAN")
-	assert_gte(PowerMeter.slot_index(&"auto", 2), 0)
+func test_a_weapons_gun() -> void:
+	assert_true(Systems.is_gun(&"auto"))
+	assert_eq(Systems.max_level(&"auto"), 2)
+	assert_eq(Systems.item(&"auto").label, "AUTOCAN")
+	assert_eq(Systems.gun_power(&"auto"), 1)
+	assert_eq(Systems.gun_action(&"auto"), &"auto")
 
 
 func test_button_appears_and_toggles() -> void:
@@ -71,25 +84,39 @@ func test_button_appears_and_toggles() -> void:
 	_buy_auto()
 	player._gather_input()
 	assert_true(bar.is_shown(&"auto"))
+	assert_false(bar._lit.get(&"auto", false), "shows OFF until armed")
+	_give_power()
 	assert_true(bar.press(&"auto"))
 	player._gather_input()
-	assert_true(player.autocannon_on, "must be switched on")
+	assert_true(player.is_armed(&"auto"), "must be switched on")
+	assert_true(bar._lit.get(&"auto", false))
 	bar._process(1.0)
 	bar.press(&"auto")
 	player._gather_input()
-	assert_false(player.autocannon_on, "and off again")
+	assert_false(player.is_armed(&"auto"), "and off again")
 
 
 func test_off_by_default_even_when_bought() -> void:
 	_buy_auto()
+	assert_false(player.is_armed(&"auto"))
+	assert_eq(player.level(&"auto"), 0, "does nothing until armed")
 	_enemy(player.position + Vector2(0, -60))
 	player._simulate(0.5)
 	assert_eq(_bullets().size(), 0)
 
 
+func test_needs_a_spare_weapons_bar_to_arm() -> void:
+	_buy_auto()
+	assert_false(player.arm(&"auto"), "the lasers take the only WEAPONS bar")
+	player.levels[&"weapons"] = 2
+	assert_true(player.arm(&"auto"), "powered up from the reactor")
+	assert_eq(player.power_of(&"weapons"), 2)
+	assert_eq(player.level(&"auto"), 1)
+
+
 func test_shoots_at_the_closest_thing_in_range() -> void:
 	_buy_auto()
-	player.autocannon_on = true
+	_arm_auto()
 	_enemy(player.position + Vector2(100, 0))
 	_enemy(player.position + Vector2(-50, 0))
 	player._simulate(0.016)
@@ -101,7 +128,7 @@ func test_shoots_at_the_closest_thing_in_range() -> void:
 
 func test_ignores_things_out_of_range() -> void:
 	_buy_auto()
-	player.autocannon_on = true
+	_arm_auto()
 	_enemy(player.position + Vector2(0, -PlayerScript.AUTO_RANGE - 10))
 	player._simulate(0.016)
 	assert_eq(_bullets().size(), 0)
@@ -109,7 +136,7 @@ func test_ignores_things_out_of_range() -> void:
 
 func test_targets_friendlies() -> void:
 	_buy_auto()
-	player.autocannon_on = true
+	_arm_auto()
 	_friend(player.position + Vector2(0, 80))
 	player._simulate(0.016)
 	assert_eq(_bullets().size(), 1)
@@ -118,21 +145,20 @@ func test_targets_friendlies() -> void:
 
 func test_skips_dead_friendlies() -> void:
 	_buy_auto()
-	player.autocannon_on = true
+	_arm_auto()
 	_friend(player.position + Vector2(0, 80)).hp = 0
 	player._simulate(0.016)
 	assert_eq(_bullets().size(), 0)
 
 
-func test_hoses_lots_of_rounds() -> void:
+func test_fires_a_steady_stream_of_rounds() -> void:
 	_buy_auto()
-	player.autocannon_on = true
+	_arm_auto()
 	_enemy(player.position + Vector2(0, -60))
 	for i in 60:
 		player._simulate(1.0 / 60.0)
-	assert_gte(_bullets().size(), 12, "a dozen-plus rounds a second")
+	assert_almost_eq(_bullets().size(), int(1.0 / PlayerScript.AUTO_COOLDOWN) + 1, 1, "a round every AUTO_COOLDOWN")
 	var n := _bullets().size()
-	player.tier = 2
 	_buy_auto()
 	assert_eq(player.level(&"auto"), 2)
 	for i in 60:
@@ -154,6 +180,71 @@ func test_vulcan_rounds_are_small_fast_weak_and_short_range() -> void:
 	assert_almost_eq(b.position, Vector2(270 + vulcan.speed * 0.1, 500), Vector2(0.01, 0.01))
 	b._physics_process(0.2)
 	assert_true(b.is_queued_for_deletion(), "fizzles")
+
+
+func test_a_dense_stream_of_light_rounds() -> void:
+	assert_eq(BulletScript.KINDS[BulletScript.VULCAN].damage, 0.125)
+	assert_eq(PlayerScript.AUTO_COOLDOWN, 0.035)
+	var per_second := BulletScript.KINDS[BulletScript.VULCAN].damage / PlayerScript.AUTO_COOLDOWN
+	assert_almost_eq(per_second, 0.5 / 0.14, 0.01, "same damage per second as before")
+
+
+func _enemy_shot(pos: Vector2, dir: Vector2) -> Area2D:
+	game.fire_enemy_bullet(pos, dir)
+	return _bullets().filter(func(b): return b.is_hostile()).back()
+
+
+func test_aims_at_enemy_shots_before_enemies() -> void:
+	_buy_auto()
+	_arm_auto()
+	_enemy(player.position + Vector2(-40, 0))
+	_enemy_shot(player.position + Vector2(100, 0), Vector2.DOWN)
+	assert_true(player.auto_target().is_in_group("bullet"), "the shot, though the enemy is closer")
+	player._simulate(0.016)
+	var round: Area2D = _bullets().filter(func(b): return not b.is_hostile())[0]
+	assert_lt(absf(round.direction.angle_to(Vector2.RIGHT)), 0.5, "toward the shot")
+	assert_gt(round.direction.y, 0.0, "leading it: the shot is falling")
+
+
+func test_ignores_enemy_shots_out_of_range() -> void:
+	_enemy_shot(player.position + Vector2(0, -PlayerScript.AUTO_RANGE - 10), Vector2.DOWN)
+	assert_null(player.auto_target())
+
+
+func test_ignores_player_shots() -> void:
+	game.fire_bullet(player.position + Vector2(0, -50), Color.RED)
+	assert_null(player.auto_target())
+
+
+func test_a_round_shoots_down_an_enemy_shot() -> void:
+	var shot := _enemy_shot(Vector2(270, 300), Vector2.DOWN)
+	game.fire_bullet(Vector2(270, 400), Color.RED, Vector2.UP, BulletScript.VULCAN)
+	var round: Area2D = _bullets().filter(func(b): return b.kind == BulletScript.VULCAN)[0]
+	round._on_area_entered(shot)
+	assert_true(shot.is_queued_for_deletion())
+	assert_true(round.is_queued_for_deletion())
+
+
+func test_a_round_passes_other_player_shots() -> void:
+	game.fire_bullet(Vector2(270, 300), Color.BLUE)
+	var laser: Area2D = _bullets()[0]
+	game.fire_bullet(Vector2(270, 400), Color.RED, Vector2.UP, BulletScript.VULCAN)
+	var round: Area2D = _bullets().filter(func(b): return b.kind == BulletScript.VULCAN)[0]
+	round._on_area_entered(laser)
+	assert_false(laser.is_queued_for_deletion())
+	assert_false(round.is_queued_for_deletion())
+
+
+func test_shoots_down_a_shot_coming_at_it() -> void:
+	_buy_auto()
+	_arm_auto()
+	var shot := _enemy_shot(player.position + Vector2(0, -PlayerScript.AUTO_RANGE + 5), Vector2.DOWN)
+	for i in 30:
+		player._simulate(1.0 / 60.0)
+		await wait_physics_frames(1)
+		if not is_instance_valid(shot) or shot.is_queued_for_deletion():
+			break
+	assert_true(not is_instance_valid(shot) or shot.is_queued_for_deletion(), "gone before it reached the ship")
 
 
 func test_vulcan_makes_no_shoot_sound() -> void:
@@ -191,8 +282,21 @@ func test_lasers_still_go_straight_up() -> void:
 
 func test_switched_off_when_ship_is_lost() -> void:
 	_buy_auto()
-	player.autocannon_on = true
+	_arm_auto()
 	player.take_damage(PlayerScript.MAX_HP)
 	player._simulate(PlayerScript.RESPAWN_TIME + 0.1)
-	assert_false(player.autocannon_on)
+	assert_false(player.is_armed(&"auto"))
 	assert_eq(player.level(&"auto"), 0)
+
+
+func test_a_stream_of_rounds_plays_one_vulcan_burst() -> void:
+	var sound: AudioStreamPlayer = game.get_node("VulcanSound")
+	assert_eq(sound.stream, load("res://assets/sfx/vulcan.tres"))
+	game.fire_bullet(Vector2(270, 500), Color.RED, Vector2.UP, BulletScript.VULCAN)
+	var until: float = game._vulcan_until[1]
+	for i in 5:
+		game.fire_bullet(Vector2(270, 500), Color.RED, Vector2.UP, BulletScript.VULCAN)
+	assert_eq(game._vulcan_until[1], until, "no new burst while one is playing")
+	game._vulcan_until[1] = 0.0  # that burst ran out
+	game.fire_bullet(Vector2(270, 500), Color.RED, Vector2.UP, BulletScript.VULCAN)
+	assert_gt(game._vulcan_until[1], until - 0.001, "next burst")

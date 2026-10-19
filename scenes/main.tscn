@@ -1,4 +1,4 @@
-[gd_scene load_steps=7 format=3]
+[gd_scene load_steps=8 format=3]
 
 [ext_resource type="Script" path="res://scripts/main.gd" id="1"]
 [ext_resource type="PackedScene" path="res://scenes/game.tscn" id="2"]
@@ -6,6 +6,7 @@
 [ext_resource type="PackedScene" path="res://scenes/ship_select.tscn" id="4"]
 [ext_resource type="PackedScene" path="res://scenes/main_menu.tscn" id="5"]
 [ext_resource type="PackedScene" path="res://scenes/pause_menu.tscn" id="6"]
+[ext_resource type="PackedScene" path="res://scenes/ready_screen.tscn" id="7"]
 
 [node name="Main" type="Node"]
 script = ExtResource("1")
@@ -21,3 +22,5 @@ visible = false
 [node name="MainMenu" parent="." instance=ExtResource("5")]
 
 [node name="PauseMenu" parent="." instance=ExtResource("6")]
+
+[node name="ReadyScreen" parent="." instance=ExtResource("7")]

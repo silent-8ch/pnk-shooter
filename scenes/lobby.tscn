@@ -53,6 +53,12 @@ custom_minimum_size = Vector2(0, 48)
 theme_override_font_sizes/font_size = 22
 text = "Fly with an AI buddy (host)"
 
+[node name="PilotToggle" type="CheckButton" parent="Margin/VBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 48)
+theme_override_font_sizes/font_size = 22
+text = "AI plays for me (host)"
+
 [node name="HighScoresLabel" type="Label" parent="Margin/VBox"]
 unique_name_in_owner = true
 theme_override_colors/font_color = Color(1, 0.83, 0.35, 0.9)
