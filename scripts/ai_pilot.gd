@@ -9,8 +9,7 @@ extends RefCounted
 ## closest to its goal: under the enemy it's hunting (leading it), an exp
 ## pickup, a rescue station while it has a tail, or a gate at a fork.
 ## It uses everything it has: lasers whenever something is above it, missiles
-## and the beam at worthwhile targets, the autocannon (off while a friendly
-## ship is close enough for it to pick), rescue drones when there's someone to
+## and the beam at worthwhile targets, the autocannon (point defence), rescue drones when there's someone to
 ## fetch, a repair kit when hurt. It shares the reactor out, re-arms after a
 ## respawn, spends its exp at refits and taps READY.
 ## It never switches on the HEAL BEAM: it heals enemies as much as friends.
@@ -142,22 +141,16 @@ static func spend_exp(ship: Node2D, r: RandomNumberGenerator) -> void:
 # --- Guns -------------------------------------------------------------------------
 
 func _use_guns(ship: Node2D, game: Node) -> void:
-	var friend_close := false
 	var friend_in_line := false
 	for p in game.players.get_children():
 		if p == ship or not p.is_alive():
 			continue
 		if p.position.y < ship.position.y and absf(p.position.x - ship.position.x) < SAFE_LINE:
 			friend_in_line = true
-		if PlayerScript.is_targetable(p) and p.position.distance_to(ship.position) < PlayerScript.AUTO_RANGE + 30.0:
-			friend_close = true
 	var prey := hunt(ship, game)
 	var lined := prey != null and absf(aim_x(prey) - ship.position.x) < AIM + _half_width(prey)
-	if ship.levels.get(&"auto", 0) > 0:
-		if friend_close:
-			ship.disarm(&"auto")
-		elif not ship.is_armed(&"auto"):
-			ship.arm(&"auto")
+	if ship.levels.get(&"auto", 0) > 0 and not ship.is_armed(&"auto"):
+		ship.arm(&"auto")  # point defence: it only ever picks enemy shots
 	if friend_in_line:
 		return
 	if _anything_above(ship, game):

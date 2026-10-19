@@ -1,8 +1,7 @@
 extends GutTest
 ## Autocannons: a WEAPONS gun that adds an AUTO on/off button for a vulcan
-## cannon; while armed (on), it shoots down enemy shots within a short range
-## first, then hoses whatever is closest (friendlies included) with small,
-## fast rounds.
+## cannon, point defence only: while armed (on), it hoses the nearest enemy
+## shot within a short range, and never enemies or other ships.
 
 const PlayerScript := preload("res://scripts/player.gd")
 const EnemyScene := preload("res://scenes/enemy.tscn")
@@ -114,39 +113,32 @@ func test_needs_a_spare_weapons_bar_to_arm() -> void:
 	assert_eq(player.level(&"auto"), 1)
 
 
-func test_shoots_at_the_closest_thing_in_range() -> void:
+func test_shoots_at_the_closest_enemy_shot_in_range() -> void:
 	_buy_auto()
 	_arm_auto()
-	_enemy(player.position + Vector2(100, 0))
-	_enemy(player.position + Vector2(-50, 0))
+	_enemy_shot(player.position + Vector2(100, 0), Vector2.ZERO)
+	_enemy_shot(player.position + Vector2(-50, 0), Vector2.ZERO)
 	player._simulate(0.016)
-	var shots := _bullets()
+	var shots := _bullets().filter(func(b): return not b.is_hostile())
 	assert_eq(shots.size(), 1)
 	assert_lt(shots[0].direction.angle_to(Vector2.LEFT), PlayerScript.AUTO_SPREAD + 0.001, "aimed at the closer one")
 	assert_eq(shots[0].kind, BulletScript.VULCAN)
 
 
-func test_ignores_things_out_of_range() -> void:
+func test_ignores_shots_out_of_range() -> void:
 	_buy_auto()
 	_arm_auto()
-	_enemy(player.position + Vector2(0, -PlayerScript.AUTO_RANGE - 10))
+	_enemy_shot(player.position + Vector2(0, -PlayerScript.AUTO_RANGE - 10), Vector2.ZERO)
 	player._simulate(0.016)
-	assert_eq(_bullets().size(), 0)
+	assert_eq(_bullets().filter(func(b): return not b.is_hostile()).size(), 0)
 
 
-func test_targets_friendlies() -> void:
+func test_never_targets_enemies_or_ships() -> void:
 	_buy_auto()
 	_arm_auto()
-	_friend(player.position + Vector2(0, 80))
-	player._simulate(0.016)
-	assert_eq(_bullets().size(), 1)
-	assert_lt(absf(_bullets()[0].direction.angle_to(Vector2.DOWN)), PlayerScript.AUTO_SPREAD + 0.001)
-
-
-func test_skips_dead_friendlies() -> void:
-	_buy_auto()
-	_arm_auto()
-	_friend(player.position + Vector2(0, 80)).hp = 0
+	_enemy(player.position + Vector2(0, -40))
+	_friend(player.position + Vector2(0, 60))
+	assert_null(player.auto_target(), "only enemy shots")
 	player._simulate(0.016)
 	assert_eq(_bullets().size(), 0)
 
@@ -154,16 +146,18 @@ func test_skips_dead_friendlies() -> void:
 func test_fires_a_steady_stream_of_rounds() -> void:
 	_buy_auto()
 	_arm_auto()
-	_enemy(player.position + Vector2(0, -60))
+	var shot := _enemy_shot(player.position + Vector2(0, -60), Vector2.ZERO)
+	shot.toughness = 100000
 	for i in 60:
 		player._simulate(1.0 / 60.0)
-	assert_almost_eq(_bullets().size(), int(1.0 / PlayerScript.AUTO_COOLDOWN) + 1, 1, "a round every AUTO_COOLDOWN")
-	var n := _bullets().size()
+	var rounds := func(): return _bullets().filter(func(b): return not b.is_hostile()).size()
+	assert_almost_eq(rounds.call(), int(1.0 / PlayerScript.AUTO_COOLDOWN) + 1, 1, "a round every AUTO_COOLDOWN")
+	var n: int = rounds.call()
 	_buy_auto()
 	assert_eq(player.level(&"auto"), 2)
 	for i in 60:
 		player._simulate(1.0 / 60.0)
-	assert_gt(_bullets().size() - n, n, "level 2 fires faster")
+	assert_gt(rounds.call() - n, n, "level 2 fires faster")
 
 
 func test_vulcan_rounds_are_small_slow_weak_and_long_lived() -> void:
@@ -200,9 +194,13 @@ func test_a_dense_stream_of_light_rounds() -> void:
 	assert_almost_eq(per_second, 0.5 / 0.14, 0.01, "same damage per second as before")
 
 
+## An enemy shot at `pos` flying `dir` (Vector2.ZERO: hanging still, for aim checks).
 func _enemy_shot(pos: Vector2, dir: Vector2) -> Area2D:
 	game.fire_enemy_bullet(pos, dir)
-	return _bullets().filter(func(b): return b.is_hostile()).back()
+	var shot: Area2D = _bullets().filter(func(b): return b.is_hostile()).back()
+	if dir == Vector2.ZERO:
+		shot.direction = Vector2.ZERO
+	return shot
 
 
 func test_aims_at_enemy_shots_before_enemies() -> void:
@@ -319,7 +317,7 @@ func test_a_stream_of_rounds_plays_one_vulcan_burst() -> void:
 
 
 
-func test_options_fire_vulcans_at_their_own_nearest() -> void:
+func test_options_fire_vulcans_at_the_shots_nearest_them() -> void:
 	_buy_auto()
 	_arm_auto()
 	player.levels[&"option"] = 1
@@ -328,12 +326,10 @@ func test_options_fire_vulcans_at_their_own_nearest() -> void:
 	player.add_power(&"option")
 	player._simulate(0.016)
 	player._trail.assign([Vector2(100, 600), Vector2(100, 600), Vector2(100, 600)])
-	_enemy(Vector2(100, 520))  # near where the option is
-	_enemy(player.position + Vector2(0, -60))
-	for b in _bullets():
-		b.queue_free()
+	_enemy_shot(Vector2(100, 520), Vector2.ZERO)  # near where the option is
+	_enemy_shot(player.position + Vector2(0, -60), Vector2.ZERO)
 	player._auto_cooldown = 0.0
 	player._run_autocannon(1.0 / 60.0)
-	var from := _bullets().filter(func(b): return not b.is_queued_for_deletion()).map(func(b): return b.position.x)
+	var from := _bullets().filter(func(b): return not b.is_hostile() and not b.is_queued_for_deletion()).map(func(b): return b.position.x)
 	assert_gt(from.size(), 1, "the ship and its option")
 	assert_true(from.any(func(x): return x < 200.0), "one from the option's side")

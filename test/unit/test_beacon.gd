@@ -84,21 +84,10 @@ func test_beacon_is_lost_with_the_ship() -> void:
 	assert_false(me.beacon)
 
 
-func test_autocannon_targets_a_teammate_without_a_beacon() -> void:
-	assert_eq(me.auto_target(), mate)
-
-
-func test_autocannon_skips_a_teammate_with_a_beacon() -> void:
+func test_autocannon_never_targets_a_teammate() -> void:
+	assert_null(me.auto_target(), "point defence: enemy shots only")
 	mate.beacon = true
 	assert_null(me.auto_target())
-
-
-func test_autocannon_still_hits_enemies_near_a_beacon() -> void:
-	mate.beacon = true
-	var e: Area2D = preload("res://scenes/enemy.tscn").instantiate()
-	e.position = Vector2(270, 620)
-	game.get_node("Enemies").add_child(e)
-	assert_eq(me.auto_target(), e)
 
 
 func test_missile_seeks_a_teammate_without_a_beacon_but_never_its_shooter() -> void:

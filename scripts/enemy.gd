@@ -16,6 +16,8 @@ extends Area2D
 ##   ELITE   (ship 04, big): the mini boss, sent in by Game halfway to the
 ##           boss. Glides down and weaves like the boss but never fires; it
 ##           just takes a lot of hits, with an hp bar like the boss's.
+##   RIVAL   flies and fights like a player, facing down: a random player
+##           ship in the stage's enemy colors, flown by the host (Rival).
 ##   TETRAN  (a boss, Deep Space's): a big armored core with four straight
 ##           arms that run off the screen and turn steadily one way, so ships
 ##           orbit it (see tetran.gd); only the core can be hurt, and it never
@@ -30,7 +32,7 @@ extends Area2D
 ## The host spawns enemies and decides damage and death; movement is deterministic
 ## from the spawn data, so every peer runs it locally with no per-frame sync.
 
-enum { WEAVER, DIVER, STRIKER, TANK, ORBITER, BOSS, TURRET, ELITE, TETRAN }
+enum { WEAVER, DIVER, STRIKER, TANK, ORBITER, BOSS, TURRET, ELITE, TETRAN, RIVAL }
 
 ## `group`: default [min, max] ships when a group is sent in without a count.
 ## `height`: on-screen height (px); defaults to HEIGHT.
@@ -44,7 +46,10 @@ const TYPES: Array[Dictionary] = [
 	{"ship": 2, "hp": 3, "points": 30, "speed": 60.0, "group": [1, 2], "height": 34.0},
 	{"ship": 3, "hp": 20, "points": 200, "speed": 70.0, "group": [1, 1], "height": 84.0, "elite": true},
 	{"ship": 4, "hp": 60, "points": 800, "speed": 90.0, "group": [1, 1], "height": 112.0, "boss": true, "tetran": true},
+	{"ship": 0, "hp": 4, "points": 60, "speed": 260.0, "group": [1, 1], "height": 44.0, "rival": true},
 ]
+const RIVAL_SYNC := 0.05  # s between the host's position updates for a rival
+const RIVAL_FOLLOW := 15.0  # how quickly other peers' copies catch up (per second)
 const TetranScript := preload("res://scripts/tetran.gd")
 const WAVE_TYPES := 5  # TYPES before BOSS: the ones deep space's random waves send in
 const TURRET_SPACING := 140.0
@@ -94,6 +99,9 @@ const ORBIT_SPEED := 2.2  # radians per second; `zig_dir` picks the direction
 const ORBIT_CENTER_Y := SPAWN_Y - ORBIT_RADIUS  # ring center at spawn
 
 @export var type := WEAVER
+var rival: Rival  # host: a RIVAL's brain
+var _rival_target := Vector2.ZERO  # other peers: where the host last said this rival is
+var _rival_sync := 0.0
 @export var group_x := -1.0  # group center at spawn; < 0 means this ship's x
 @export var zig_dir := 1.0  # initial horizontal direction of the group
 @export var stage := 0  # Game.stage when it was sent in
@@ -121,6 +129,7 @@ func _ready() -> void:
 	max_hp = hp
 	shown_hp = hp
 	_spawn_pos = position
+	_rival_target = position
 	_base_x = position.x
 	var center := group_x if group_x >= 0.0 else _base_x
 	_orbit_angle = atan2(_spawn_pos.y - ORBIT_CENTER_Y, _spawn_pos.x - center)
@@ -166,6 +175,10 @@ func is_tetran() -> bool:
 	return TYPES[type].get("tetran", false)
 
 
+func is_rival() -> bool:
+	return TYPES[type].get("rival", false)
+
+
 func is_elite() -> bool:
 	return TYPES[type].get("elite", false)
 
@@ -181,6 +194,34 @@ func speed_mult() -> float:
 
 
 ## Spawn data plus where this ship is in its flight, for a player joining late.
+## A RIVAL: the host flies it (Rival) and sends where it is every RIVAL_SYNC
+## s; everyone else eases their copy toward that.
+func _fly_rival(delta: float) -> void:
+	if not multiplayer.is_server():
+		position = position.lerp(_rival_target, minf(1.0, RIVAL_FOLLOW * delta))
+		return
+	var game := get_tree().get_first_node_in_group("game") if is_inside_tree() else null
+	if game == null:
+		return
+	if rival == null:
+		rival = Rival.new()
+	var step := rival.step(self, game, delta)
+	position = step.pos
+	if step.fire > 0:
+		for at in Rival.volley(position, step.fire):
+			game.fire_enemy_bullet.rpc(at, Vector2.DOWN)
+	_rival_sync -= delta
+	if _rival_sync <= 0.0:
+		_rival_sync = RIVAL_SYNC
+		rival_at.rpc(position)
+
+
+## Host -> everyone else: where this rival is now.
+@rpc("authority", "call_remote", "unreliable_ordered")
+func rival_at(pos: Vector2) -> void:
+	_rival_target = pos
+
+
 func snapshot() -> Dictionary:
 	return {"x": _spawn_pos.x, "y": _spawn_pos.y, "type": type, "group_x": group_x, "dir": zig_dir,
 		"id": String(name).trim_prefix("Enemy").to_int(), "time": _time, "pos": position, "stage": stage,
@@ -215,6 +256,9 @@ func _physics_process(delta: float) -> void:
 func simulate(delta: float) -> void:
 	_time += delta
 	match type:
+		RIVAL:
+			_fly_rival(delta)
+			return
 		STRIKER:
 			position.y = _spawn_pos.y + striker_fall(_time, lunge_time(), speed_mult())
 			return

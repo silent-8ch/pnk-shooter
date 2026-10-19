@@ -15,6 +15,7 @@ func before_each() -> void:
 	multiplayer.multiplayer_peer = OfflineMultiplayerPeer.new()
 	game = load("res://scenes/game.tscn").instantiate()
 	add_child_autofree(game)
+	game.rival_chance = 0.0  # counts the level's own enemies
 	game.active = true
 
 

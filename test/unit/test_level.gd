@@ -115,6 +115,7 @@ func test_level_files_in_the_repo_parse() -> void:
 func test_game_spawns_groups_from_the_score() -> void:
 	var game: Node2D = load("res://scenes/game.tscn").instantiate()
 	add_child_autofree(game)
+	game.rival_chance = 0.0  # counts the level's own enemies
 	game.active = true
 	game.stage_time = game.PACE_RAMP * 2.0  # full pace
 	game.level = _level({"repeat": false})
@@ -135,6 +136,7 @@ func test_game_spawns_groups_from_the_score() -> void:
 func test_game_falls_back_to_random_waves_after_a_one_shot_score() -> void:
 	var game: Node2D = load("res://scenes/game.tscn").instantiate()
 	add_child_autofree(game)
+	game.rival_chance = 0.0  # counts the level's own enemies
 	game.active = true
 	game.stage_time = game.PACE_RAMP * 2.0  # full pace
 	game.level = _level({"repeat": false, "events": []})
@@ -147,5 +149,6 @@ func test_game_falls_back_to_random_waves_after_a_one_shot_score() -> void:
 func test_joiner_gets_the_level_clock() -> void:
 	var game: Node2D = load("res://scenes/game.tscn").instantiate()
 	add_child_autofree(game)
+	game.rival_chance = 0.0  # counts the level's own enemies
 	game.set_level_time(12.5)
 	assert_eq(game.level_time, 12.5)

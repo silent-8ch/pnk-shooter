@@ -59,6 +59,8 @@ const RESULTS_TIME := 4.0  # s the results stay up before the run starts over
 const PACE_START := 0.3  # a run starts with enemies coming at this fraction of the level's pace ...
 const PACE_STAGE := 0.15  # ... each later stage starts this much higher ...
 const PACE_RAMP := 300.0  # ... and it eases up to full pace over this many s of the stage
+const RIVAL_CHANCE := 0.2  # of a wave bringing a rival
+const RIVAL_MAX := 2
 const VULCAN_LINK_REACH := 45.0  # px from a new round to the last one of its strand
 const VULCAN_LINK_AGE := 0.12  # s: an older round has moved on; a new strand starts
 const VULCAN_BURST := 0.8  # s of rounds one vulcan sound covers (it ends with a spin-down tail)
@@ -124,6 +126,7 @@ var _run_players: Array = []  # server: names of everyone who flew this run, for
 
 signal run_ended  # the results were up for RESULTS_TIME; the host starts the next run
 var active := false
+var rival_chance := RIVAL_CHANCE  # tests that count a level's enemies switch rivals off
 var resume := {}  # host: a saved run (SaveGame) to pick up when start() runs
 var demo := false  # the title screen's idle demo: an AI flies a random ship through a random kind of level
 var _demo_dead := 0.0  # s the demo's ship has been down
@@ -402,12 +405,14 @@ func _physics_process(delta: float) -> void:
 				spawn_obstacles(e.piece, ObstacleScript.center_x(e.piece, e.count, e.lane, ARENA.size.x), e.count, e.dir)
 			else:
 				spawn_group(e.type, LevelScript.center_x(e, ARENA.size.x), e.count, e.dir)
+				_maybe_rival()
 		return
 	_enemy_timer += delta * pace()
 	if _enemy_timer >= GROUP_INTERVAL:
 		_enemy_timer = 0.0
 		var types := LevelKinds.wave_types(kind)
 		spawn_group(types[randi() % types.size()])
+		_maybe_rival()
 	_obstacle_timer += delta * pace()
 	if _obstacle_timer >= OBSTACLE_INTERVAL:
 		_obstacle_timer = 0.0
@@ -597,6 +602,27 @@ func spawn_group(type: int, center := -1.0, count := 0, dir := 0.0) -> void:
 		_enemy_count += 1
 		spawn_enemy.rpc({"x": pos.x, "y": pos.y, "type": type, "group_x": center, "dir": dir,
 			"id": _enemy_count, "stage": stage})
+
+
+## Host, with a wave: now and then (RIVAL_CHANCE) a rival comes too, at most
+## RIVAL_MAX at a time.
+func _maybe_rival() -> void:
+	if not multiplayer.is_server() or boss_alive() or elite_alive() or randf() >= rival_chance:
+		return
+	if rivals_alive() >= RIVAL_MAX:
+		return
+	spawn_rival()
+
+
+func rivals_alive() -> int:
+	return enemies.get_children().filter(func(e): return e.is_rival() and not e.is_queued_for_deletion()).size()
+
+
+## Host: a rival flies in from the top, in a random player ship.
+func spawn_rival() -> void:
+	_enemy_count += 1
+	spawn_enemy.rpc({"x": randf_range(60.0, ARENA.size.x - 60.0), "y": EnemyScript.SPAWN_Y, "type": EnemyScript.RIVAL,
+		"id": _enemy_count, "stage": stage, "ship": randi() % Ships.count()})
 
 
 ## Every peer adds the enemy and flies it locally. `data` may carry a snapshot

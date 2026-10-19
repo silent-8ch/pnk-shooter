@@ -54,9 +54,9 @@ extends Area2D
 ## taps fire, and a long press disarms it. AUTO fires on its own while armed,
 ## so for it a tap is the on/off switch. HEAL is a machine gun: the first
 ## press arms it, then it fires while the button is held.
-## AUTOCAN adds an AUTO on/off button for a vulcan cannon: while on, it hoses
-## whatever is closest within AUTO_RANGE with tiny, fast rounds: enemy shots
-## first (point defence, leading them), then enemies and other players alike.
+## AUTOCAN adds an AUTO on/off button for a vulcan cannon: point defence.
+## While on, it hoses the nearest enemy shot within AUTO_RANGE (leading it),
+## and only enemy shots; it never picks enemies or other ships.
 ## HEALBEAM adds a HEAL button: held down, the ship streams very fast HEAL
 ## shots straight up (HEALBEAM_INTERVAL, halved at level 2). Another ship they
 ## hit heals a tenth of a hit per shot; an enemy they hit gets stronger and
@@ -1011,8 +1011,7 @@ func _run_beam(delta: float) -> void:
 
 # --- Autocannon ---------------------------------------------------------------
 
-## The closest enemy shot within AUTO_RANGE, else the closest enemy or other
-## living player, or null.
+## The closest enemy shot within AUTO_RANGE of `from`, or null.
 func auto_target(from := Vector2.INF) -> Node2D:
 	if from == Vector2.INF:
 		from = position
@@ -1024,16 +1023,6 @@ func auto_target(from := Vector2.INF) -> Node2D:
 			if d <= best_d:
 				best_d = d
 				best = b
-	if best:
-		return best
-	for group in [&"enemy", &"player"]:
-		for n in get_tree().get_nodes_in_group(group):
-			if n == self or n.is_queued_for_deletion() or (group == &"player" and not is_targetable(n)):
-				continue
-			var d := from.distance_to(n.position)
-			if d <= best_d:
-				best_d = d
-				best = n
 	return best
 
 
