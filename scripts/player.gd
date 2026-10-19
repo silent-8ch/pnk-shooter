@@ -190,6 +190,7 @@ var _seen_autos := -1  # local: AUTO button press count already handled
 var _repair_requested := false
 var _bump_cooldown := 0.0
 var ai := false  # the host's AI buddy: the host flies it with _think()
+var _flight := {}  # Ships.flight(ship): top speed each way, from its thrusters
 var pilot: AiPilot  # an AI flying this player's own ship for them (the demo, "AI plays for me")
 var _ai_side := 1.0  # which side of its leader it flies on
 var _repair_cooldown := 0.0
@@ -230,6 +231,7 @@ func _ready() -> void:
 	var jets := Thrusters.new()  # flare as it changes course
 	jets.name = "Thrusters"
 	jets.radius = Ships.SHIP_HEIGHT / 2.0
+	jets.layout = Ships.thruster_layout(ship)
 	add_child(jets)
 	_start_loadout()
 	if Net.all_weapons and multiplayer.multiplayer_peer != null and is_local() and not ai:
@@ -368,7 +370,7 @@ func _simulate(delta: float) -> void:
 	options = level(&"option")
 	_run_shields(delta)
 	_run_medbay(delta)
-	position += input_dir * move_speed() * delta
+	position += move_velocity(input_dir) * delta
 	var world := get_tree().get_first_node_in_group("game")
 	if world and world.get("scenery"):
 		position += world.scenery.push_at(position) * delta  # wind, gravity
@@ -788,6 +790,17 @@ func heal(hits: float) -> void:
 
 func move_speed() -> float:
 	return SPEED * (1.0 + SPEED_STEP * level(&"speed"))
+
+
+## How fast it goes steering `dir`: move_speed(), scaled each way by its
+## thruster layout (Ships.flight): a big main booster is quick going up, weak
+## nose jets slow going down, and so on.
+func move_velocity(dir: Vector2) -> Vector2:
+	if _flight.is_empty():
+		_flight = Ships.flight(ship)
+	var x: float = dir.x * (_flight.right if dir.x > 0.0 else _flight.left)
+	var y: float = dir.y * (_flight.down if dir.y > 0.0 else _flight.up)
+	return Vector2(x, y) * move_speed()
 
 
 func fire_cooldown() -> float:

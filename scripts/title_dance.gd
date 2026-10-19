@@ -3,7 +3,8 @@ extends Node2D
 ## Behind the title: ships 01 and 02 dancing, a slow loop of LOOP s. They
 ## circle each other wide, swoop together, meet nose to nose for a kiss (a
 ## little burst of hearts), hold each other close spinning slowly, then drift
-## apart to start again. pose_at(t) is the whole routine, so it's easy to
+## apart to start again. Their thrusters fire as they change course, like
+## they do in the game (Thrusters). pose_at(t) is the whole routine, so it's easy to
 ## check and the same every time; each ship faces where it's heading, or its
 ## partner when they're close.
 
@@ -34,6 +35,11 @@ func _ready() -> void:
 		s.texture = Ships.get_texture(ship, Ships.palette_for(ship))
 		s.scale = Ships.scale_for(s.texture, SHIP_HEIGHT)
 		add_child(s)
+		var jets := Thrusters.new()  # they fire as the dancers swoop and turn
+		jets.name = "Thrusters"
+		jets.radius = SHIP_HEIGHT / 2.0
+		jets.layout = Thrusters.scaled(Ships.thruster_layout(ship), SHIP_HEIGHT / Ships.SHIP_HEIGHT)
+		s.add_child(jets)
 	_apply(pose_at(0.0))
 
 

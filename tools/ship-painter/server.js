@@ -9,7 +9,8 @@
 //   GET /api/assets                 every SVG (+ derived PNGs) with strategy and status
 //   GET /api/asset?path=…           SVG text
 //   GET /api/raw?path=…             SVG or PNG bytes, for thumbnails (sandboxed)
-//   PUT /api/asset?path=…           { entry: {strategy, role, notes}, svg?: string } saves entry (+ SVG)
+//   PUT /api/asset?path=…           { entry: {strategy, role, notes, thrusters?}, svg?: string } saves entry (+ SVG)
+//                                   an entry without thrusters keeps the saved ones; send [] to clear them
 'use strict';
 
 const http = require('node:http');
@@ -29,6 +30,7 @@ const STATIC = {
   '/painter.js': ['painter.js', 'text/javascript; charset=utf-8'],
   '/regions.js': ['regions.js', 'text/javascript; charset=utf-8'],
   '/registry.js': ['registry.js', 'text/javascript; charset=utf-8'],
+  '/thrusters.js': ['thrusters.js', 'text/javascript; charset=utf-8'],
 };
 const RAW_TYPES = { '.svg': 'image/svg+xml', '.png': 'image/png' };
 
@@ -161,6 +163,8 @@ function createServer(opts) {
       if (data.svg !== undefined) await writeAtomic(target.abs, data.svg);
       const svg = await fsp.readFile(target.abs, 'utf8');
       const db = await loadRegistry(root);
+      const prev = db.assets[target.rel];
+      if (data.entry.thrusters === undefined && prev && prev.thrusters) entry.thrusters = prev.thrusters;
       const saved = Registry.setEntry(db, target.rel, entry, svg);
       await writeAtomic(path.join(root, REGISTRY_PATH), Registry.serialize(db));
       return { path: target.rel, entry: saved, status: Registry.statusOf(saved, svg) };

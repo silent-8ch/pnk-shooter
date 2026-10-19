@@ -44,3 +44,11 @@ func test_the_dance_is_smooth() -> void:
 		var pose := TitleDance.pose_at(t)
 		assert_lt(pose.a.distance_to(last.a), 12.0, "no jumps at %.2f" % t)
 		last = pose
+
+
+
+func test_the_dancers_have_thrusters() -> void:
+	var dance := TitleDance.new()
+	add_child_autofree(dance)
+	var jets := dance.get_children().filter(func(n): return n is Sprite2D and n.has_node("Thrusters"))
+	assert_eq(jets.size(), 2)

@@ -7,6 +7,10 @@
 //   fixed       colors baked into the art
 //   unassigned  not decided yet
 // Status is computed from the entry and the SVG text, never stored.
+//
+// Ships may carry a thruster layout, read by the game (fixed contract):
+//   thrusters: [{ x, y, angle, size, main }]   x, y in viewBox units (art faces up), angle = flame
+//   direction in degrees with y down (0 right, 90 down), size 0.25..3, at most one main booster.
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) module.exports = factory();
   else root.AssetRegistry = factory();
@@ -20,6 +24,11 @@
   const MAX_NOTES = 2000;
   const TINT_MIN = 0x80;     // every channel at least this light
   const TINT_SPREAD = 0x18;  // and channels this close together (gray)
+  const MAX_THRUSTERS = 12;
+  const THRUSTER_SIZE_MIN = 0.25;
+  const THRUSTER_SIZE_MAX = 3;
+  const THRUSTER_SIZE = 1;       // default size
+  const MAIN_THRUSTER_SIZE = 1.6; // default size of the main booster
 
   const SLOTS_RE = /<svg\b[^>]*?\sdata-slots\s*=\s*"(\d+)"/;
   const SLOT_RE = /\sdata-slot\s*=\s*"\d+"/;
@@ -50,6 +59,7 @@
       const out = { strategy: e.strategy };
       if (e.role) out.role = e.role;
       if (e.slots && e.slots.length) out.slots = e.slots;
+      if (e.thrusters && e.thrusters.length) out.thrusters = e.thrusters;
       if (e.notes) out.notes = e.notes;
       assets[p] = out;
     });
@@ -64,7 +74,58 @@
       notes: typeof e.notes === 'string' ? e.notes.slice(0, MAX_NOTES) : '',
     };
     if (Array.isArray(e.slots)) out.slots = e.slots.filter(function (s) { return typeof s === 'string'; });
+    const thrusters = cleanThrusters(e.thrusters);
+    if (thrusters.length) out.thrusters = thrusters;
     return out;
+  }
+
+  function isNum(v) {
+    return typeof v === 'number' && isFinite(v);
+  }
+
+  function normalizeAngle(a) {
+    return ((a % 360) + 360) % 360 + 0; // + 0 turns -0 into 0
+  }
+
+  // Sanitized thruster list: drops malformed items, rounds, clamps, keeps at most
+  // MAX_THRUSTERS and only the first main booster.
+  function cleanThrusters(list) {
+    if (!Array.isArray(list)) return [];
+    const out = [];
+    let hasMain = false;
+    list.forEach(function (t) {
+      if (out.length >= MAX_THRUSTERS || !t || typeof t !== 'object' || Array.isArray(t)) return;
+      if (!isNum(t.x) || !isNum(t.y)) return;
+      if (t.angle !== undefined && !isNum(t.angle)) return;
+      if (t.size !== undefined && !isNum(t.size)) return;
+      const main = t.main === true && !hasMain;
+      if (main) hasMain = true;
+      const size = t.size === undefined ? (main ? MAIN_THRUSTER_SIZE : THRUSTER_SIZE) : t.size;
+      out.push({
+        x: Math.round(t.x * 10) / 10 + 0,
+        y: Math.round(t.y * 10) / 10 + 0,
+        angle: normalizeAngle(Math.round(t.angle === undefined ? 90 : t.angle)),
+        size: Math.min(THRUSTER_SIZE_MAX, Math.max(THRUSTER_SIZE_MIN, Math.round(size * 20) / 20)),
+        main: main,
+      });
+    });
+    return out;
+  }
+
+  function validateThrusters(list) {
+    if (!Array.isArray(list)) throw new Error('thrusters must be an array');
+    if (list.length > MAX_THRUSTERS) throw new Error('at most ' + MAX_THRUSTERS + ' thrusters');
+    let mains = 0;
+    list.forEach(function (t, i) {
+      if (!t || typeof t !== 'object' || Array.isArray(t)) throw new Error('thruster ' + i + ' must be an object');
+      ['x', 'y', 'angle'].forEach(function (k) {
+        if (!isNum(t[k])) throw new Error('thruster ' + i + ': ' + k + ' must be a number');
+      });
+      if (t.size !== undefined && !isNum(t.size)) throw new Error('thruster ' + i + ': size must be a number');
+      if (t.main !== undefined && typeof t.main !== 'boolean') throw new Error('thruster ' + i + ': main must be true or false');
+      if (t.main) mains += 1;
+    });
+    if (mains > 1) throw new Error('at most one main thruster');
   }
 
   // Validates an entry sent by a client; throws on bad input instead of silently fixing it.
@@ -73,6 +134,7 @@
     if (STRATEGIES.indexOf(e.strategy) === -1) throw new Error('strategy must be one of ' + STRATEGIES.join(', '));
     if (e.role !== undefined && (typeof e.role !== 'string' || e.role.length > MAX_ROLE)) throw new Error('role must be a string of at most ' + MAX_ROLE + ' chars');
     if (e.notes !== undefined && (typeof e.notes !== 'string' || e.notes.length > MAX_NOTES)) throw new Error('notes must be a string of at most ' + MAX_NOTES + ' chars');
+    if (e.thrusters !== undefined) validateThrusters(e.thrusters);
     return cleanEntry(e);
   }
 
@@ -170,6 +232,7 @@
         strategy: entry ? entry.strategy : 'unassigned',
         role: entry ? entry.role : '',
         notes: entry ? entry.notes : '',
+        thrusters: entry && entry.thrusters ? entry.thrusters : [],
         registered: !!entry,
         suggested: svg !== null ? classify(svg) : null,
         status: statusOf(entry, svg),
@@ -185,10 +248,16 @@
     VERSION: VERSION,
     STRATEGIES: STRATEGIES,
     STATUSES: STATUSES,
+    MAX_THRUSTERS: MAX_THRUSTERS,
+    THRUSTER_SIZE_MIN: THRUSTER_SIZE_MIN,
+    THRUSTER_SIZE_MAX: THRUSTER_SIZE_MAX,
+    THRUSTER_SIZE: THRUSTER_SIZE,
+    MAIN_THRUSTER_SIZE: MAIN_THRUSTER_SIZE,
     empty: empty,
     parse: parse,
     serialize: serialize,
     validateEntry: validateEntry,
+    cleanThrusters: cleanThrusters,
     isPainted: isPainted,
     slotNames: slotNames,
     colors: colors,

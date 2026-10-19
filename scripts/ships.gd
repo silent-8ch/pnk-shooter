@@ -82,6 +82,9 @@ const ENEMY_STAGE_HUES: Array[float] = [0.33, 0.78, 0.55, 0.13]  # toxic green, 
 const ENEMY_STAGE_NAMES: Array[String] = ["Toxic Green", "Violet", "Ice Blue", "Gold", "Obsidian"]
 
 const THRUSTER_SLOT := 4
+const REGISTRY_PATH := "res://assets/assets.json"
+const FLIGHT_MIN := 0.6  # a direction's top speed with its weakest thrusters...
+const FLIGHT_MAX := 1.5  # ...and its strongest, against the default layout
 const ENEMY_PART_VARIANTS := 4  # precomputed crack patterns per enemy ship
 const ENEMY_PART_MAX := 7  # max parts before cracking
 const ENEMY_PART_MIN_AREA := 120  # px at RENDER_SCALE; smaller parts merge
@@ -95,6 +98,8 @@ var _texture_cache := {}  # "ship:palette" -> Texture2D
 var _parts_cache := {}  # "ship:variant" -> Array[Dictionary]
 var _analysis_cache := {}  # ship -> ShipParts.analyze() result
 var _thruster_cache := {}  # ship -> get_thrusters() result
+var _layout_cache := {}  # ship -> thruster_layout() result
+var _registry := {}  # the ship painter's assets.json "assets"
 var _lit_cache := {}  # "ship:palette" / "enemy:ship[:stage]" -> CanvasTexture
 var _hit_cache := {}  # ship -> hit polygons (see hit_polygons)
 
@@ -256,6 +261,85 @@ func get_thrusters(index: int) -> Array[Dictionary]:
 				out.append(a)
 		_thruster_cache[index] = out
 	return _thruster_cache[index]
+
+
+## The ship's thruster layout, set in the ship painter (assets/assets.json,
+## the ship's "thrusters"): [{pos, dir, size, main}] with pos in px from the
+## ship's middle at SHIP_HEIGHT, the art facing up, and dir the way its flame
+## points. A ship with none set gets default_layout(): a main booster at the
+## back, a pair of nose jets and a jet on each side.
+func thruster_layout(index: int) -> Array[Dictionary]:
+	index = clamp_index(index)
+	if _layout_cache.has(index):
+		return _layout_cache[index]
+	var view := svg_view_size(get_svg(index))
+	var px := SHIP_HEIGHT / maxf(view.y, 1.0)
+	var out: Array[Dictionary] = []
+	for t in _registry_entry(LIST[index].svg).get("thrusters", []):
+		if not t is Dictionary:
+			continue
+		out.append({"pos": (Vector2(float(t.get("x", 0.0)), float(t.get("y", 0.0))) - view / 2.0) * px,
+			"dir": Vector2.from_angle(deg_to_rad(float(t.get("angle", 90.0)))),
+			"size": clampf(float(t.get("size", 1.0)), 0.25, 3.0), "main": bool(t.get("main", false))})
+	if out.is_empty():
+		out = default_layout(view * px)
+	_layout_cache[index] = out
+	return out
+
+
+## Main booster at the back, nose jets, side jets, for a ship `size` px.
+static func default_layout(size: Vector2) -> Array[Dictionary]:
+	var h := size / 2.0
+	return [
+		{"pos": Vector2(0, h.y * 0.9), "dir": Vector2.DOWN, "size": 1.6, "main": true},
+		{"pos": Vector2(-h.x * 0.4, -h.y * 0.9), "dir": Vector2.UP, "size": 0.5, "main": false},
+		{"pos": Vector2(h.x * 0.4, -h.y * 0.9), "dir": Vector2.UP, "size": 0.5, "main": false},
+		{"pos": Vector2(h.x * 0.9, 0), "dir": Vector2.RIGHT, "size": 0.7, "main": false},
+		{"pos": Vector2(-h.x * 0.9, 0), "dir": Vector2.LEFT, "size": 0.7, "main": false},
+	]
+
+
+## How hard a layout can push each way: {up, down, left, right}. A flame
+## pushes the ship the opposite way to where it points, by its size.
+static func thrust_capacity(layout: Array) -> Dictionary:
+	var c := {"up": 0.0, "down": 0.0, "left": 0.0, "right": 0.0}
+	for t in layout:
+		var push: Vector2 = -(t.dir as Vector2) * float(t.size)
+		c.up += maxf(0.0, -push.y)
+		c.down += maxf(0.0, push.y)
+		c.left += maxf(0.0, -push.x)
+		c.right += maxf(0.0, push.x)
+	return c
+
+
+## The ship's top speed each way, against the default layout's (1 = as now):
+## {up, down, left, right}, each FLIGHT_MIN..FLIGHT_MAX.
+func flight(index: int) -> Dictionary:
+	var c := thrust_capacity(thruster_layout(index))
+	var ref := thrust_capacity(default_layout(Vector2(SHIP_HEIGHT, SHIP_HEIGHT)))
+	var out := {}
+	for k in c:
+		out[k] = clampf(c[k] / ref[k], FLIGHT_MIN, FLIGHT_MAX)
+	return out
+
+
+## The viewBox size of an SVG (or its width/height), in its own units.
+static func svg_view_size(svg: String) -> Vector2:
+	var re := RegEx.create_from_string("viewBox\\s*=\\s*\"[-0-9.]+\\s+[-0-9.]+\\s+([0-9.]+)\\s+([0-9.]+)\"")
+	var m := re.search(svg)
+	if m:
+		return Vector2(float(m.get_string(1)), float(m.get_string(2)))
+	return Vector2(100, 100)
+
+
+## The painter's registry entry for an asset (res:// path), or {}.
+func _registry_entry(res_path: String) -> Dictionary:
+	if _registry.is_empty() and FileAccess.file_exists(REGISTRY_PATH):
+		var json := JSON.new()
+		if json.parse(FileAccess.get_file_as_string(REGISTRY_PATH)) == OK and json.data is Dictionary:
+			_registry = json.data.get("assets", {})
+	var entry: Variant = _registry.get(res_path.trim_prefix("res://"), {})
+	return entry if entry is Dictionary else {}
 
 
 ## Builds every enemy part variant up front so the first kill doesn't hitch.

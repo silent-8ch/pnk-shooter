@@ -110,6 +110,91 @@ test('validateEntry: rejects bad input from clients', () => {
   assert.deepEqual(R.validateEntry({ strategy: 'fixed', role: ' prop ', notes: 'n' }), { strategy: 'fixed', role: 'prop', notes: 'n' });
 });
 
+test('thrusters: round-trip through serialize and parse, key order, after slots and before notes', () => {
+  const db = R.empty();
+  R.setEntry(db, 'assets/ship01.svg', { strategy: 'palette', role: 'ship', notes: 'n', thrusters: [
+    { main: true, size: 1.6, angle: 90, y: 560.04, x: 434.46 },
+    { x: 300, y: 100, angle: 270, size: 0.5 },
+  ] }, PAINTED);
+  const text = R.serialize(db);
+  const entry = JSON.parse(text).assets['assets/ship01.svg'];
+  assert.deepEqual(Object.keys(entry), ['strategy', 'role', 'slots', 'thrusters', 'notes']);
+  assert.deepEqual(entry.thrusters, [
+    { x: 434.5, y: 560, angle: 90, size: 1.6, main: true },
+    { x: 300, y: 100, angle: 270, size: 0.5, main: false },
+  ]);
+  assert.deepEqual(Object.keys(entry.thrusters[0]), ['x', 'y', 'angle', 'size', 'main']);
+  assert.equal(R.serialize(R.parse(text)), text);
+});
+
+test('thrusters: rounding, clamping, angle normalization and defaults', () => {
+  const t = R.cleanThrusters([
+    { x: 1.26, y: -2.04, angle: -90, size: 9 },
+    { x: 0, y: 0, angle: 359.6, size: 0.01 },
+    { x: 0, y: 0, angle: 725, size: 1.13 },
+    { x: 5, y: 5 },
+    { x: 5, y: 5, main: true },
+    { x: -0.01, y: 0, angle: -0.2 },
+  ]);
+  assert.deepEqual(t, [
+    { x: 1.3, y: -2, angle: 270, size: 3, main: false },
+    { x: 0, y: 0, angle: 0, size: 0.25, main: false },
+    { x: 0, y: 0, angle: 5, size: 1.15, main: false },
+    { x: 5, y: 5, angle: 90, size: 1, main: false },
+    { x: 5, y: 5, angle: 90, size: 1.6, main: true },
+    { x: 0, y: 0, angle: 0, size: 1, main: false },
+  ]);
+  assert.ok(t.every((x) => !Object.is(x.x, -0) && !Object.is(x.angle, -0)), 'no negative zeros');
+});
+
+test('thrusters: malformed items and unknown keys are dropped; at most 12 and one main', () => {
+  const t = R.cleanThrusters([null, 5, [], { x: '1', y: 2 }, { x: 1 }, { x: 1, y: 2, angle: 'up' }, { x: NaN, y: 1 },
+    { x: 1, y: 2, size: null }, { x: 1, y: 2, main: true, color: 'red' }, { x: 3, y: 4, main: true }]);
+  assert.deepEqual(t, [
+    { x: 1, y: 2, angle: 90, size: 1.6, main: true },
+    { x: 3, y: 4, angle: 90, size: 1, main: false },
+  ]);
+  assert.equal(R.cleanThrusters(Array.from({ length: 20 }, (_, i) => ({ x: i, y: 0 }))).length, 12);
+  assert.deepEqual(R.cleanThrusters('nope'), []);
+  const db = R.parse('{"version":1,"assets":{"assets/ship01.svg":{"strategy":"fixed","thrusters":[{"x":1,"y":2,"angle":90,"size":1,"main":false,"extra":1}],"junk":1}}}');
+  assert.deepEqual(db.assets['assets/ship01.svg'], { strategy: 'fixed', role: '', notes: '', thrusters: [{ x: 1, y: 2, angle: 90, size: 1, main: false }] });
+});
+
+test('thrusters: key omitted when the list is empty or all junk', () => {
+  const db = R.empty();
+  R.setEntry(db, 'assets/a.svg', { strategy: 'fixed', thrusters: [] }, COLORED);
+  R.setEntry(db, 'assets/b.svg', { strategy: 'fixed', thrusters: [{ x: 'a' }] }, COLORED);
+  const assets = JSON.parse(R.serialize(db)).assets;
+  assert.deepEqual(assets['assets/a.svg'], { strategy: 'fixed' });
+  assert.deepEqual(assets['assets/b.svg'], { strategy: 'fixed' });
+  assert.equal(db.assets['assets/a.svg'].thrusters, undefined);
+});
+
+test('thrusters: list rows carry them', () => {
+  const db = R.empty();
+  R.setEntry(db, 'assets/ship01.svg', { strategy: 'palette', thrusters: [{ x: 1, y: 2, angle: 90 }] }, PAINTED);
+  const rows = R.list(db, { 'assets/ship01.svg': PAINTED, 'assets/new.svg': COLORED });
+  assert.equal(rows[0].thrusters.length, 0);
+  assert.deepEqual(rows[1].thrusters, [{ x: 1, y: 2, angle: 90, size: 1, main: false }]);
+});
+
+test('validateEntry: rejects bad thrusters', () => {
+  const v = (thrusters) => R.validateEntry({ strategy: 'palette', role: 'ship', thrusters });
+  const ok = { x: 1, y: 2, angle: 90, size: 1, main: false };
+  assert.throws(() => v({}), /array/);
+  assert.throws(() => v('x'), /array/);
+  assert.throws(() => v(Array.from({ length: 13 }, () => ok)), /at most 12/);
+  assert.throws(() => v([null]), /object/);
+  assert.throws(() => v([{ ...ok, x: '1' }]), /x must be a number/);
+  assert.throws(() => v([{ ...ok, angle: undefined }]), /angle must be a number/);
+  assert.throws(() => v([{ ...ok, y: Infinity }]), /y must be a number/);
+  assert.throws(() => v([{ ...ok, size: 'big' }]), /size/);
+  assert.throws(() => v([{ ...ok, main: 1 }]), /main/);
+  assert.throws(() => v([{ ...ok, main: true }, { ...ok, main: true }]), /one main/);
+  assert.deepEqual(v([{ ...ok, main: true, size: 7 }]).thrusters, [{ ...ok, main: true, size: 3 }], 'out-of-range size is clamped, not rejected');
+  assert.equal(v([]).thrusters, undefined);
+});
+
 test('classify: the real repo assets', () => {
   const read = (p) => fs.readFileSync(path.join(__dirname, '../..', p), 'utf8');
   assert.equal(R.classify(read('assets/ship01.svg')), 'palette');

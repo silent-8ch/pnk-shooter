@@ -53,3 +53,12 @@ func test_every_ship_has_them() -> void:
 	var e: Node = preload("res://scenes/enemy.tscn").instantiate()
 	add_child_autofree(e)
 	assert_true(e.has_node("Thrusters"))
+
+
+
+func test_jets_draw_just_under_their_ship_not_under_the_backdrop() -> void:
+	var p: Node = PlayerScene.instantiate()
+	add_child_autofree(p)
+	var jets: Node2D = p.get_node("Thrusters")
+	assert_gte(jets.z_index, 0, "a negative z hides it behind the game's background")
+	assert_true(jets.show_behind_parent)

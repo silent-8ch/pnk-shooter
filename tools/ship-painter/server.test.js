@@ -122,6 +122,27 @@ test('PUT without svg only updates the entry', () => withServer(async ({ root, p
   assert.equal(res.json.status, 'ok');
 }));
 
+test('PUT saves and returns thrusters; omitting them keeps the saved ones, [] clears them', () => withServer(async ({ root, put, request }) => {
+  const p = 'assets/ship01.svg';
+  const thrusters = [{ x: 10.04, y: 20, angle: -90, size: 1.6, main: true }, { x: 5, y: 1, angle: 90, size: 0.1, main: false }];
+  const res = await put(p, { entry: { strategy: 'palette', role: 'ship', thrusters } });
+  assert.equal(res.status, 200, res.text);
+  const want = [{ x: 10, y: 20, angle: 270, size: 1.6, main: true }, { x: 5, y: 1, angle: 90, size: 0.25, main: false }];
+  assert.deepEqual(res.json.entry.thrusters, want);
+  const read = () => JSON.parse(fs.readFileSync(path.join(root, S.REGISTRY_PATH), 'utf8')).assets[p];
+  assert.deepEqual(read().thrusters, want);
+  assert.deepEqual((await request('GET', '/api/assets')).json.assets.find((r) => r.path === p).thrusters, want);
+
+  assert.deepEqual((await put(p, { entry: { strategy: 'palette', role: 'ship', notes: 'x' } })).json.entry.thrusters, want);
+  assert.deepEqual(read().thrusters, want);
+  assert.equal((await put(p, { entry: { strategy: 'palette', role: 'ship', thrusters: [] } })).json.entry.thrusters, undefined);
+  assert.equal(read().thrusters, undefined);
+
+  const two = [{ x: 1, y: 1, angle: 0, main: true }, { x: 2, y: 2, angle: 0, main: true }];
+  assert.equal((await put(p, { entry: { strategy: 'palette', thrusters: two } })).status, 400);
+  assert.equal((await put(p, { entry: { strategy: 'palette', thrusters: 'x' } })).status, 400);
+}));
+
 test('concurrent PUTs all land in the registry', () => withServer(async ({ root, put }) => {
   await Promise.all([
     put('assets/filler/fx/spark.svg', { entry: { strategy: 'tint' } }),
@@ -176,6 +197,7 @@ test('static files: only the tool files are served', () => withServer(async ({ r
   assert.equal(index.status, 200);
   assert.match(index.text, /Ship Painter/);
   assert.equal((await request('GET', '/registry.js')).status, 200);
+  assert.equal((await request('GET', '/thrusters.js')).status, 200);
   assert.equal((await request('GET', '/server.js')).status, 404);
   assert.equal((await request('GET', '/../../assets/ship01.svg')).status, 404);
 }));

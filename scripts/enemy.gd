@@ -144,6 +144,7 @@ func _ready() -> void:
 		var jets := Thrusters.new()  # flare as it changes course
 		jets.name = "Thrusters"
 		jets.radius = TYPES[type].get("height", HEIGHT) / 2.0
+		jets.layout = Thrusters.flipped(Ships.thruster_layout(ship_index()), TYPES[type].get("height", HEIGHT) / Ships.SHIP_HEIGHT)  # it faces down
 		jets.flame = Color("ff6a4a")
 		jets.core = Color("ffd2a0")
 		add_child(jets)
