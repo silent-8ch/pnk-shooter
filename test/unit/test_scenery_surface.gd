@@ -129,8 +129,12 @@ func test_boss_bombards_around_the_target() -> void:
 	var hp: float = target.hp
 	s.step(0.5)
 	assert_eq(target.hp, hp, "just a warning so far")
+	var effects_before: int = game.get_node("Effects").get_child_count()
 	s.step(0.6)
 	assert_lt(target.hp, hp, "it blew up")
+	var booms := game.get_node("Effects").get_children().filter(func(n): return n is AnimatedSprite2D)
+	assert_gte(booms.size(), 3, "the painted explosions, not circles")
+	assert_gt(game.get_node("Effects").get_child_count(), effects_before)
 	assert_eq(far.hp, far.max_hp(), "far away is safe")
 	s.step(0.5)
 	assert_eq(s.strikes.size(), 0, "blasts fade")

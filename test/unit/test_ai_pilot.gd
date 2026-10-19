@@ -135,8 +135,8 @@ func test_heads_under_the_enemy_it_hunts() -> void:
 	assert_eq(p.pilot.hunt(p, game), e)
 	var goal: Vector2 = p.pilot.goal_for(p, game)
 	assert_almost_eq(goal.x, 400.0, 1.0)
-	_think(p)
-	assert_gt(p.input_dir.x, 0.5, "slides over")
+	_think(p, 30)  # it eases into a move
+	assert_gt(p.input_dir.x, 0.3, "slides over")
 
 
 func test_keeps_clear_of_tetrans_arms() -> void:
@@ -367,3 +367,10 @@ func test_idle_title_starts_the_demo_and_a_press_ends_it() -> void:
 	assert_false(g.active)
 	assert_true(main.main_menu.visible)
 	Net.stop_browsing()
+
+
+func test_goes_for_exp_across_the_screen() -> void:
+	_live()
+	var p := _ship(Vector2(80, 700))
+	game.spawn_pickup(Vector2(460, 420), "Pickup1")
+	assert_eq(p.pilot.goal_for(p, game), Vector2(460, 420), "worth the trip")

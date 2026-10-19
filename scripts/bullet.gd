@@ -17,23 +17,27 @@ extends Area2D
 ## scatters into tangled smoke. `direction` stays the clean course it steers
 ## along; the wobble is an offset from it that settles as it closes on its
 ## target. All of it comes from a seed made from the launch spot, so every peer
-## flies the same path. A VULCAN round (autocannon) is tiny and fast, and
-## fizzles after a short range; it shoots down any enemy shot it meets (both go,
-## on every peer). An ENEMY_SHOT is the boss's: slower, so it
+## flies the same path. A VULCAN round (autocannon) is tiny and slowish, and
+## fizzles after VULCAN range; each is drawn joined to the round fired just
+## before it from the same gun (`link`), so the stream reads as one long
+## wiggling strand of spaghetti that hurts whatever it runs through; enemy shots it meets take SHOT_TOUGHNESS of
+## its rounds to shoot down (every round that hits is used up, on every peer). An ENEMY_SHOT is the boss's: slower, so it
 ## can be dodged; its `shooter` is ENEMY_SHOOTER, so it hurts every player and
 ## passes through enemies. A HEAL shot (the HEAL BEAM) is small and fast:
 ## instead of hurting, it heals the player it hits and makes an enemy it hits
 ## stronger (Enemy.strengthen); pods and astronauts let it through. Damage can
 ## be a fraction of a hit; ships and enemies add up the fractions.
 
-enum { LASER, MISSILE, VULCAN, ENEMY_SHOT, HEAL }
+enum { LASER, MISSILE, VULCAN, ENEMY_SHOT, HEAL, BEAM }
 const ENEMY_SHOOTER := -1  # `shooter` of an enemy's bullet
+const SHOT_TOUGHNESS := 4  # vulcan rounds an enemy shot soaks before it goes
 const KINDS: Array[Dictionary] = [
 	{"speed": 420.0, "scale": 1.0, "damage": 1.0, "range": INF, "darken": 0.0, "light": 1.0},
 	{"speed": 340.0, "scale": 0.6, "damage": 1.0, "range": INF, "darken": 0.5, "light": 0.5},
-	{"speed": 900.0, "scale": 0.3, "damage": 0.125, "range": 200.0, "darken": 0.0, "light": 0.25},
+	{"speed": 330.0, "scale": 0.3, "damage": 0.125, "range": 430.0, "darken": 0.0, "light": 0.25},
 	{"speed": 230.0, "scale": 0.7, "damage": 1.0, "range": INF, "darken": 0.0, "light": 0.8},
 	{"speed": 760.0, "scale": 0.4, "damage": 0.1, "range": INF, "darken": 0.0, "light": 0.4},  # heals instead
+	{"speed": 420.0, "scale": 1.0, "damage": 1.0, "range": INF, "darken": 0.0, "light": 1.0},  # a BEAM's: a laser, not aimed
 ]
 const HEAL_COLOR := Color("6dff7a")  # healer green
 const SPEED := 420.0  # laser
@@ -50,12 +54,17 @@ const SPIRAL_CLOSE := 90.0  # px: the swing narrows inside this range of its tar
 const JITTER := 6.0  # px of shake on top
 const JITTER_STEP := 0.06  # s between shakes
 const SmokeTrail := preload("res://scripts/smoke_trail.gd")
+const LINK_MAX := 40.0  # px: farther apart than this, two vulcan rounds aren't joined
+const LINK_WIDTH := 3.0
 
 @export var color := Color.YELLOW
 var shooter := 0  # peer id that fired it
 var direction := Vector2.UP
 var kind := LASER
 var _travelled := 0.0
+var missed := false  # it flew off or fizzled without hitting anything (no-miss streaks, Game.Streaks)
+var link: Node2D  # a vulcan round: the one fired just before it from the same gun, drawn joined to it
+var toughness := SHOT_TOUGHNESS  # an enemy shot: vulcan rounds left before it's shot down
 var _age := 0.0
 var trail: Line2D  # a missile's smoke, in Game.effects (or beside the bullet without a game)
 var _core := Vector2.ZERO  # missile: where its clean course is; position = this + the wobble
@@ -81,6 +90,8 @@ func _ready() -> void:
 	$Light.color = c
 	$Light.range_item_cull_mask = Ships.LIGHT_MASK
 	rotation = Vector2.UP.angle_to(direction)
+	if kind == LASER:
+		tree_exiting.connect(_photon_done)
 	if kind == VULCAN:
 		collision_mask = 4  # bullets: it shoots down enemy shots
 		area_entered.connect(_on_area_entered)
@@ -99,16 +110,27 @@ func _ready() -> void:
 		tree_exiting.connect(_end_trail)
 
 
+## A photon shot of ours is gone: it hit something, or (missed) it didn't.
+func _photon_done() -> void:
+	var game := get_tree().get_first_node_in_group("game") if is_inside_tree() else null
+	if game and game.active and is_mine() and shooter == multiplayer.get_unique_id():
+		game.photon_result(not missed)
+
+
 func _end_trail() -> void:
 	if is_instance_valid(trail):
 		trail.finish()
 
 
-## A vulcan round meeting an enemy shot: both are gone.
+## A vulcan round meeting an enemy shot: the round is spent, and the shot
+## goes once it's soaked SHOT_TOUGHNESS of them.
 func _on_area_entered(area: Area2D) -> void:
-	if area.is_in_group("bullet") and area.is_hostile() and not area.is_queued_for_deletion():
-		area.queue_free()
+	if area.is_in_group("bullet") and area.is_hostile() and not area.is_queued_for_deletion() and not is_queued_for_deletion():
 		queue_free()
+		Sparks.at_hit(self, (position + area.position) / 2.0, direction, color, 4)
+		area.toughness -= 1
+		if area.toughness <= 0:
+			area.queue_free()
 
 
 func velocity() -> Vector2:
@@ -162,9 +184,12 @@ func _physics_process(delta: float) -> void:
 		position += direction * speed * delta
 	if trail:
 		trail.emit(trail.get_parent().to_local(global_position))
+	if kind == VULCAN:
+		queue_redraw()
 	_travelled += speed * delta
 	var arena := Rect2(Vector2.ZERO, Vector2(540, 960)).grow(HEIGHT)
 	if _travelled >= max_range() or not arena.has_point(position):
+		missed = true  # gone without hitting anything
 		queue_free()
 
 
@@ -214,3 +239,15 @@ func _fly_wild(speed: float, delta: float) -> void:
 	if at != position:
 		rotation = Vector2.UP.angle_to(at - position)
 	position = at
+
+
+## A vulcan round: the strand back to the round before it.
+func _draw() -> void:
+	if kind != VULCAN or not is_instance_valid(link) or link.is_queued_for_deletion():
+		return
+	var to := to_local(link.global_position)
+	if to.length() > LINK_MAX:
+		return
+	draw_line(Vector2.ZERO, to, Color(color, 0.85), LINK_WIDTH, true)
+	draw_line(Vector2.ZERO, to, Color(color.lightened(0.6), 0.9), LINK_WIDTH * 0.4, true)
+

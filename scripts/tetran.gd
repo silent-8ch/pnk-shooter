@@ -117,6 +117,8 @@ func touches(at: Vector2, r: float) -> bool:
 func _on_area_entered(area: Area2D) -> void:
 	if area.is_in_group("bullet") and not area.is_hostile():
 		area.queue_free()
+		if not area.is_heal():
+			Sparks.at_hit(self, area.position, area.direction, Color("dfe8ff"), 6)
 
 
 func _draw() -> void:

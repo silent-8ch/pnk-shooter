@@ -1,7 +1,9 @@
 class_name HighScores
 extends RefCounted
 ## Log of finished runs on this device (user://high_scores.json), best first:
-## furthest stage, then score. Each entry: {score, stage, players, date}.
+## furthest stage, then score. Each entry: {score, stage, players, date,
+## aim, untouched}: the run's best streaks on this device (Game streaks), so
+## best_streaks() can name the records.
 
 const PATH := "user://high_scores.json"
 const MAX_ENTRIES := 100
@@ -14,7 +16,8 @@ static func add(entry: Dictionary) -> int:
 	var all := load_all()
 	var e := {"score": int(entry.get("score", 0)), "stage": int(entry.get("stage", 1)),
 		"players": Array(entry.get("players", [])).map(func(n): return str(n)),
-		"date": str(entry.get("date", ""))}
+		"date": str(entry.get("date", "")),
+		"aim": int(entry.get("aim", 0)), "untouched": int(entry.get("untouched", 0))}
 	all.append(e)
 	all.sort_custom(_better)
 	var rank := all.find(e) + 1
@@ -46,6 +49,18 @@ static func load_all() -> Array:
 		e.score = int(e.score)
 		e.stage = int(e.stage)
 	out.sort_custom(_better)
+	return out
+
+
+## The record streaks across the log: {aim: {n, players, date}, untouched: {...}};
+## n is 0 where there's none yet.
+static func best_streaks() -> Dictionary:
+	var out := {"aim": {"n": 0, "players": [], "date": ""}, "untouched": {"n": 0, "players": [], "date": ""}}
+	for e in load_all():
+		for k in out:
+			var n := int(e.get(k, 0))
+			if n > out[k].n:
+				out[k] = {"n": n, "players": e.get("players", []), "date": e.get("date", "")}
 	return out
 
 

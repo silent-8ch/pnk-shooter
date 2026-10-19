@@ -31,47 +31,78 @@ theme_override_font_sizes/font_size = 40
 text = "PAUSED"
 horizontal_alignment = 1
 
-[node name="ResumeButton" type="Button" parent="Margin/VBox"]
+[node name="MainButtons" type="VBoxContainer" parent="Margin/VBox"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 64)
-theme_override_font_sizes/font_size = 26
+theme_override_constants/separation = 16
+
+[node name="ResumeButton" type="Button" parent="Margin/VBox/MainButtons"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 100)
+theme_override_font_sizes/font_size = 40
 text = "Resume"
 
-[node name="SaveExitButton" type="Button" parent="Margin/VBox"]
+[node name="SaveExitButton" type="Button" parent="Margin/VBox/MainButtons"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 64)
-theme_override_font_sizes/font_size = 26
+custom_minimum_size = Vector2(0, 56)
+theme_override_font_sizes/font_size = 22
 text = "Save and exit"
 
-[node name="LeaveButton" type="Button" parent="Margin/VBox"]
+[node name="LeaveButton" type="Button" parent="Margin/VBox/MainButtons"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 64)
-theme_override_font_sizes/font_size = 26
+custom_minimum_size = Vector2(0, 56)
+theme_override_font_sizes/font_size = 22
 text = "Leave game"
 
-[node name="MusicToggle" type="CheckButton" parent="Margin/VBox"]
+[node name="SettingsBox" type="VBoxContainer" parent="Margin/VBox"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 64)
-theme_override_font_sizes/font_size = 26
+visible = false
+theme_override_constants/separation = 14
+
+[node name="SettingsTitle" type="Label" parent="Margin/VBox/SettingsBox"]
+theme_override_font_sizes/font_size = 30
+text = "SETTINGS"
+horizontal_alignment = 1
+
+[node name="MusicToggle" type="CheckButton" parent="Margin/VBox/SettingsBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 56)
+theme_override_font_sizes/font_size = 22
 text = "Music"
 
-[node name="SfxToggle" type="CheckButton" parent="Margin/VBox"]
+[node name="SfxToggle" type="CheckButton" parent="Margin/VBox/SettingsBox"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 64)
-theme_override_font_sizes/font_size = 26
+custom_minimum_size = Vector2(0, 56)
+theme_override_font_sizes/font_size = 22
 text = "Sound FX"
 
-[node name="HandSide" type="Button" parent="Margin/VBox"]
+[node name="HandSide" type="Button" parent="Margin/VBox/SettingsBox"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 64)
-theme_override_font_sizes/font_size = 26
+custom_minimum_size = Vector2(0, 56)
+theme_override_font_sizes/font_size = 22
 text = "Controls on: LEFT"
 
-[node name="QuitButton" type="Button" parent="Margin/VBox"]
+[node name="BackButton" type="Button" parent="Margin/VBox/SettingsBox"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 64)
-theme_override_font_sizes/font_size = 26
-text = "Quit"
+custom_minimum_size = Vector2(0, 56)
+theme_override_font_sizes/font_size = 22
+text = "Back"
 
 [node name="Spacer2" type="Control" parent="Margin/VBox"]
 size_flags_vertical = 3
+
+[node name="BottomRow" type="HBoxContainer" parent="Margin/VBox"]
+unique_name_in_owner = true
+alignment = 1
+theme_override_constants/separation = 16
+
+[node name="SettingsButton" type="Button" parent="Margin/VBox/BottomRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(150, 44)
+theme_override_font_sizes/font_size = 18
+text = "Settings"
+
+[node name="QuitButton" type="Button" parent="Margin/VBox/BottomRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(150, 44)
+theme_override_font_sizes/font_size = 18
+text = "Quit"

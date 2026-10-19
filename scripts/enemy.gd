@@ -131,6 +131,13 @@ func _ready() -> void:
 	# the shared normal map lights correctly upside down; no flipped variant needed.
 	body.flip_v = true
 	body.light_mask = Ships.LIGHT_MASK
+	if not is_tetran():
+		var jets := Thrusters.new()  # flare as it changes course
+		jets.name = "Thrusters"
+		jets.radius = TYPES[type].get("height", HEIGHT) / 2.0
+		jets.flame = Color("ff6a4a")
+		jets.core = Color("ffd2a0")
+		add_child(jets)
 	if is_tetran():
 		body.visible = false  # it draws itself
 		($Shape.shape as CircleShape2D).radius = TetranScript.CORE_RADIUS
@@ -446,13 +453,14 @@ func _on_area_entered(area: Area2D) -> void:
 	if multiplayer.multiplayer_peer == null or not area.is_in_group("bullet") or area.is_hostile():
 		return
 	area.queue_free()
+	if not area.is_heal():
+		Sparks.at_hit(self, area.position, area.direction, area.color, 6)
 	if area.is_mine():
 		var game := get_tree().get_first_node_in_group("game")
 		if game:
-			if area.is_heal():
-				game.report_heal_hit.rpc_id(1, String(name), area.damage())
-			else:
-				game.report_hit.rpc_id(1, String(name), area.damage())
+			game.report(&"report_heal_hit" if area.is_heal() else &"report_hit", [String(name), area.damage()])
+			if area.shooter == multiplayer.get_unique_id():
+				DamageNumber.on(self, self, area.damage(), DamageNumber.HEAL if area.is_heal() else DamageNumber.DEAL, area.is_heal())
 
 
 ## Host: a HEAL shot hit it for `amount`. Each whole hit's worth adds a hit

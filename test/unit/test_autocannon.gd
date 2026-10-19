@@ -166,20 +166,31 @@ func test_fires_a_steady_stream_of_rounds() -> void:
 	assert_gt(_bullets().size() - n, n, "level 2 fires faster")
 
 
-func test_vulcan_rounds_are_small_fast_weak_and_short_range() -> void:
+func test_vulcan_rounds_are_small_slow_weak_and_long_lived() -> void:
 	var laser: Dictionary = BulletScript.KINDS[BulletScript.LASER]
 	var vulcan: Dictionary = BulletScript.KINDS[BulletScript.VULCAN]
 	assert_lt(vulcan.scale, laser.scale)
-	assert_gt(vulcan.speed, laser.speed * 1.5)
+	assert_lt(vulcan.speed, laser.speed, "slow enough to see the strand")
 	assert_lt(vulcan.damage, laser.damage)
-	assert_lt(vulcan.range, 300.0)
+	assert_gt(vulcan.range, 400.0, "a long strand")
 	game.fire_bullet(Vector2(270, 500), Color.RED, Vector2.RIGHT, BulletScript.VULCAN)
 	var b: Area2D = _bullets()[0]
 	assert_almost_eq(b.rotation, PI / 2.0, 0.001, "points where it flies")
 	b._physics_process(0.1)
 	assert_almost_eq(b.position, Vector2(270 + vulcan.speed * 0.1, 500), Vector2(0.01, 0.01))
-	b._physics_process(0.2)
-	assert_true(b.is_queued_for_deletion(), "fizzles")
+	b._physics_process(vulcan.range / vulcan.speed)
+	assert_true(b.is_queued_for_deletion(), "fizzles in the end")
+
+
+func test_rounds_join_into_one_strand_per_gun() -> void:
+	game.fire_bullet(Vector2(270, 500), Color.RED, Vector2.UP, BulletScript.VULCAN)
+	var first: Area2D = _bullets().back()
+	game.fire_bullet(Vector2(272, 510), Color.RED, Vector2.UP, BulletScript.VULCAN)
+	var second: Area2D = _bullets().back()
+	assert_eq(second.link, first, "joined to the round before it")
+	game.fire_bullet(Vector2(100, 500), Color.RED, Vector2.UP, BulletScript.VULCAN)
+	assert_null(_bullets().back().link, "another gun's round starts its own strand")
+	assert_null(first.link)
 
 
 func test_a_dense_stream_of_light_rounds() -> void:
@@ -202,7 +213,7 @@ func test_aims_at_enemy_shots_before_enemies() -> void:
 	assert_true(player.auto_target().is_in_group("bullet"), "the shot, though the enemy is closer")
 	player._simulate(0.016)
 	var round: Area2D = _bullets().filter(func(b): return not b.is_hostile())[0]
-	assert_lt(absf(round.direction.angle_to(Vector2.RIGHT)), 0.5, "toward the shot")
+	assert_lt(absf(round.direction.angle_to(Vector2.RIGHT)), 1.0, "toward the shot (well ahead of it: rounds are slow)")
 	assert_gt(round.direction.y, 0.0, "leading it: the shot is falling")
 
 
@@ -221,8 +232,13 @@ func test_a_round_shoots_down_an_enemy_shot() -> void:
 	game.fire_bullet(Vector2(270, 400), Color.RED, Vector2.UP, BulletScript.VULCAN)
 	var round: Area2D = _bullets().filter(func(b): return b.kind == BulletScript.VULCAN)[0]
 	round._on_area_entered(shot)
-	assert_true(shot.is_queued_for_deletion())
-	assert_true(round.is_queued_for_deletion())
+	assert_true(round.is_queued_for_deletion(), "the round is spent")
+	assert_false(shot.is_queued_for_deletion(), "one round isn't enough")
+	for i in BulletScript.SHOT_TOUGHNESS - 1:
+		game.fire_bullet(Vector2(270, 400), Color.RED, Vector2.UP, BulletScript.VULCAN)
+		var more: Area2D = _bullets().filter(func(b): return b.kind == BulletScript.VULCAN and not b.is_queued_for_deletion()).back()
+		more._on_area_entered(shot)
+	assert_true(shot.is_queued_for_deletion(), "shot down after %d rounds" % BulletScript.SHOT_TOUGHNESS)
 
 
 func test_a_round_passes_other_player_shots() -> void:
@@ -300,3 +316,24 @@ func test_a_stream_of_rounds_plays_one_vulcan_burst() -> void:
 	game._vulcan_until[1] = 0.0  # that burst ran out
 	game.fire_bullet(Vector2(270, 500), Color.RED, Vector2.UP, BulletScript.VULCAN)
 	assert_gt(game._vulcan_until[1], until - 0.001, "next burst")
+
+
+
+func test_options_fire_vulcans_at_their_own_nearest() -> void:
+	_buy_auto()
+	_arm_auto()
+	player.levels[&"option"] = 1
+	player.levels[&"drones"] = 1
+	player.levels[&"reactor"] = 8
+	player.add_power(&"option")
+	player._simulate(0.016)
+	player._trail.assign([Vector2(100, 600), Vector2(100, 600), Vector2(100, 600)])
+	_enemy(Vector2(100, 520))  # near where the option is
+	_enemy(player.position + Vector2(0, -60))
+	for b in _bullets():
+		b.queue_free()
+	player._auto_cooldown = 0.0
+	player._run_autocannon(1.0 / 60.0)
+	var from := _bullets().filter(func(b): return not b.is_queued_for_deletion()).map(func(b): return b.position.x)
+	assert_gt(from.size(), 1, "the ship and its option")
+	assert_true(from.any(func(x): return x < 200.0), "one from the option's side")

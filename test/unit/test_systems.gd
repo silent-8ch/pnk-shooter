@@ -47,7 +47,9 @@ func _powered(system: StringName, n: int) -> void:
 	while player.power_of(system) < n:
 		if player.power_spare() <= 0:
 			_buy(&"reactor")
-		assert_true(player.add_power(system), "powered %s" % system)
+		if not player.add_power(system):
+			fail_test("couldn't power %s to %d" % [system, n])
+			return
 
 
 func _ship(id: int, pos: Vector2) -> Area2D:
@@ -83,7 +85,7 @@ func _start_levels() -> Dictionary:
 
 func test_start_loadout() -> void:
 	assert_eq(player.reactor(), 3)
-	assert_eq(player.levels, {&"reactor": 3, &"engines": 1, &"weapons": 1, &"lasers": 1})
+	assert_eq(player.levels, {&"reactor": 3, &"engines": 1, &"weapons": 1, &"lasers": 1, &"autopilot": 1, &"beacon": 1})
 	assert_eq(player.power_of(&"engines"), 1)
 	assert_eq(player.power_of(&"weapons"), 1)
 	assert_eq(player.power_of(&"shields"), 0)
@@ -126,6 +128,8 @@ func test_prices_count_from_start() -> void:
 	assert_eq(Systems.price(&"option", 1), 8)
 	assert_eq(Systems.price(&"nope", 0), 0, "unknown item")
 	for it in Systems.ITEMS:
+		if Systems.is_builtin(it.id):
+			continue  # nothing to buy
 		assert_gt(it.cost, 0, String(it.id))
 
 
@@ -338,22 +342,48 @@ func test_guns_only_count_while_armed() -> void:
 		assert_eq(player.level(id), 0, "%s disarmed" % id)
 
 
-func test_drones_power_options_first_then_rescue() -> void:
+func test_options_and_rescue_each_take_their_own_bars() -> void:
 	_buy_n(&"option", 2)
 	_buy_n(&"rescue", 2)
+	while player.levels.get(&"drones", 0) < 3:
+		_buy(&"drones")
+	while player.power_spare() < 4:
+		_buy(&"reactor")
 	assert_eq(player.level(&"option"), 0, "unpowered")
-	assert_eq(player.level(&"rescue"), 0)
-	_powered(&"drones", 1)
-	assert_eq(player.level(&"option"), 1)
-	assert_eq(player.level(&"rescue"), 0)
-	_powered(&"drones", 3)
-	assert_eq(player.level(&"option"), 2)
+	assert_true(player.add_power(&"rescue"), "rescue first if you like")
 	assert_eq(player.level(&"rescue"), 1)
-	_powered(&"drones", 5)
-	assert_eq(player.level(&"option"), 2, "no more than bought")
+	assert_eq(player.level(&"option"), 0)
+	assert_true(player.add_power(&"option"))
+	assert_true(player.add_power(&"option"))
+	assert_eq(player.level(&"option"), 2)
+	assert_false(player.add_power(&"rescue"), "DRONES is full: 3 bars between them")
+	assert_eq(player.power_of(&"drones"), 3)
+	assert_true(player.remove_power(&"option"))
+	assert_true(player.add_power(&"rescue"), "moved a bar over")
 	assert_eq(player.level(&"rescue"), 2)
+	assert_false(player.add_power(&"rescue"), "no more than bought")
 	player._simulate(0.016)
-	assert_eq(player.options, 2, "replicated option count follows")
+	assert_eq(player.options, 1, "replicated option count follows")
+
+
+func test_autopilot_and_beacon_are_separate_bars() -> void:
+	_buy_n(&"piloting", 1)
+	assert_true(player.add_power(&"beacon"), "the beacon without the autopilot")
+	assert_eq(player.level(&"beacon"), 1)
+	assert_eq(player.level(&"autopilot"), 0)
+	assert_false(player.add_power(&"autopilot"), "PILOTING 1 holds one bar")
+	_buy(&"piloting")
+	if player.power_spare() <= 0:
+		_buy(&"reactor")
+	assert_true(player.add_power(&"autopilot"))
+	assert_eq(player.power_of(&"piloting"), 2)
+
+
+func test_pools_arent_powered_themselves() -> void:
+	assert_true(Systems.is_pool(&"drones") and Systems.is_pool(&"piloting"))
+	assert_eq(Systems.pool_of(&"option"), &"drones")
+	assert_eq(Systems.pool_of(&"beacon"), &"piloting")
+	assert_eq(Systems.pool_of(&"shields"), &"")
 
 
 func test_drones_with_only_rescue_bought() -> void:

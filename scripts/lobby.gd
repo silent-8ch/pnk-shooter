@@ -20,7 +20,7 @@ var _servers: Array = []
 
 
 func _ready() -> void:
-	name_edit.text = "Player%d" % (randi() % 900 + 100)
+	name_edit.text = Settings.player_name if Settings.player_name != "" else "Player%d" % (randi() % 900 + 100)
 	host_button.pressed.connect(_on_host_pressed)
 	join_button.pressed.connect(_on_join_pressed)
 	back_button.pressed.connect(back_pressed.emit)
@@ -40,7 +40,9 @@ func set_status(text: String) -> void:
 	status_label.text = text
 
 
+## The name typed (remembered for next time, see Settings.player_name).
 func _player_name() -> String:
+	Settings.set_player_name(name_edit.text)
 	Net.all_weapons = name_edit.text == Net.ALL_WEAPONS_NAME
 	var n := name_edit.text.strip_edges().left(12)
 	return n if n != "" else "Player"
@@ -88,6 +90,9 @@ func show_high_scores() -> void:
 		lines.append("%d. Stage %d   %d   %s" % [i + 1, r.stage, r.score, ", ".join(PackedStringArray(r.get("players", [])))])
 	if runs.is_empty():
 		lines.append("No runs yet")
+	var best := HighScores.best_streaks()
+	if best.aim.n > 0 or best.untouched.n > 0:
+		lines.append("Best streaks:  %d in a row   %d kills untouched" % [best.aim.n, best.untouched.n])
 	high_scores_label.text = "\n".join(lines)
 
 

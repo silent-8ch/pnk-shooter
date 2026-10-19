@@ -7,9 +7,13 @@ class_name Systems
 ##   SHIELDS   1: front shield recharges; 2: rear shield too; 3: twice as fast
 ##   ENGINES   +SPEED_STEP move speed per bar
 ##   WEAPONS   bars the armed guns draw on (each gun needs `power` of them)
-##   DRONES    a bar per drone: options first, then rescue drones
+##   DRONES    a pool: OPTION and RESCUE each take bars of their own (one per
+##             drone), up to DRONES' level between them
 ##   MEDBAY    1: REPAIR kits; 2: heals ships nearby; 3: kits come back twice as fast
-##   PILOTING  1: autopilot; 2: friendly beacon
+##   PILOTING  a pool: AUTOPILOT and BEACON a bar each, up to PILOTING's level
+## A pool system (POOLS) isn't powered itself: its members are, each with
+## its own - and +, drawing straight from the reactor; the pool's level caps
+## how many bars they hold together.
 ## Guns live in WEAPONS: bought once, then levelled (LASER's levels are its
 ## DOUBLE and RAPID rows), and armed from the action bar. Drones are bought as
 ## units and run on DRONES power. Hull items are passive.
@@ -34,9 +38,14 @@ const ITEMS: Array[Dictionary] = [
 	{"id": &"healbeam", "label": "HEAL BEAM", "section": "WEAPONS", "gun": true, "power": 1, "cost": 4, "max": 2, "action": &"heal"},
 	{"id": &"option", "label": "OPTION", "section": "DRONES", "cost": 4, "max": 3},
 	{"id": &"rescue", "label": "RESCUE", "section": "DRONES", "cost": 3, "max": 4},
+	{"id": &"autopilot", "label": "AUTOPILOT", "section": "PILOTING", "builtin": true, "cost": 0, "max": 1, "start": 1},
+	{"id": &"beacon", "label": "BEACON", "section": "PILOTING", "builtin": true, "cost": 0, "max": 1, "start": 1},
 	{"id": &"armor", "label": "ARMOR", "section": "HULL", "cost": 3, "max": 4},
 	{"id": &"ship", "label": "+SHIP", "section": "HULL", "cost": 6, "max": 3},
 ]
+## Pool systems and the members that take their bars.
+const POOLS := {&"drones": [&"option", &"rescue"], &"piloting": [&"autopilot", &"beacon"]}
+
 ## Bars powered at the start (and after a respawn), and the guns armed.
 const START_POWER := {&"engines": 1, &"weapons": 1}
 const START_ARMED: Array[StringName] = [&"lasers"]
@@ -67,6 +76,23 @@ static func guns() -> Array[Dictionary]:
 
 static func is_system(id: StringName) -> bool:
 	return item(id).get("system", false)
+
+
+static func is_pool(id: StringName) -> bool:
+	return POOLS.has(id)
+
+
+## The pool system member `id` draws its bars from, or &"".
+static func pool_of(id: StringName) -> StringName:
+	for pool in POOLS:
+		if POOLS[pool].has(id):
+			return pool
+	return &""
+
+
+## Comes with its pool: nothing to buy (AUTOPILOT, BEACON).
+static func is_builtin(id: StringName) -> bool:
+	return item(id).get("builtin", false)
 
 
 static func is_gun(id: StringName) -> bool:

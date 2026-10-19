@@ -1,7 +1,7 @@
 class_name RefitPanel
 extends Control
-## The refit (see Game.start_refit), as a small LCARS panel at the top of the
-## screen: what's next, who's ready, and a big READY pill. Tapping READY tells
+## The refit (see Game.start_refit), as a small console panel at the top of the
+## screen: what's next, who's ready, and a big READY button. Tapping READY tells
 ## the host (Game.set_refit_ready); tapping again takes it back. When everyone
 ## is ready the refit ends. Hidden the rest of the time. Touches are read
 ## directly like the ActionBar; PointerControls ignores touches here.
@@ -41,13 +41,13 @@ func is_active() -> bool:
 
 func panel_rect() -> Rect2:
 	var w := get_viewport_rect().size.x
-	var h := LCARS.TOP_BAR + 12.0 + LINE + maxi(list.size(), 1) * LINE + 8.0 + READY_SIZE.y + 14.0
+	var h := UiStyle.HEADER + 12.0 + LINE + maxi(list.size(), 1) * LINE + 8.0 + READY_SIZE.y + 14.0
 	return Rect2(Vector2((w - WIDTH) / 2.0, MARGIN + 60.0), Vector2(WIDTH, h))
 
 
 func ready_rect() -> Rect2:
 	var r := panel_rect()
-	var left := r.position.x + LCARS.ELBOW + 8.0
+	var left := r.position.x + UiStyle.SIDE + 8.0
 	return Rect2(Vector2(left, r.end.y - 14.0 - READY_SIZE.y), Vector2(r.end.x - 8.0 - left, READY_SIZE.y))
 
 
@@ -97,19 +97,19 @@ func _draw() -> void:
 		return
 	var game := _game()
 	var font := get_theme_default_font()
-	var inner := LCARS.panel(self, panel_rect(), LCARS.LAVENDER, "REFIT", font)
+	var inner := UiStyle.panel(self, panel_rect(), UiStyle.VIOLET, "REFIT", font)
 	var next := "THEN CHOOSE YOUR PATH" if game.refit_after_boss else "THEN ON TO THE BOSS"
-	LCARS.label(self, Rect2(inner.position, Vector2(inner.size.x, LINE)), "BUY AND SET UPGRADES, " + next, font, LCARS.PEACH, 12, HORIZONTAL_ALIGNMENT_LEFT)
+	UiStyle.label(self, Rect2(inner.position, Vector2(inner.size.x, LINE)), "BUY AND SET UPGRADES, " + next, font, UiStyle.PALE, 12, HORIZONTAL_ALIGNMENT_LEFT)
 	for i in list.size():
 		var p: Dictionary = list[i]
 		var row := Rect2(inner.position + Vector2(0, LINE * (i + 1)), Vector2(inner.size.x, LINE))
 		var on: bool = p.get("ready", false)
-		LCARS.label(self, row, str(p.get("name", "Player")).to_upper(), font, LCARS.PEACH, 13, HORIZONTAL_ALIGNMENT_LEFT)
-		LCARS.label(self, row, "READY" if on else "...", font, LCARS.ORANGE if on else Color(LCARS.PEACH, 0.5), 13, HORIZONTAL_ALIGNMENT_RIGHT)
+		UiStyle.label(self, row, str(p.get("name", "Player")).to_upper(), font, UiStyle.PALE, 13, HORIZONTAL_ALIGNMENT_LEFT)
+		UiStyle.label(self, row, "READY" if on else "...", font, UiStyle.CYAN if on else Color(UiStyle.PALE, 0.5), 13, HORIZONTAL_ALIGNMENT_RIGHT)
 	var rr := ready_rect()
 	if is_ready:
-		LCARS.pill(self, rr, LCARS.ORANGE)
-		LCARS.label(self, rr, "READY  -  TAP TO WAIT", font, LCARS.BLACK, 16)
+		UiStyle.button(self, rr, UiStyle.CYAN)
+		UiStyle.label(self, rr, "READY  -  TAP TO WAIT", font, UiStyle.INK, 16)
 	else:
-		LCARS.pill(self, rr, LCARS.PEACH)
-		LCARS.label(self, rr, "READY", font, LCARS.BLACK, 22)
+		UiStyle.button(self, rr, UiStyle.PALE)
+		UiStyle.label(self, rr, "READY", font, UiStyle.INK, 22)

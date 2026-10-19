@@ -1,5 +1,5 @@
 extends GutTest
-## The ship's systems in small LCARS popups: only a SHIP pill shows in play;
+## The ship's systems in small console popups: only a SHIP button shows in play;
 ## it opens the systems popup, a row opens that system's popup (power - and +,
 ## UPGRADE, its items), BACK goes up, and SHIP or a tap outside closes it.
 
@@ -34,7 +34,7 @@ func _exp(n: int) -> void:
 		game.collect_pickup("none", 1)
 
 
-## The pill doing `action` (for `id`, if given).
+## The button doing `action` (for `id`, if given).
 func _button(action: StringName, id := &"") -> Dictionary:
 	for b in panel.buttons():
 		if b.action == action and (id == &"" or b.id == id):
@@ -58,7 +58,7 @@ func _touch(pos: Vector2) -> void:
 
 # --- In play ---------------------------------------------------------------------
 
-func test_only_the_ship_pill_shows_in_play() -> void:
+func test_only_the_ship_button_shows_in_play() -> void:
 	assert_false(panel.is_open())
 	assert_eq(panel.buttons().size(), 1)
 	var tab := panel.tab_rect()
@@ -68,7 +68,7 @@ func test_only_the_ship_pill_shows_in_play() -> void:
 	assert_lt(tab.size.x * tab.size.y, screen.x * screen.y * 0.02, "small")
 
 
-func test_closed_only_the_pill_blocks_steering() -> void:
+func test_closed_only_the_button_blocks_steering() -> void:
 	assert_true(panel.contains(panel.tab_rect().get_center()))
 	assert_false(panel.contains(Vector2(270, 300)))
 
@@ -82,7 +82,7 @@ func test_ship_opens_the_systems_popup() -> void:
 		assert_false(_button(&"open", id).is_empty(), String(id))
 
 
-func test_popup_is_small_and_sits_above_the_pill() -> void:
+func test_popup_is_small_and_sits_above_the_button() -> void:
 	_press(&"tab")
 	var r := panel.popup_rect()
 	var screen := panel.get_viewport_rect().size
@@ -237,11 +237,53 @@ func test_pointer_controls_dont_steer_on_the_popup() -> void:
 	assert_false(pointer._on_action_bar(Vector2(450, 200)))
 
 
-# --- Exp on the pill ---------------------------------------------------------------
+# --- Exp on the button ---------------------------------------------------------------
 
-func test_ship_pill_knows_when_exp_can_buy_something() -> void:
+func test_ship_button_knows_when_exp_can_buy_something() -> void:
 	var p: Node = player
 	p.exp_balance = 0
 	assert_false(ShipPanel.can_buy_something(p))
 	p.exp_balance = 100
 	assert_true(ShipPanel.can_buy_something(p))
+
+
+# --- Pools: drones and piloting ----------------------------------------------------
+
+func _tap_button(action: StringName, id: StringName) -> void:
+	for b in panel.buttons():
+		if b.action == action and b.id == id:
+			panel.tap(b.rect.get_center())
+			return
+	fail_test("no %s button for %s" % [action, id])
+
+
+func test_drones_popup_has_power_for_each_drone_kind() -> void:
+	player.levels[&"reactor"] = 8
+	player.levels[&"drones"] = 3
+	player.levels[&"option"] = 2
+	player.levels[&"rescue"] = 2
+	panel.page = &"drones"
+	var acts := panel.buttons().map(func(b): return [b.action, b.id])
+	assert_has(acts, [&"power_up", &"option"])
+	assert_has(acts, [&"power_up", &"rescue"])
+	assert_has(acts, [&"power_down", &"rescue"])
+	assert_does_not_have(acts, [&"power_up", &"drones"], "no power row for the pool itself")
+	_tap_button(&"power_up", &"rescue")
+	assert_eq(player.level(&"rescue"), 1, "rescue first, if you want")
+	assert_eq(player.level(&"option"), 0)
+	_tap_button(&"power_up", &"option")
+	_tap_button(&"power_down", &"rescue")
+	assert_eq(player.level(&"option"), 1)
+	assert_eq(player.level(&"rescue"), 0)
+
+
+func test_piloting_popup_powers_autopilot_and_beacon_apart() -> void:
+	player.levels[&"reactor"] = 6
+	player.levels[&"piloting"] = 1
+	panel.page = &"piloting"
+	var acts := panel.buttons().map(func(b): return [b.action, b.id])
+	assert_has(acts, [&"power_up", &"beacon"])
+	assert_does_not_have(acts, [&"buy", &"beacon"], "comes with PILOTING")
+	_tap_button(&"power_up", &"beacon")
+	assert_eq(player.level(&"beacon"), 1)
+	assert_eq(player.level(&"autopilot"), 0)

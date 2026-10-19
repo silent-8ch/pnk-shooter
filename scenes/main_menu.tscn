@@ -1,6 +1,8 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://scripts/main_menu.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/title_dance.gd" id="2"]
+[ext_resource type="Script" path="res://scripts/starfield.gd" id="3"]
 
 [node name="MainMenu" type="CanvasLayer"]
 layer = 12
@@ -10,6 +12,12 @@ script = ExtResource("1")
 anchor_right = 1.0
 anchor_bottom = 1.0
 color = Color(0.05, 0.06, 0.12, 1)
+
+[node name="Starfield" type="Node2D" parent="."]
+script = ExtResource("3")
+
+[node name="TitleDance" type="Node2D" parent="."]
+script = ExtResource("2")
 
 [node name="Margin" type="MarginContainer" parent="."]
 anchor_right = 1.0
@@ -26,49 +34,81 @@ theme_override_constants/separation = 24
 size_flags_vertical = 3
 
 [node name="Title" type="Label" parent="Margin/VBox"]
-theme_override_font_sizes/font_size = 56
-text = "PNK SHOOTER"
+theme_override_font_sizes/font_size = 44
+text = "Paul and Krystal Hlusko's Shooter"
 horizontal_alignment = 1
+autowrap_mode = 3
 
 [node name="Spacer2" type="Control" parent="Margin/VBox"]
 size_flags_vertical = 3
 
-[node name="ContinueButton" type="Button" parent="Margin/VBox"]
+[node name="MainButtons" type="VBoxContainer" parent="Margin/VBox"]
+unique_name_in_owner = true
+theme_override_constants/separation = 20
+
+[node name="ContinueButton" type="Button" parent="Margin/VBox/MainButtons"]
 unique_name_in_owner = true
 visible = false
-custom_minimum_size = Vector2(0, 72)
-theme_override_font_sizes/font_size = 30
+custom_minimum_size = Vector2(0, 88)
+theme_override_font_sizes/font_size = 34
 text = "Continue"
 
-[node name="PlayButton" type="Button" parent="Margin/VBox"]
+[node name="PlayButton" type="Button" parent="Margin/VBox/MainButtons"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 72)
-theme_override_font_sizes/font_size = 30
+custom_minimum_size = Vector2(0, 120)
+theme_override_font_sizes/font_size = 48
 text = "Play"
 
-[node name="MusicToggle" type="CheckButton" parent="Margin/VBox"]
+[node name="SettingsBox" type="VBoxContainer" parent="Margin/VBox"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 64)
-theme_override_font_sizes/font_size = 26
+visible = false
+theme_override_constants/separation = 14
+
+[node name="SettingsTitle" type="Label" parent="Margin/VBox/SettingsBox"]
+theme_override_font_sizes/font_size = 30
+text = "SETTINGS"
+horizontal_alignment = 1
+
+[node name="MusicToggle" type="CheckButton" parent="Margin/VBox/SettingsBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 56)
+theme_override_font_sizes/font_size = 22
 text = "Music"
 
-[node name="SfxToggle" type="CheckButton" parent="Margin/VBox"]
+[node name="SfxToggle" type="CheckButton" parent="Margin/VBox/SettingsBox"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 64)
-theme_override_font_sizes/font_size = 26
+custom_minimum_size = Vector2(0, 56)
+theme_override_font_sizes/font_size = 22
 text = "Sound FX"
 
-[node name="HandSide" type="Button" parent="Margin/VBox"]
+[node name="HandSide" type="Button" parent="Margin/VBox/SettingsBox"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 64)
-theme_override_font_sizes/font_size = 26
+custom_minimum_size = Vector2(0, 56)
+theme_override_font_sizes/font_size = 22
 text = "Controls on: LEFT"
 
-[node name="QuitButton" type="Button" parent="Margin/VBox"]
+[node name="BackButton" type="Button" parent="Margin/VBox/SettingsBox"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 64)
-theme_override_font_sizes/font_size = 26
-text = "Quit"
+custom_minimum_size = Vector2(0, 56)
+theme_override_font_sizes/font_size = 22
+text = "Back"
 
 [node name="Spacer3" type="Control" parent="Margin/VBox"]
 size_flags_vertical = 3
+
+[node name="BottomRow" type="HBoxContainer" parent="Margin/VBox"]
+unique_name_in_owner = true
+alignment = 1
+theme_override_constants/separation = 16
+
+[node name="SettingsButton" type="Button" parent="Margin/VBox/BottomRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(150, 44)
+theme_override_font_sizes/font_size = 18
+text = "Settings"
+
+[node name="QuitButton" type="Button" parent="Margin/VBox/BottomRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(150, 44)
+theme_override_font_sizes/font_size = 18
+text = "Quit"

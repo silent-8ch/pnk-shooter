@@ -6,5 +6,6 @@
   "prefix": "test_",
   "should_exit": true,
   "log_level": 1,
-  "pre_run_script": "res://test/pre_run.gd"
+  "pre_run_script": "res://test/pre_run.gd",
+  "post_run_script": "res://test/post_run.gd"
 }

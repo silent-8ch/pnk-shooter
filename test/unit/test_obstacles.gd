@@ -171,7 +171,7 @@ func test_small_rocks_can_be_shot_apart() -> void:
 		game.report_obstacle_hit(n, 1.0)
 	assert_true(game.get_node("Obstacles").has_node(n))
 	game.report_obstacle_hit(n, 1.0)
-	assert_false(game.get_node("Obstacles").has_node(n))
+	assert_true(o.is_queued_for_deletion(), "shot apart")
 	assert_eq(game.score, hits * game.OBSTACLE_POINTS)
 
 

@@ -51,7 +51,8 @@ func test_idle_holds_first_frame_and_cycles_palette_without_spinning() -> void:
 	assert_eq(p.rotation, 0.0, "no spin")
 	var angle: float = p.sprite.rotation
 	p._process(0.5)
-	assert_eq(p.sprite.rotation, angle, "the art doesn't spin either")
+	assert_almost_eq(absf(p.sprite.rotation - angle), PickupScript.SPIN * 0.5, 0.0001, "the art spins very slowly")
+	assert_lt(PickupScript.SPIN, 1.0)
 	assert_gte(steps.size(), 4, "rapid palette cycle")
 
 
@@ -261,6 +262,7 @@ func test_pulses_and_wanders_around_its_spot() -> void:
 		assert_lte(absf(p.sprite.position.y), PickupScript.DRIFT.y + 0.001)
 	var base := PickupScript.DISPLAY_SCALE / PickupScript.RENDER_SCALE
 	assert_gt(sizes.size(), 10, "pulses")
+	assert_gte(PickupScript.PULSE, 0.2, "a big pulse while it waits")
 	for sz in sizes:
 		assert_between(sz, base * (1.0 - PickupScript.PULSE) - 0.0001, base * (1.0 + PickupScript.PULSE) + 0.0001)
 	assert_gt(far, 1.0, "wanders")

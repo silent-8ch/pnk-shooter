@@ -165,4 +165,5 @@ func test_missile_does_laser_damage() -> void:
 	var hp: int = e.hp
 	game.fire_bullet(e.position, player.color, Vector2.UP, BulletScript.MISSILE)
 	e._on_area_entered(_bullets()[0])
-	assert_true(e.hp == hp - 1 or e.is_queued_for_deletion(), "one damage, like a laser")
+	await wait_frames(1)  # hit reports reach the host at the end of the frame
+	assert_true(not is_instance_valid(e) or e.hp == hp - 1 or e.is_queued_for_deletion(), "one damage, like a laser")

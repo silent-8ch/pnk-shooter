@@ -8,6 +8,7 @@ extends GutTest
 const PlayerScene := preload("res://scenes/player.tscn")
 const PlayerScript := preload("res://scripts/player.gd")
 const MainScene := preload("res://scenes/main.tscn")
+const BulletScript := preload("res://scripts/bullet.gd")
 
 var game: Node2D
 var _saved_peer: MultiplayerPeer
@@ -229,3 +230,89 @@ func test_collecting_exp_pops_a_plus_one() -> void:
 		return
 	assert_eq(pops.size(), before + 1)
 	assert_eq(pops.back().text, "+1")
+
+
+# --- Streaks -------------------------------------------------------------------------
+
+func test_photon_hits_in_a_row_and_a_miss_breaks_it() -> void:
+	game.active = true
+	for i in 9:
+		game.photon_result(true)
+	assert_eq(game.streak_aim, 9)
+	var score: int = game.score
+	game.photon_result(true)
+	await wait_frames(1)
+	assert_eq(game.streak_aim, 10)
+	assert_eq(game.score, score + 10 * game.STREAK_BONUS, "a milestone pays")
+	game.photon_result(false)
+	assert_eq(game.streak_aim, 0)
+	assert_eq(game.best_aim, 10)
+
+
+func test_kills_untouched_and_a_hit_breaks_it() -> void:
+	game.active = true
+	for i in 3:
+		game.credit_kill()
+	assert_eq(game.streak_untouched, 3)
+	game.streak_hurt()
+	assert_eq(game.streak_untouched, 0)
+
+
+func test_milestones_are_10_25_50_100_then_every_100() -> void:
+	var hits: Array = []
+	for n in range(1, 450):
+		if game.is_streak_milestone(n):
+			hits.append(n)
+	assert_eq(hits, [10, 25, 50, 100, 200, 300, 400])
+
+
+func test_a_photon_flying_off_is_a_miss_and_a_hit_isnt() -> void:
+	game.active = true
+	game.fire_bullet(Vector2(270, 10), Color.RED)
+	var b: Area2D = game.get_node("Bullets").get_children().back()
+	game.streak_aim = 5
+	b._physics_process(1.0)
+	await wait_frames(1)
+	assert_eq(game.streak_aim, 0, "flew off the top")
+	game.fire_bullet(Vector2(270, 500), Color.RED)
+	b = game.get_node("Bullets").get_children().back()
+	b.queue_free()  # what a target does when it's hit
+	await wait_frames(1)
+	assert_eq(game.streak_aim, 1)
+
+
+func test_beam_shots_dont_count() -> void:
+	game.active = true
+	game.fire_bullet(Vector2(270, 10), Color.RED, Vector2.UP, BulletScript.BEAM)
+	var b: Area2D = game.get_node("Bullets").get_children().back()
+	game.streak_aim = 5
+	b._physics_process(1.0)
+	await wait_frames(1)
+	assert_eq(game.streak_aim, 5)
+
+
+func test_finishing_an_enemy_credits_the_shooter() -> void:
+	game.active = true
+	game.spawn_group(preload("res://scripts/enemy.gd").WEAVER, 270.0, 1)
+	var e: Node = game.get_node("Enemies").get_children().back()
+	game.report_hit(String(e.name), 1.0)
+	assert_eq(game.streak_untouched, 1)
+
+
+func test_best_streaks_are_logged_like_high_scores() -> void:
+	var saved := HighScores.path
+	HighScores.path = "user://test_streak_scores.json"
+	HighScores.clear()
+	game.active = true
+	game.best_aim = 42
+	game.best_untouched = 17
+	game.game_over(100, 1, ["Paul"])
+	var best := HighScores.best_streaks()
+	assert_eq(best.aim.n, 42)
+	assert_eq(best.untouched.n, 17)
+	assert_eq(best.aim.players, ["Paul"])
+	HighScores.add({"score": 5, "stage": 1, "players": ["Ann"], "aim": 60})
+	assert_eq(HighScores.best_streaks().aim.n, 60, "the record across every run")
+	assert_eq(HighScores.best_streaks().untouched.n, 17)
+	HighScores.clear()
+	HighScores.path = saved

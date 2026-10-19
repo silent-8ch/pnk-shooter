@@ -92,7 +92,7 @@ func test_blast_takes_out_nearby_pods_but_not_far_ones() -> void:
 	game.spawn_pod(Vector2(200, 300), 0, "Near")
 	game.spawn_pod(Vector2(400, 300), 0, "Far")
 	game.blast(Vector2(210, 300), WreckScript.BLAST_RADIUS)
-	assert_false(game.get_node("Pods").has_node("Near"))
+	assert_true(_gone(game.get_node("Pods"), "Near"))
 	assert_true(game.get_node("Pods").has_node("Far"))
 
 
@@ -106,7 +106,8 @@ func test_shot_pod_blows_up_small() -> void:
 	game.get_node("Bullets").add_child(b)
 	pod._on_area_entered(b)
 	assert_true(b.is_queued_for_deletion())
-	assert_false(game.get_node("Pods").has_node("Pod1"))
+	await wait_frames(1)  # hit reports reach the host at the end of the frame
+	assert_true(_gone(game.get_node("Pods"), "Pod1"))
 	assert_lt(PodScript.BURST_HEIGHT, WreckScript.BLAST_HEIGHT / 2.0, "very small explosion")
 	assert_lt(PodScript.BLAST_RADIUS, WreckScript.BLAST_RADIUS / 2.0)
 
@@ -115,7 +116,7 @@ func test_pod_blast_can_chain_to_a_touching_pod() -> void:
 	game.spawn_pod(Vector2(200, 300), 0, "Pod1")
 	game.spawn_pod(Vector2(210, 300), 0, "Pod2")
 	game.report_pod_hit("Pod1")
-	assert_false(game.get_node("Pods").has_node("Pod2"))
+	assert_true(_gone(game.get_node("Pods"), "Pod2"))
 
 
 func test_others_bullets_dont_report_pod_hits() -> void:
@@ -136,3 +137,10 @@ func test_destroyed_enemy_wreck_carries_its_pod_name() -> void:
 	var pod: Node = game.get_node("Pods").get_child(0)
 	assert_eq(w.pod_name, String(pod.name))
 	assert_eq(pod.from_wreck, String(w.name))
+
+
+## Gone from `parent`: removed, or on its way out (removal waits for the end
+## of a physics frame).
+func _gone(parent: Node, n: String) -> bool:
+	var c := parent.get_node_or_null(n)
+	return c == null or c.is_queued_for_deletion()

@@ -44,7 +44,9 @@ const WALL := Color(0.30, 0.16, 0.08)
 const WALL_EDGE := Color(0.55, 0.31, 0.14)
 const WALL_SHADE := Color(0.18, 0.09, 0.04)
 const WARN := Color(1.0, 0.35, 0.15)
-const BLAST := Color(1.0, 0.75, 0.35)
+const EXPLOSION_SIZE := 2.6  # the explosion's height, in blast radii
+const SpriteEffect := preload("res://scripts/sprite_effect.gd")
+const WreckScript := preload("res://scripts/wreck.gd")
 
 var strikes: Array[Dictionary] = []  # {pos, left}: bombardment circles; left < 0 once exploded
 var _attacks := 0  # boss attacks so far (the host's count picks the spots)
@@ -128,6 +130,8 @@ func _scrape_walls(delta: float) -> void:
 		if _scrape_cd.get(p.name, 0.0) > 0.0:
 			continue
 		_scrape_cd[p.name] = SCRAPE_COOLDOWN
+		var side := -1.0 if p.position.x < W / 2.0 else 1.0
+		Sparks.at_hit(p, p.position + Vector2(side * game.SHIP_RADIUS, 0), Vector2.ZERO, Color("ffcf7a"), 10)
 		p.take_damage(SCRAPE_HITS)
 
 
@@ -162,6 +166,12 @@ func bombard(spots: PackedVector2Array) -> void:
 		strikes.append({"pos": s, "left": BOMB_DELAY})
 
 
+## A bombardment shell lands: the painted explosion, sized to its blast.
+func _explode(at: Vector2) -> void:
+	var parent: Node = game.effects if game and game.get("effects") else self
+	SpriteEffect.spawn(parent, at, SpriteEffect.explosion_frames(WreckScript.FIRE_RAMPS[0]), BOMB_RADIUS * EXPLOSION_SIZE)
+
+
 func _tick_strikes(delta: float) -> void:
 	for i in range(strikes.size() - 1, -1, -1):
 		var s: Dictionary = strikes[i]
@@ -169,6 +179,7 @@ func _tick_strikes(delta: float) -> void:
 		s.left -= delta
 		if was > 0.0 and s.left <= 0.0:
 			hurt_local(s.pos, BOMB_RADIUS, BOMB_HITS)
+			_explode(s.pos)
 		if s.left < -BLAST_SHOW:
 			strikes.remove_at(i)
 
@@ -253,7 +264,4 @@ func _draw_overlay() -> void:
 			c.a = 0.25 + 0.15 * sin(time * 20.0)
 			_overlay.draw_circle(p, BOMB_RADIUS * t, c)
 			_overlay.draw_arc(p, BOMB_RADIUS, 0, TAU, 24, WARN, 2.0)
-		else:
-			var c := BLAST
-			c.a = 1.0 + s.left / BLAST_SHOW
-			_overlay.draw_circle(p, BOMB_RADIUS * (1.0 - s.left / BLAST_SHOW * 0.5), c)
+		# Once it blows, the painted explosion shows instead (_explode).

@@ -97,7 +97,8 @@ func test_owner_ramming_hurts_itself_and_reports_the_ram() -> void:
 	var e := _enemy()
 	p._on_area_entered(e)
 	assert_eq(p.hp, p.MAX_HP - p.HIT_HP)
-	assert_true(e.is_queued_for_deletion(), "host destroyed the rammed enemy")
+	await wait_frames(1)  # hit reports reach the host at the end of the frame
+	assert_true(not is_instance_valid(e) or e.is_queued_for_deletion(), "host destroyed the rammed enemy")
 
 
 # --- Bullets ----------------------------------------------------------------
@@ -115,6 +116,8 @@ func test_own_bullet_hit_reports_to_host() -> void:
 	var b := _bullet(multiplayer.get_unique_id())
 	e._on_area_entered(b)
 	assert_true(b.is_queued_for_deletion())
+	await wait_frames(1)  # hit reports reach the host at the end of the frame
+	assert_true(is_instance_valid(e))
 	assert_eq(e.hp, 1)
 
 
@@ -227,7 +230,8 @@ func test_after_host_leaves_my_hits_still_kill() -> void:
 	game.continue_solo(5)
 	var b := _bullet(multiplayer.get_unique_id())
 	e._on_area_entered(b)
-	assert_true(e.is_queued_for_deletion())
+	await wait_frames(1)  # hit reports reach the host at the end of the frame
+	assert_true(not is_instance_valid(e) or e.is_queued_for_deletion())
 
 
 # --- No spawner: rpc-built world, late-join snapshots ------------------------
@@ -276,7 +280,7 @@ func test_enemy_snapshot_restores_mid_flight() -> void:
 func test_enemy_leaves_the_bottom_on_every_peer() -> void:
 	var e := _enemy(Vector2(270, EnemyScene.instantiate().EXIT_Y + 1.0))
 	e._physics_process(0.016)
-	assert_true(e.is_queued_for_deletion())
+	assert_true(not is_instance_valid(e) or e.is_queued_for_deletion())
 
 
 func test_host_removes_disconnected_player_everywhere() -> void:

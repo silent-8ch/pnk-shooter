@@ -43,7 +43,7 @@ const SpriteEffect := preload("res://scripts/sprite_effect.gd")
 const WreckScript := preload("res://scripts/wreck.gd")
 const BURST_SOUND := preload("res://assets/sfx/explosion.tres")
 const ASTRONAUT := -2  # a tail entry (Player.tail) for a rescued astronaut
-const CLEANUP_AFTER := 20.0  # s an enemy's astronaut waits before a cleanup bot comes for it
+const CLEANUP_AFTER := 8.0  # s an enemy's astronaut waits before a cleanup bot comes for it
 const ARENA_HEIGHT := 960.0
 const BOUNCE_MARGIN := 16.0  # px a player's astronaut stays inside the screen
 const ASTRONAUT_SPEED := 18.0  # px/s: tumbling slowly away
@@ -257,10 +257,13 @@ func _on_area_entered(area: Area2D) -> void:
 	if taken or astronaut or multiplayer.multiplayer_peer == null or not area.is_in_group("bullet") or area.is_heal():
 		return
 	area.queue_free()
+	Sparks.at_hit(self, area.position, area.direction, area.color, 5)
 	if area.is_mine():
 		var game := get_tree().get_first_node_in_group("game")
 		if game:
-			game.report_pod_hit.rpc_id(1, String(name), area.damage())
+			game.report(&"report_pod_hit", [String(name), area.damage()])
+			if area.shooter == multiplayer.get_unique_id():
+				DamageNumber.on(self, self, area.damage())
 
 
 ## Blows up with a very small explosion (every peer, from Game.destroy_pod).

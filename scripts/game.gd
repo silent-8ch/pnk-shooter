@@ -59,6 +59,8 @@ const RESULTS_TIME := 4.0  # s the results stay up before the run starts over
 const PACE_START := 0.3  # a run starts with enemies coming at this fraction of the level's pace ...
 const PACE_STAGE := 0.15  # ... each later stage starts this much higher ...
 const PACE_RAMP := 300.0  # ... and it eases up to full pace over this many s of the stage
+const VULCAN_LINK_REACH := 45.0  # px from a new round to the last one of its strand
+const VULCAN_LINK_AGE := 0.12  # s: an older round has moved on; a new strand starts
 const VULCAN_BURST := 0.8  # s of rounds one vulcan sound covers (it ends with a spin-down tail)
 const HEALBEAM_BURST := 0.55  # s of heal shots one burble covers
 const FORK_TIME := 10.0  # s the party has to vote at a fork
@@ -174,6 +176,10 @@ func start() -> void:
 		SpriteEffect.explosion_frames(ramp)  # recolor the painted explosion once per ramp
 	PickupScript.warm()  # render the pickup's palette cycle up front
 	_rng.randomize()
+	streak_aim = 0
+	streak_untouched = 0
+	best_aim = 0
+	best_untouched = 0
 	kind = LevelKinds.FIRST
 	if demo:
 		var kinds: Array = LevelKinds.KINDS.keys()
@@ -299,6 +305,10 @@ func _resume_run(st: Dictionary) -> void:
 func stop() -> void:
 	active = false
 	demo = false
+	streak_aim = 0
+	streak_untouched = 0
+	best_aim = 0
+	best_untouched = 0
 	Music.set_boss(false)
 	Music.set_fanfare(false)
 	Music.set_level(Music.TRACK)
@@ -812,7 +822,7 @@ func collect_pickup(pickup_name: String, peer: int) -> void:
 	if me and peer == multiplayer.get_unique_id():
 		for i in exp_mult:
 			me.add_exp()
-		FloatText.spawn(effects, me.position + Vector2(0, -30), "+%d" % exp_mult, LCARS.BLUE)
+		FloatText.spawn(effects, me.position + Vector2(0, -30), "+%d" % exp_mult, UiStyle.AMBER)
 
 
 ## This device's own ship, if it has one.
@@ -841,6 +851,8 @@ func fire_bullet(pos: Vector2, color: Color, dir := Vector2.UP, kind := 0, by :=
 		var p := players.get_node_or_null(str(by))
 		if p and p.ai and p.get_multiplayer_authority() == b.shooter:
 			b.shooter = by
+	if b.kind == b.VULCAN:
+		b.link = _vulcan_link(b)
 	bullets.add_child(b)
 	if b.kind == b.VULCAN:
 		_play_vulcan(b.shooter)
@@ -848,6 +860,98 @@ func fire_bullet(pos: Vector2, color: Color, dir := Vector2.UP, kind := 0, by :=
 		_play_healbeam(b.shooter)
 	else:
 		shoot_sound.play()  # every peer hears every shot
+
+
+# --- Streaks ------------------------------------------------------------------
+
+## Each player keeps their own two streaks: photon shots in a row that hit
+## something (a miss breaks it), and kills since they last took a hit. At
+## each STREAK_MILESTONE they get a banner and STREAK_BONUS x the count in
+## score; losing a streak of STREAK_LOST_AT or more says so.
+const STREAK_MILESTONES: Array[int] = [10, 25, 50, 100]  # then every 100
+const STREAK_BONUS := 10
+const STREAK_LOST_AT := 25
+
+var streak_aim := 0  # local: photon hits in a row
+var streak_untouched := 0  # local: kills since our ship was last hit
+var best_aim := 0
+var best_untouched := 0
+
+
+static func is_streak_milestone(n: int) -> bool:
+	return STREAK_MILESTONES.has(n) or (n > 100 and n % 100 == 0)
+
+
+## Local: one of our photon shots is gone, having `hit` something or not.
+func photon_result(hit: bool) -> void:
+	if hit:
+		streak_aim += 1
+		best_aim = maxi(best_aim, streak_aim)
+		_streak_up(streak_aim, "%d IN A ROW")
+	else:
+		_streak_lost(streak_aim, "AIM")
+		streak_aim = 0
+
+
+## Host -> the shooter: their shot finished an enemy.
+@rpc("authority", "call_local", "reliable")
+func credit_kill() -> void:
+	streak_untouched += 1
+	best_untouched = maxi(best_untouched, streak_untouched)
+	_streak_up(streak_untouched, "%d KILLS UNTOUCHED")
+
+
+## Local: our ship took a hit.
+func streak_hurt() -> void:
+	_streak_lost(streak_untouched, "UNTOUCHED")
+	streak_untouched = 0
+
+
+func _streak_up(n: int, words: String) -> void:
+	if not is_streak_milestone(n):
+		return
+	show_banner((words % n) + "\n+%d" % (n * STREAK_BONUS * score_mult))
+	report(&"streak_bonus", [n * STREAK_BONUS])
+
+
+func _streak_lost(n: int, what: String) -> void:
+	if n >= STREAK_LOST_AT:
+		show_banner("%s STREAK LOST\n%d" % [what, n])
+
+
+## Player -> host: a streak milestone's score.
+@rpc("any_peer", "call_local", "reliable")
+func streak_bonus(points: int) -> void:
+	add_score(clampi(points, 0, 100000))
+
+
+## Sends a hit report (`method` with `args`) to the host from a collision
+## callback. It goes at the end of the frame: on the host the report runs at
+## once, and what it spawns (pickups, pods, astronauts) can't be added to the
+## physics world while it's busy with the collisions.
+func report(method: StringName, args: Array) -> void:
+	_send_report.call_deferred(method, args)
+
+
+func _send_report(method: StringName, args: Array) -> void:
+	if multiplayer.multiplayer_peer != null:
+		callv(&"rpc_id", [1, method] + args)
+
+
+## The round a new vulcan round `b` joins onto: the same shooter's newest
+## round still near the muzzle (its gun's last one), so each gun's stream is
+## one strand. Every peer works it out from its own copies.
+func _vulcan_link(b: Node2D) -> Node2D:
+	var best: Node2D = null
+	var best_d: float = VULCAN_LINK_REACH
+	for o in bullets.get_children():
+		if o.kind != o.VULCAN or o.shooter != b.shooter or o.is_queued_for_deletion() or o._age > VULCAN_LINK_AGE:
+			continue
+		var d: float = o.position.distance_to(b.position)
+		if d < best_d:
+			best_d = d
+			best = o
+	return best
 
 
 ## One "buuuurt" per VULCAN_BURST of a ship's stream of rounds, not one per round.
@@ -884,6 +988,8 @@ func report_hit(enemy_name: String, damage := 1.0) -> void:
 	var e := enemies.get_node_or_null(enemy_name)
 	if e:
 		e.take_damage(clampf(damage, 0.0, 1.0))
+		if e.is_queued_for_deletion() or e.hp <= 0 or not e.is_in_group("enemy"):
+			credit_kill.rpc_id(_sender())  # the shot that finished it
 
 
 ## Shooter -> host: its HEAL shot hit `enemy_name` for `amount`; the enemy
@@ -1423,7 +1529,7 @@ func game_over(final_score: int, final_stage: int, names: Array) -> void:
 	input_enabled = false
 	_results_left = RESULTS_TIME
 	var rank := HighScores.add({"score": final_score, "stage": final_stage + 1, "players": names,
-		"date": Time.get_datetime_string_from_system(false, true)})
+		"date": Time.get_datetime_string_from_system(false, true), "aim": best_aim, "untouched": best_untouched})
 	var best := "New high score!" if rank == 1 else "Rank #%d" % rank
 	last_results = "Stage %d    Score %d\n%s" % [final_stage + 1, final_score, best]
 	show_banner("GAME OVER\nStage %d    Score %d\n%s" % [final_stage + 1, final_score, best], RESULTS_TIME)

@@ -282,10 +282,14 @@ func _on_area_entered(area: Area2D) -> void:
 	if multiplayer.multiplayer_peer == null or not area.is_in_group("bullet"):
 		return
 	area.queue_free()
+	if not area.is_heal():
+		Sparks.at_hit(self, area.position, area.direction, Color("ffcf7a"), 6)
 	if destructible() and area.is_mine() and not area.is_heal():  # heal shots just stop
 		var game := get_tree().get_first_node_in_group("game")
 		if game:
-			game.report_obstacle_hit.rpc_id(1, String(name), area.damage())
+			game.report(&"report_obstacle_hit", [String(name), area.damage()])
+			if area.shooter == multiplayer.get_unique_id():
+				DamageNumber.on(self, self, area.damage())
 
 
 ## Outlines (with the piece id) for parts that have no art yet.

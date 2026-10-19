@@ -149,7 +149,9 @@ func test_drone_is_an_option_sized_copy() -> void:
 	var s: Sprite2D = player._drone_sprites[0]
 	assert_true(s.visible)
 	assert_same(s.texture, player.body.texture)
-	assert_almost_eq(s.scale, player.body.scale * PlayerScript.OPTION_SCALE, Vector2(0.0001, 0.0001))
+	assert_almost_eq(s.scale, player.body.scale * PlayerScript.OPTION_SCALE * PlayerScript.DRONE_SCALE, Vector2(0.0001, 0.0001))
+	assert_lt(PlayerScript.DRONE_SCALE, 1.0, "smaller than an option")
+	assert_true(s.has_node("Lights"), "emergency lights")
 
 
 func test_cannot_launch_without_rescue() -> void:
@@ -472,3 +474,25 @@ func test_drone_faces_its_heading_everywhere() -> void:
 	assert_ne(float(player.drone_headings[0]), -PI / 2.0, "turned toward it")
 	player._process(0.0)
 	assert_almost_eq(player._drone_sprites[0].global_rotation, wrapf(float(player.drone_headings[0]) + PI / 2.0, -PI, PI), 0.01)
+
+
+
+func test_lights_flash_red_then_blue() -> void:
+	var seen := {}
+	for i in 20:
+		seen[PlayerScript.drone_light(i * 0.05)] = true
+	assert_eq(seen.size(), 2, "both lights take turns")
+
+
+func test_options_launch_a_set_of_drones_each() -> void:
+	_buy_rescue()
+	player.levels[&"option"] = 2
+	player.levels[&"drones"] = 3
+	player.levels[&"reactor"] = 8
+	player.add_power(&"option")
+	player.add_power(&"option")
+	player._simulate(0.016)
+	assert_eq(player.options, 2)
+	assert_eq(player.drones_ready(), player.drone_count() * 3, "the ship's and each option's")
+	assert_true(player.launch_drone())
+	assert_eq(player.drones.size(), player.drone_count() * 3)

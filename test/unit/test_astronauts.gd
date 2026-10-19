@@ -111,7 +111,7 @@ func test_only_drones_rescue_astronauts() -> void:
 	game.request_rescue(String(a.name), false)
 	assert_true(_pods().has_node(String(a.name)), "not by touch")
 	game.request_rescue(String(a.name), true)
-	assert_false(_pods().has_node(String(a.name)))
+	assert_true(a.is_queued_for_deletion(), "a drone's claim takes it")
 
 
 func test_drones_bring_astronauts_into_the_tail() -> void:
@@ -248,3 +248,21 @@ func test_players_astronauts_are_never_cleaned_up_and_never_leave_the_screen() -
 		a._process(1.0 / 60.0)
 		assert_true(a.position.x >= 0.0 and a.position.x <= 540.0 and a.position.y >= 0.0 and a.position.y <= 960.0 - ActionBar.BAR_HEIGHT)
 	assert_true(a.is_inside_tree() and not a.is_queued_for_deletion(), "still waiting")
+
+
+func test_the_cleanup_bot_is_a_random_ship_in_the_plain_palette() -> void:
+	var textures := []
+	for i in 12:
+		var a: Area2D = _blow_up(Vector2(100 + i * 5, 300))[0]
+		game.send_cleanup_bot(String(a.name), "Cleanup%d" % i)
+		textures.append(_bots().back().body.texture)
+		_pods().get_node("Pod1_B").name = "Spare%d" % i
+		_pods().remove_child(a)
+		a.free()
+	var distinct := {}
+	for t in textures:
+		distinct[t] = true
+	assert_gt(distinct.size(), 1, "ships vary")
+	var factory := range(Ships.count()).map(func(k): return Ships.get_lit_texture(k, 0))
+	for t in textures:
+		assert_has(factory, t, "a ship in Factory colors")

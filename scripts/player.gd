@@ -51,12 +51,13 @@ extends Area2D
 ## enemies, obstacles and incoming shots and coming back after.
 ## Guns fire from the action bar once armed: a tap on a gun's button arms it
 ## (if WEAPONS has the bars, adding them from the reactor if it can), the next
-## taps fire, and a long press disarms it. AUTO and HEAL fire on their own
-## while armed, so for them a tap is the on/off switch.
+## taps fire, and a long press disarms it. AUTO fires on its own while armed,
+## so for it a tap is the on/off switch. HEAL is a machine gun: the first
+## press arms it, then it fires while the button is held.
 ## AUTOCAN adds an AUTO on/off button for a vulcan cannon: while on, it hoses
 ## whatever is closest within AUTO_RANGE with tiny, fast rounds: enemy shots
 ## first (point defence, leading them), then enemies and other players alike.
-## HEALBEAM adds a HEAL on/off button: while on, the ship streams fast HEAL
+## HEALBEAM adds a HEAL button: held down, the ship streams very fast HEAL
 ## shots straight up (HEALBEAM_INTERVAL, halved at level 2). Another ship they
 ## hit heals a tenth of a hit per shot; an enemy they hit gets stronger and
 ## bigger instead (Enemy.strengthen), so aim it with care.
@@ -108,6 +109,11 @@ enum { SEARCH_OUT_PHASE, SEARCH_LOOK_PHASE, SEARCH_DONE }
 const DRONE_REBUILD := 6.0  # s before a destroyed drone can launch again
 const DRONE_TIME := 10.0  # s: each drone heads home for good after this long out
 const DRONE_TINT := Color(0.7, 1.0, 0.75)
+const DRONE_SCALE := 0.6  # rescue drones next to an option
+const DRONE_FLASH_RATE := 3.0  # red-blue flashes per second
+const DRONE_LIGHT_GAP := 5.0  # px either side of its middle
+const DRONE_RED := Color(1.0, 0.15, 0.2)
+const DRONE_BLUE := Color(0.2, 0.45, 1.0)
 const MISSILE_COOLDOWN := FIRE_COOLDOWN * 2.0  # at level 1; matches the MISSILE button cooldown
 const MISSILE_RELOAD := 0.9  # cooldown x this per MISSILE level after the first
 const MISSILE_FAN := 1.2  # rad: a salvo fans out up to this far either side of straight up
@@ -118,7 +124,7 @@ const BEAM_SPACING := 7.0  # px between columns; level n has 2n-1 columns
 const AUTO_RANGE := 130.0  # px: targets this close
 const AUTO_COOLDOWN := 0.035  # s between vulcan rounds (halved at level 2)
 const AUTO_SPREAD := 0.09  # rad: rounds scatter up to this much either way
-const HEALBEAM_INTERVAL := 0.1  # s between heal shots (halved at level 2)
+const HEALBEAM_INTERVAL := 0.035  # s between heal shots while HEAL is held (halved at level 2)
 const HEAL_SOUND_GAP := 0.5  # s: a stream of heals chimes at most this often
 const REPAIR_COOLDOWN := 10.0  # matches the REPAIR button cooldown
 const AI_WINGMAN_GAP := 80.0  # px beside its leader
@@ -167,6 +173,7 @@ var _launch_requested := false
 var _seen_rescues := -1  # local: RESCUE button press count already handled
 var _drone_sprites: Array[Sprite2D] = []
 var _healbeam_cooldown := 0.0
+var _heal_held := false  # local: the HEAL button is held down (it fires while it is)
 var _seen_heals := -1  # local: HEAL button press count already handled
 var _heal_sound_at := -INF  # local: when this ship last chimed (s, engine time)
 var _missile_requested := false
@@ -220,6 +227,10 @@ func _ready() -> void:
 	body.light_mask = Ships.LIGHT_MASK
 	Ships.apply_hitbox(self, ship, body)
 	area_entered.connect(_on_area_entered)
+	var jets := Thrusters.new()  # flare as it changes course
+	jets.name = "Thrusters"
+	jets.radius = Ships.SHIP_HEIGHT / 2.0
+	add_child(jets)
 	_start_loadout()
 	if Net.all_weapons and multiplayer.multiplayer_peer != null and is_local() and not ai:
 		max_upgrades()
@@ -295,9 +306,10 @@ func _gather_input() -> void:
 			toggle_gun(&"auto")
 		_seen_autos = autos
 		var heals: int = bar.presses[&"heal"]
-		if _seen_heals >= 0 and heals != _seen_heals:
-			toggle_gun(&"healbeam")
+		if _seen_heals >= 0 and heals != _seen_heals and not is_armed(&"healbeam"):
+			arm(&"healbeam")  # the first press arms it; after that it fires while held
 		_seen_heals = heals
+		_heal_held = bar.is_held(&"heal")
 		for g in [&"lasers", &"missile", &"beam"]:  # a long press disarms
 			var holds: int = bar.holds.get(g, 0)
 			if _seen_holds.get(g, -1) >= 0 and holds != _seen_holds[g]:
@@ -441,6 +453,7 @@ func _avoid_obstacles(delta: float, bounds: Rect2) -> void:
 		take_damage(CRUSH_DPS * delta, res.below)  # pinned
 	elif _bump_cooldown <= 0.0:
 		_bump_cooldown = BUMP_COOLDOWN
+		Sparks.at_hit(self, position + (Vector2.DOWN if res.below else Vector2.UP) * 14.0, Vector2.ZERO, Color("ffcf7a"), 9)  # scraping a rock
 		take_damage(BUMP_DAMAGE, res.below)
 
 
@@ -576,17 +589,17 @@ func level(id: StringName) -> int:
 		&"option":
 			if not is_local():
 				return options
-			return mini(levels.get(&"option", 0), power_of(&"drones"))
+			return power_of(&"option")
 		&"rescue":
-			return mini(levels.get(&"rescue", 0), power_of(&"drones") - mini(levels.get(&"option", 0), power_of(&"drones")))
+			return power_of(&"rescue")
 		&"repair":
 			return 1 if power_of(&"medbay") >= 1 else 0
 		&"autopilot":
-			return 1 if power_of(&"piloting") >= 1 else 0
+			return 1 if power_of(&"autopilot") >= 1 else 0
 		&"beacon":
 			if not is_local():
 				return 1 if beacon else 0
-			return 1 if power_of(&"piloting") >= 2 else 0
+			return 1 if power_of(&"beacon") >= 1 else 0
 		&"double", &"rapid":
 			return levels.get(id, 0) if is_armed(&"lasers") else 0
 		&"missile", &"auto", &"beam", &"healbeam":
@@ -612,8 +625,23 @@ func reactor() -> int:
 	return levels.get(&"reactor", 0)
 
 
+## Bars powered in `system` (a pool: its members' together) or pool member.
 func power_of(system: StringName) -> int:
+	if Systems.is_pool(system):
+		var n := 0
+		for m in Systems.POOLS[system]:
+			n += power.get(m, 0)
+		return n
 	return power.get(system, 0)
+
+
+## Most bars `id` can hold: a system's level, a pool member's own level
+## (drones bought), never more than its pool has room for alongside the rest.
+func power_cap(id: StringName) -> int:
+	var pool := Systems.pool_of(id)
+	if pool == &"":
+		return levels.get(id, 0)
+	return mini(levels.get(id, 0), levels.get(pool, 0) - power_of(pool) + power_of(id))
 
 
 func power_used() -> int:
@@ -627,9 +655,18 @@ func power_spare() -> int:
 	return reactor() - power_used()
 
 
-## One more bar to `system`, if it has room for it and the reactor a bar spare.
+## One more bar to `system` (or a pool member), if it has room for it and the
+## reactor a bar spare. A pool takes its bars through its members (asked for
+## the pool itself, the first member with room gets it; the ShipPanel gives
+## each member its own - and +).
 func add_power(system: StringName) -> bool:
-	if not Systems.is_system(system) or power_of(system) >= levels.get(system, 0) or power_spare() <= 0:
+	if Systems.is_pool(system):  # a shortcut for code: the first member with room
+		for m in Systems.POOLS[system]:
+			if add_power(m):
+				return true
+		return false
+	var powerable := (Systems.is_system(system) and not Systems.is_pool(system)) or Systems.pool_of(system) != &""
+	if not powerable or power_of(system) >= power_cap(system) or power_spare() <= 0:
 		return false
 	power[system] = power_of(system) + 1
 	_power_changed(system)
@@ -640,6 +677,11 @@ func add_power(system: StringName) -> bool:
 func remove_power(system: StringName) -> bool:
 	if power_of(system) <= 0:
 		return false
+	if Systems.is_pool(system):  # the last member with a bar gives it up
+		var members: Array = Systems.POOLS[system]
+		for k in range(members.size() - 1, -1, -1):
+			if power_of(members[k]) > 0:
+				return remove_power(members[k])
 	_set_power(system, power_of(system) - 1)
 	return true
 
@@ -648,7 +690,8 @@ func remove_power(system: StringName) -> bool:
 func drain_power(system: StringName) -> void:
 	if power_of(system) == 0:
 		return
-	power[system] = 0
+	for id in Systems.POOLS.get(system, [system]):
+		power[id] = 0
 	_power_changed(system)
 
 
@@ -963,19 +1006,21 @@ func _run_beam(delta: float) -> void:
 		var n := beam_columns()
 		for i in n:
 			var x := (i - (n - 1) / 2.0) * BEAM_SPACING
-			game.spawn_bullet(_beam_origin + Vector2(x, 0), color, Vector2.UP, BulletScript.LASER, peer_id)
+			game.spawn_bullet(_beam_origin + Vector2(x, 0), color, Vector2.UP, BulletScript.BEAM, peer_id)
 
 
 # --- Autocannon ---------------------------------------------------------------
 
 ## The closest enemy shot within AUTO_RANGE, else the closest enemy or other
 ## living player, or null.
-func auto_target() -> Node2D:
+func auto_target(from := Vector2.INF) -> Node2D:
+	if from == Vector2.INF:
+		from = position
 	var best: Node2D = null
 	var best_d := AUTO_RANGE
 	for b in get_tree().get_nodes_in_group(&"bullet"):
 		if b.is_hostile() and not b.is_queued_for_deletion():
-			var d := position.distance_to(b.position)
+			var d := from.distance_to(b.position)
 			if d <= best_d:
 				best_d = d
 				best = b
@@ -985,7 +1030,7 @@ func auto_target() -> Node2D:
 		for n in get_tree().get_nodes_in_group(group):
 			if n == self or n.is_queued_for_deletion() or (group == &"player" and not is_targetable(n)):
 				continue
-			var d := position.distance_to(n.position)
+			var d := from.distance_to(n.position)
 			if d <= best_d:
 				best_d = d
 				best = n
@@ -1002,50 +1047,62 @@ func _run_autocannon(delta: float) -> void:
 	_auto_cooldown -= delta
 	if level(&"auto") <= 0 or _auto_cooldown > 0.0:
 		return
-	var target := auto_target()
-	if target == null:
+	var guns: Array[Vector2] = [position]  # the options have vulcans too
+	guns.append_array(option_positions())
+	var targets: Array[Node2D] = []
+	var any := false
+	for g in guns:
+		var t := auto_target(g)  # each its own nearest
+		targets.append(t)
+		any = any or t != null
+	if not any:
 		_auto_cooldown = 0.0
 		return
 	while _auto_cooldown <= 0.0:  # faster than the frame rate: several rounds a frame
 		var lag := -_auto_cooldown  # how long ago within this frame it was due
 		_auto_cooldown += AUTO_COOLDOWN / level(&"auto")
-		_fire_vulcan(target, lag)
+		for k in guns.size():
+			if targets[k]:
+				_fire_vulcan(targets[k], lag, guns[k])
 
 
 ## One round at `target`; `lag` s late, so it starts that much further along
 ## and a frame's rounds string out instead of bunching.
-func _fire_vulcan(target: Node2D, lag := 0.0) -> void:
+func _fire_vulcan(target: Node2D, lag := 0.0, from := Vector2.INF) -> void:
+	if from == Vector2.INF:
+		from = position
 	var aim := target.position
 	if target.is_in_group(&"bullet"):  # lead it: where it'll be when the round gets there
-		aim += target.velocity() * position.distance_to(target.position) / BulletScript.KINDS[BulletScript.VULCAN].speed
-	var dir := (aim - position).normalized().rotated(randf_range(-AUTO_SPREAD, AUTO_SPREAD))
+		aim += target.velocity() * from.distance_to(target.position) / BulletScript.KINDS[BulletScript.VULCAN].speed
+	var dir := (aim - from).normalized().rotated(randf_range(-AUTO_SPREAD, AUTO_SPREAD))
 	var ahead: float = 18.0 + BulletScript.KINDS[BulletScript.VULCAN].speed * lag
-	get_tree().get_first_node_in_group("game").spawn_bullet(position + dir * ahead, color, dir, BulletScript.VULCAN, peer_id)
+	get_tree().get_first_node_in_group("game").spawn_bullet(from + dir * ahead, color, dir, BulletScript.VULCAN, peer_id)
 
 
 func _run_healbeam(delta: float) -> void:
 	_healbeam_cooldown -= delta
-	if level(&"healbeam") <= 0:
+	if level(&"healbeam") <= 0 or not _heal_held:
 		_healbeam_cooldown = maxf(_healbeam_cooldown, 0.0)
 		return
-	if _healbeam_cooldown > 0.0:
-		return
-	_healbeam_cooldown += HEALBEAM_INTERVAL / level(&"healbeam")  # added, so the rate holds whatever the frame rate
 	var game := get_tree().get_first_node_in_group("game")
-	if game:
-		game.spawn_bullet(position + Vector2(0, -26), BulletScript.HEAL_COLOR, Vector2.UP, BulletScript.HEAL, peer_id)
+	while _healbeam_cooldown <= 0.0:  # faster than the frame rate: several a frame, strung out
+		var lag := -_healbeam_cooldown
+		_healbeam_cooldown += HEALBEAM_INTERVAL / level(&"healbeam")  # added, so the rate holds whatever the frame rate
+		if game:
+			var at := position + Vector2(0, -26 - BulletScript.KINDS[BulletScript.HEAL].speed * lag)
+			game.spawn_bullet(at, BulletScript.HEAL_COLOR, Vector2.UP, BulletScript.HEAL, peer_id)
 
 
 # --- Search and rescue ---------------------------------------------------------
 
-## One drone per RESCUE level.
+## One drone per RESCUE level (and as many again from each option).
 func drone_count() -> int:
 	return level(&"rescue")
 
 
 ## Drones ready to launch: RESCUE's, less those out and those still rebuilding.
 func drones_ready() -> int:
-	return maxi(0, drone_count() - drones.size() - _rebuild.size())
+	return maxi(0, drone_count() * (1 + options) - drones.size() - _rebuild.size())
 
 
 ## Sends out every drone that's home, if RESCUE is bought, to a siren.
@@ -1055,11 +1112,18 @@ func launch_drone() -> bool:
 		return false
 	var out := drones.duplicate()
 	var faces := drone_headings.duplicate()
-	for k in drones_ready():
-		out.append(position)
+	var origins: Array[Vector2] = [position]  # the options send theirs too: a set each
+	origins.append_array(option_positions())
+	var n := drones_ready()
+	var k := 0
+	while n > 0 and k < origins.size() * drone_count():
+		var at: Vector2 = origins[(k / maxi(drone_count(), 1)) % origins.size()]
+		k += 1
+		out.append(at)
 		faces.append(-PI / 2.0)  # facing up, like the ship
 		_runs.append({"time": 0.0, "goal": "", "claim": "", "got": false, "vel": Vector2.ZERO, "heading": -PI / 2.0,
-			"search": SEARCH_OUT_PHASE, "search_at": (position + Vector2(0, -DRONE_SEARCH_OUT)).clamp(Vector2(30, 60), Vector2(510, 900)), "look": 0.0})
+			"search": SEARCH_OUT_PHASE, "search_at": (at + Vector2(0, -DRONE_SEARCH_OUT)).clamp(Vector2(30, 60), Vector2(510, 900)), "look": 0.0})
+		n -= 1
 	drones = out  # reassigned, not appended, so the synchronizer sees the change
 	drone_headings = faces
 	var game := get_tree().get_first_node_in_group("game")
@@ -1372,11 +1436,16 @@ func _update_drone_sprites() -> void:
 	while _drone_sprites.size() < drones.size():
 		var s := Sprite2D.new()
 		s.texture = body.texture
-		s.scale = body.scale * OPTION_SCALE
+		s.scale = body.scale * OPTION_SCALE * DRONE_SCALE
 		s.modulate = DRONE_TINT
 		s.light_mask = body.light_mask
 		s.top_level = true
 		add_child(s)
+		var lights := Node2D.new()  # emergency lights, red and blue in turn
+		lights.name = "Lights"
+		lights.scale = Vector2.ONE / s.scale  # drawn in screen pixels
+		lights.draw.connect(_draw_drone_lights.bind(lights))
+		s.add_child(lights)
 		_drone_sprites.append(s)
 	for i in _drone_sprites.size():
 		var s := _drone_sprites[i]
@@ -1385,6 +1454,24 @@ func _update_drone_sprites() -> void:
 			s.global_position = get_parent().to_global(drones[i])
 			if i < drone_headings.size():
 				s.global_rotation = float(drone_headings[i]) + PI / 2.0  # the art faces up
+			s.get_node("Lights").queue_redraw()
+
+
+## Which emergency light is lit now: 0 the red one, 1 the blue one.
+static func drone_light(time: float) -> int:
+	return int(time * DRONE_FLASH_RATE * 2.0) % 2
+
+
+func _draw_drone_lights(lights: Node2D) -> void:
+	var lit := drone_light(Time.get_ticks_msec() / 1000.0)
+	for k in 2:
+		var at := Vector2(DRONE_LIGHT_GAP * (-1.0 if k == 0 else 1.0), 0)
+		var c: Color = DRONE_RED if k == 0 else DRONE_BLUE
+		if k == lit:
+			lights.draw_circle(at, 5.0, Color(c, 0.35))
+			lights.draw_circle(at, 2.2, c.lightened(0.4))
+		else:
+			lights.draw_circle(at, 1.6, Color(c, 0.45))
 
 
 ## Owner: drops a repair kit here, if REPAIR is bought and off cooldown.
@@ -1589,6 +1676,9 @@ func take_damage(amount: float, from_behind := false) -> void:
 	var game := get_tree().get_first_node_in_group("game") if is_inside_tree() else null
 	if game and game.between_levels():
 		return  # nothing hurts from a boss kill until the next stage starts
+	if game and amount > 0.0 and peer_id == multiplayer.get_unique_id():
+		game.streak_hurt()  # shields or hull, a hit is a hit
+		DamageNumber.on(self, self, amount, DamageNumber.TAKE)
 	if _shield_facing(from_behind) <= 0:
 		_lose_hp(amount * HIT_HP)
 		return
@@ -1628,6 +1718,10 @@ func _on_area_entered(area: Area2D) -> void:
 		if beacon and not area.is_hostile() and (area.kind == BulletScript.MISSILE or area.kind == BulletScript.VULCAN):
 			return  # a friendly beacon: other players' missiles and autocannon rounds fly through it
 		area.queue_free()  # every peer removes it; the owner takes the hit
+		if not area.is_heal():
+			Sparks.at_hit(self, area.position, area.direction, area.color, 6)
+		if area.shooter == multiplayer.get_unique_id() and area.is_mine():  # our shot on another ship
+			DamageNumber.on(self, self, area.damage(), DamageNumber.HEAL if area.is_heal() else DamageNumber.DEAL, area.is_heal())
 		if area.is_heal():
 			heal(area.damage())
 		else:
@@ -1636,9 +1730,10 @@ func _on_area_entered(area: Area2D) -> void:
 	if not is_local():
 		return
 	if area.is_in_group("enemy"):
+		Sparks.at_hit(self, (position + area.position) / 2.0, Vector2.ZERO, Color("ffb35a"), 12)  # a ram
 		take_damage(1, area.position.y > position.y)
 		var game := get_tree().get_first_node_in_group("game")
 		if game:
-			game.report_ram.rpc_id(1, String(area.name))
+			game.report(&"report_ram", [String(area.name)])
 	elif area.is_in_group("hazard"):  # a boss's arm: it hurts, but there's nothing to ram
 		take_damage(1, area.global_position.y > global_position.y)

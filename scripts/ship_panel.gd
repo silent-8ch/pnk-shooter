@@ -1,14 +1,14 @@
 class_name ShipPanel
 extends Control
-## The ship's systems, in small LCARS popups (see LCARS and Systems). During
-## play only a SHIP pill shows, bottom left above the ActionBar (bottom right
+## The ship's systems, in small console popups (see UiStyle and Systems). During
+## play only a SHIP button shows, bottom left above the ActionBar (bottom right
 ## for right-handed controls, see Settings, popups too), with the
 ## reactor bars spare and the exp to spend; it glows while there's something
 ## the exp can buy. Tapping it opens the systems popup: a row per system
 ## (plus the reactor and the hull) with its power. Tapping a row opens that
-## system's popup: power - and +, an UPGRADE (or INSTALL) pill for more
+## system's popup: power - and +, an UPGRADE (or INSTALL) button for more
 ## capacity, and what belongs to it (guns under WEAPONS, drones under DRONES,
-## armor and spare ships under HULL), each with its own buy pill. BACK goes
+## armor and spare ships under HULL), each with its own buy button. BACK goes
 ## up a level; tapping SHIP again or anywhere outside closes it all. The game
 ## carries on underneath. Touches are read directly like the ActionBar;
 ## PointerControls ignores touches here, and while a popup is open any tap
@@ -25,8 +25,8 @@ const SYSTEMS_PAGE := &"systems"
 ## Rows of the systems popup, top to bottom.
 const ROWS: Array[StringName] = [&"reactor", &"shields", &"engines", &"weapons", &"drones", &"medbay", &"piloting", &"hull"]
 const COLORS := {
-	&"reactor": LCARS.ORANGE, &"shields": LCARS.BLUE, &"engines": LCARS.PEACH, &"weapons": LCARS.RED,
-	&"drones": LCARS.LAVENDER, &"medbay": LCARS.TAN, &"piloting": LCARS.BLUE, &"hull": LCARS.PEACH,
+	&"reactor": UiStyle.CYAN, &"shields": UiStyle.ICE, &"engines": UiStyle.PALE, &"weapons": UiStyle.MAGENTA,
+	&"drones": UiStyle.VIOLET, &"medbay": UiStyle.AMBER, &"piloting": UiStyle.ICE, &"hull": UiStyle.PALE,
 }
 const NAMES := {&"reactor": "REACTOR", &"hull": "HULL"}
 const ABOUT := {
@@ -34,13 +34,13 @@ const ABOUT := {
 	&"shields": "1 FRONT  2 REAR  3 FAST RECHARGE",
 	&"engines": "MORE SPEED PER BAR",
 	&"weapons": "BARS FOR ARMED GUNS",
-	&"drones": "A BAR PER DRONE, OPTIONS FIRST",
+	&"drones": "OPTION AND RESCUE: A BAR PER DRONE",
 	&"medbay": "1 REPAIR KITS  2 HEAL NEARBY  3 FAST KITS",
-	&"piloting": "1 AUTOPILOT  2 BEACON",
+	&"piloting": "AUTOPILOT AND BEACON: A BAR EACH",
 	&"hull": "ARMOR AND SPARE SHIPS",
 }
 ## The Systems section listed under each popup.
-const SECTIONS := {&"weapons": "WEAPONS", &"drones": "DRONES", &"hull": "HULL"}
+const SECTIONS := {&"weapons": "WEAPONS", &"drones": "DRONES", &"piloting": "PILOTING", &"hull": "HULL"}
 
 var page := &""  # &"" closed, SYSTEMS_PAGE, or the row it's showing
 
@@ -75,13 +75,13 @@ func _left(width: float) -> float:
 ## The open popup, sized to its rows, sitting on top of the tab.
 func popup_rect() -> Rect2:
 	var rows := _row_count()
-	var h := LCARS.TOP_BAR + 12.0 + rows * (ROW + GAP) + 12.0
+	var h := UiStyle.HEADER + 12.0 + rows * (ROW + GAP) + 12.0
 	return Rect2(Vector2(_left(WIDTH), tab_rect().position.y - GAP - h), Vector2(WIDTH, h))
 
 
 func _content() -> Rect2:
 	var r := popup_rect()
-	return Rect2(r.position + Vector2(LCARS.ELBOW + 8.0, LCARS.TOP_BAR + 12.0), Vector2(r.size.x - LCARS.ELBOW - 16.0, r.size.y))
+	return Rect2(r.position + Vector2(UiStyle.SIDE + 8.0, UiStyle.HEADER + 12.0), Vector2(r.size.x - UiStyle.SIDE - 16.0, r.size.y))
 
 
 func _row_rect(i: int) -> Rect2:
@@ -107,7 +107,7 @@ func _items() -> Array[Dictionary]:
 	return out
 
 
-## Every tappable pill on screen now: {rect, action, id}. Drawing and taps
+## Every tappable button on screen now: {rect, action, id}. Drawing and taps
 ## both go by this list.
 func buttons() -> Array[Dictionary]:
 	var out: Array[Dictionary] = [{"rect": tab_rect(), "action": &"tab", "id": &""}]
@@ -117,7 +117,7 @@ func buttons() -> Array[Dictionary]:
 	elif is_open():
 		var top := _row_rect(0)
 		out.append({"rect": Rect2(top.position, Vector2(70, ROW)), "action": &"back", "id": &""})
-		if Systems.is_system(page):
+		if Systems.is_system(page) and not Systems.is_pool(page):
 			var pr := _row_rect(1)
 			out.append({"rect": Rect2(Vector2(pr.end.x - 96, pr.position.y), Vector2(44, ROW)), "action": &"power_down", "id": page})
 			out.append({"rect": Rect2(Vector2(pr.end.x - 46, pr.position.y), Vector2(44, ROW)), "action": &"power_up", "id": page})
@@ -126,11 +126,18 @@ func buttons() -> Array[Dictionary]:
 		var items := _items()
 		for i in items.size():
 			var r := _row_rect(3 + i)
-			out.append({"rect": Rect2(Vector2(r.end.x - 86, r.position.y), Vector2(86, ROW)), "action": &"buy", "id": items[i].id})
+			var id: StringName = items[i].id
+			var x := r.end.x
+			if not Systems.is_builtin(id):
+				x -= 86.0
+				out.append({"rect": Rect2(Vector2(x, r.position.y), Vector2(86, ROW)), "action": &"buy", "id": id})
+			if Systems.pool_of(id) != &"":  # its own power - and +
+				out.append({"rect": Rect2(Vector2(x - 44, r.position.y), Vector2(40, ROW)), "action": &"power_up", "id": id})
+				out.append({"rect": Rect2(Vector2(x - 88, r.position.y), Vector2(40, ROW)), "action": &"power_down", "id": id})
 	return out
 
 
-## The pill under `canvas_pos`, or {}.
+## The button under `canvas_pos`, or {}.
 func button_at(canvas_pos: Vector2) -> Dictionary:
 	for b in buttons():
 		if b.rect.has_point(canvas_pos):
@@ -214,12 +221,12 @@ func _draw() -> void:
 		return
 	var font := get_theme_default_font()
 	var tab := tab_rect()
-	var c := LCARS.ORANGE if is_open() else LCARS.PEACH
+	var c := UiStyle.CYAN if is_open() else UiStyle.PALE
 	if not is_open() and can_buy_something(p):
-		c = LCARS.PEACH.lerp(Color.WHITE, 0.5 + 0.5 * sin(Time.get_ticks_msec() / 1000.0 * TAU * GLOW_RATE))
-	LCARS.pill(self, tab, c)
-	LCARS.label(self, Rect2(tab.position, Vector2(tab.size.x * 0.5, tab.size.y)), "SHIP  %d" % p.power_spare(), font, LCARS.BLACK, 16, HORIZONTAL_ALIGNMENT_LEFT)
-	LCARS.label(self, Rect2(tab.position + Vector2(tab.size.x * 0.45, 0), Vector2(tab.size.x * 0.55, tab.size.y)), "EXP %d" % p.exp_balance, font, LCARS.BLACK, 14, HORIZONTAL_ALIGNMENT_RIGHT)
+		c = UiStyle.PALE.lerp(Color.WHITE, 0.5 + 0.5 * sin(Time.get_ticks_msec() / 1000.0 * TAU * GLOW_RATE))
+	UiStyle.button(self, tab, c)
+	UiStyle.label(self, Rect2(tab.position, Vector2(tab.size.x * 0.5, tab.size.y)), "SHIP  %d" % p.power_spare(), font, UiStyle.INK, 16, HORIZONTAL_ALIGNMENT_LEFT)
+	UiStyle.label(self, Rect2(tab.position + Vector2(tab.size.x * 0.45, 0), Vector2(tab.size.x * 0.55, tab.size.y)), "EXP %d" % p.exp_balance, font, UiStyle.INK, 14, HORIZONTAL_ALIGNMENT_RIGHT)
 	if page == SYSTEMS_PAGE:
 		_draw_systems(p, font)
 	elif is_open():
@@ -235,72 +242,88 @@ static func can_buy_something(p: Node) -> bool:
 
 
 func _draw_systems(p: Node, font: Font) -> void:
-	LCARS.panel(self, popup_rect(), LCARS.ORANGE, "SYSTEMS  EXP %d" % p.exp_balance, font)
+	UiStyle.panel(self, popup_rect(), UiStyle.CYAN, "SYSTEMS  EXP %d" % p.exp_balance, font)
 	for i in ROWS.size():
 		var id := ROWS[i]
 		var r := _row_rect(i)
 		var c: Color = COLORS[id]
 		var have: bool = id == &"reactor" or id == &"hull" or p.levels.get(id, 0) > 0
 		if have:
-			LCARS.pill(self, r, c)
+			UiStyle.button(self, r, c)
 		else:
-			LCARS.pill_outline(self, r, c)
-		var text_color := LCARS.BLACK if have else c
-		LCARS.label(self, Rect2(r.position, Vector2(120, r.size.y)), _name(id), font, text_color, 14, HORIZONTAL_ALIGNMENT_LEFT)
+			UiStyle.button_outline(self, r, c)
+		var text_color := UiStyle.INK if have else c
+		UiStyle.label(self, Rect2(r.position, Vector2(120, r.size.y)), _name(id), font, text_color, 14, HORIZONTAL_ALIGNMENT_LEFT)
 		var at := Vector2(r.position.x + 128, r.position.y + 10)
 		if id == &"reactor":
-			LCARS.pips(self, at, p.reactor(), p.power_spare(), LCARS.BLACK, Vector2(7, 14), 2.0)
+			UiStyle.pips(self, at, p.reactor(), p.power_spare(), UiStyle.INK, Vector2(7, 14), 2.0)
 		elif Systems.is_system(id) and have:
-			LCARS.pips(self, at, p.levels.get(id, 0), p.power_of(id), LCARS.BLACK)
+			UiStyle.pips(self, at, p.levels.get(id, 0), p.power_of(id), UiStyle.INK)
 		elif not have:
-			LCARS.label(self, Rect2(at.x - 8, r.position.y, 120, r.size.y), "NOT INSTALLED", font, c, 11, HORIZONTAL_ALIGNMENT_LEFT)
+			UiStyle.label(self, Rect2(at.x - 8, r.position.y, 120, r.size.y), "NOT INSTALLED", font, c, 11, HORIZONTAL_ALIGNMENT_LEFT)
 
 
 func _draw_system(p: Node, font: Font) -> void:
-	var c: Color = COLORS.get(page, LCARS.ORANGE)
-	LCARS.panel(self, popup_rect(), c, _name(page), font)
+	var c: Color = COLORS.get(page, UiStyle.CYAN)
+	UiStyle.panel(self, popup_rect(), c, _name(page), font)
 	for b in buttons():
 		if b.action == &"back":
-			LCARS.pill(self, b.rect, LCARS.LAVENDER)
-			LCARS.label(self, b.rect, "BACK", font, LCARS.BLACK, 13)
+			UiStyle.button(self, b.rect, UiStyle.VIOLET)
+			UiStyle.label(self, b.rect, "BACK", font, UiStyle.INK, 13)
 	var top := _row_rect(0)
-	LCARS.label(self, Rect2(top.position + Vector2(74, 0), top.size - Vector2(74, 0)), ABOUT.get(page, ""), font, c, 11, HORIZONTAL_ALIGNMENT_LEFT)
+	UiStyle.label(self, Rect2(top.position + Vector2(74, 0), top.size - Vector2(74, 0)), ABOUT.get(page, ""), font, c, 11, HORIZONTAL_ALIGNMENT_LEFT)
 	var row := _row_rect(1)
-	if Systems.is_system(page):
-		LCARS.label(self, Rect2(row.position, Vector2(70, ROW)), "POWER", font, c, 13, HORIZONTAL_ALIGNMENT_LEFT)
-		LCARS.pips(self, row.position + Vector2(76, 10), p.levels.get(page, 0), p.power_of(page), c)
-		for b in buttons():
-			if b.action == &"power_down" or b.action == &"power_up":
-				var ok: bool = p.power_of(page) > 0 if b.action == &"power_down" else p.power_of(page) < p.levels.get(page, 0) and p.power_spare() > 0
-				LCARS.pill(self, b.rect, c if ok else LCARS.DIM)
-				LCARS.label(self, b.rect, "-" if b.action == &"power_down" else "+", font, LCARS.BLACK, 20)
+	if Systems.is_pool(page):  # its bars go to the members below
+		UiStyle.label(self, Rect2(row.position, Vector2(70, ROW)), "BARS", font, c, 13, HORIZONTAL_ALIGNMENT_LEFT)
+		UiStyle.pips(self, row.position + Vector2(76, 10), p.levels.get(page, 0), p.power_of(page), c)
+		UiStyle.label(self, row, "%d / %d" % [p.power_of(page), p.levels.get(page, 0)], font, c, 12, HORIZONTAL_ALIGNMENT_RIGHT)
+	elif Systems.is_system(page):
+		UiStyle.label(self, Rect2(row.position, Vector2(70, ROW)), "POWER", font, c, 13, HORIZONTAL_ALIGNMENT_LEFT)
+		UiStyle.pips(self, row.position + Vector2(76, 10), p.levels.get(page, 0), p.power_of(page), c)
 	elif page == &"reactor":
-		LCARS.label(self, Rect2(row.position, Vector2(70, ROW)), "BARS", font, c, 13, HORIZONTAL_ALIGNMENT_LEFT)
-		LCARS.pips(self, row.position + Vector2(76, 10), p.reactor(), p.power_spare(), c, Vector2(7, 14), 2.0)
-		LCARS.label(self, Rect2(row.position, row.size), "%d SPARE" % p.power_spare(), font, c, 12, HORIZONTAL_ALIGNMENT_RIGHT)
+		UiStyle.label(self, Rect2(row.position, Vector2(70, ROW)), "BARS", font, c, 13, HORIZONTAL_ALIGNMENT_LEFT)
+		UiStyle.pips(self, row.position + Vector2(76, 10), p.reactor(), p.power_spare(), c, Vector2(7, 14), 2.0)
+		UiStyle.label(self, Rect2(row.position, row.size), "%d SPARE" % p.power_spare(), font, c, 12, HORIZONTAL_ALIGNMENT_RIGHT)
+	for b in buttons():
+		if b.action == &"power_down" or b.action == &"power_up":
+			var ok: bool = p.power_of(b.id) > 0 if b.action == &"power_down" else p.power_of(b.id) < p.power_cap(b.id) and p.power_spare() > 0
+			UiStyle.button(self, b.rect, c if ok else UiStyle.DIM)
+			UiStyle.label(self, b.rect, "-" if b.action == &"power_down" else "+", font, UiStyle.INK, 20)
 	for b in buttons():
 		if b.action != &"buy":
 			continue
 		if b.id == page:
 			_draw_buy(p, font, b.rect, page, c, "INSTALL" if p.levels.get(page, 0) == 0 else "UPGRADE")
 		else:
-			var it := Systems.item(b.id)
-			var r := Rect2(Vector2(row.position.x, b.rect.position.y), Vector2(row.size.x - 92, ROW))
-			var label: String = it.label + ("  %dP" % it.power if it.get("power", 0) > 0 else "")
-			LCARS.label(self, Rect2(r.position, Vector2(r.size.x, 18)), label, font, c, 12, HORIZONTAL_ALIGNMENT_LEFT)
-			LCARS.pips(self, r.position + Vector2(10, 21), it.max, p.levels.get(b.id, 0), c, Vector2(8, 8), 2.0)
 			_draw_buy(p, font, b.rect, b.id, c, "BUY" if p.levels.get(b.id, 0) == 0 else "+")
+	for it in _items():
+		_draw_item(p, font, it, c)
 
 
-## A buy pill: lit with its price when affordable, dim otherwise, MAX at the top.
+## An item's row: its name, then its level pips (a pool member: the bars of
+## it powered, out of what's bought).
+func _draw_item(p: Node, font: Font, it: Dictionary, c: Color) -> void:
+	var i := _items().find(it)
+	var r := _row_rect(3 + i)
+	var reserved := (0.0 if Systems.is_builtin(it.id) else 92.0) + (88.0 if Systems.pool_of(it.id) != &"" else 0.0)
+	r.size.x -= reserved
+	var label: String = it.label + ("  %dP" % it.power if it.get("power", 0) > 0 else "")
+	UiStyle.label(self, Rect2(r.position, Vector2(r.size.x, 18)), label, font, c, 12, HORIZONTAL_ALIGNMENT_LEFT)
+	if Systems.pool_of(it.id) != &"":
+		UiStyle.pips(self, r.position + Vector2(10, 21), p.levels.get(it.id, 0), p.power_of(it.id), c, Vector2(8, 8), 2.0)
+	else:
+		UiStyle.pips(self, r.position + Vector2(10, 21), it.max, p.levels.get(it.id, 0), c, Vector2(8, 8), 2.0)
+
+
+## A buy button: lit with its price when affordable, dim otherwise, MAX at the top.
 func _draw_buy(p: Node, font: Font, r: Rect2, id: StringName, c: Color, verb: String) -> void:
 	var level: int = p.levels.get(id, 0)
 	if level >= Systems.max_level(id):
-		LCARS.pill_outline(self, r, c)
-		LCARS.label(self, r, "MAX", font, c, 13)
+		UiStyle.button_outline(self, r, c)
+		UiStyle.label(self, r, "MAX", font, c, 13)
 		return
-	LCARS.pill(self, r, c if p.can_afford(id) else LCARS.DIM)
-	LCARS.label(self, r, "%s %d" % [verb, p.price(id)], font, LCARS.BLACK if p.can_afford(id) else c, 13)
+	UiStyle.button(self, r, c if p.can_afford(id) else UiStyle.DIM)
+	UiStyle.label(self, r, "%s %d" % [verb, p.price(id)], font, UiStyle.INK if p.can_afford(id) else c, 13)
 
 
 static func _name(id: StringName) -> String:

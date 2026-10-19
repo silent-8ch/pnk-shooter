@@ -8,7 +8,7 @@ const LIFE := 0.8  # s
 const FONT_SIZE := 18
 
 var text := "+1"
-var color := LCARS.BLUE
+var color := UiStyle.AMBER
 var _age := 0.0
 
 

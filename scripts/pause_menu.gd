@@ -1,6 +1,8 @@
 extends CanvasLayer
-## In-game overlay: Resume, Save and exit (a solo run, see Game.can_save), Leave game, Music and Sound FX on/off, left- or right-handed
-## controls, Quit. The simulation keeps running
+## In-game overlay: a big Resume, then Save and exit (a solo run, see
+## Game.can_save) and Leave game, with small Settings and Quit at the bottom.
+## Settings (Music and Sound FX on/off, which side the controls sit on) opens
+## in place of the main buttons. The simulation keeps running
 ## (it is networked), only local input is suppressed while open.
 
 signal resume_pressed
@@ -15,6 +17,11 @@ signal quit_pressed
 @onready var music_toggle: CheckButton = %MusicToggle
 @onready var sfx_toggle: CheckButton = %SfxToggle
 @onready var hand_side: Button = %HandSide
+@onready var settings_button: Button = %SettingsButton
+@onready var back_button: Button = %BackButton
+@onready var settings_box: Control = %SettingsBox
+@onready var main_buttons: Control = %MainButtons
+@onready var bottom_row: Control = %BottomRow
 
 
 func _ready() -> void:
@@ -31,3 +38,13 @@ func _ready() -> void:
 	hand_side.text = Settings.side_text(Settings.left_handed)
 	hand_side.pressed.connect(func() -> void: Settings.set_left_handed(not Settings.left_handed))
 	Settings.handed_changed.connect(func(left: bool) -> void: hand_side.text = Settings.side_text(left))
+	settings_button.pressed.connect(show_settings.bind(true))
+	back_button.pressed.connect(show_settings.bind(false))
+	visibility_changed.connect(show_settings.bind(false))  # always opens on its main buttons
+
+
+## Settings opens in place of the main buttons; Back returns.
+func show_settings(on: bool) -> void:
+	settings_box.visible = on
+	main_buttons.visible = not on
+	bottom_row.visible = not on

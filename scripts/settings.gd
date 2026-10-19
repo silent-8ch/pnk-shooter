@@ -3,7 +3,7 @@ extends Node
 ## laid out for, kept in the same settings file as Music's choice.
 ## Sound effects: every AudioStreamPlayer that joins the tree on the Master bus
 ## (anything but the music) is moved to the SFX bus, which this mutes.
-## Handedness: left-handed (the default) puts the SHIP pill and its popups
+## Handedness: left-handed (the default) puts the SHIP button and its popups
 ## bottom left and the action buttons from the left edge, LASERS first;
 ## right-handed mirrors both (ShipPanel, ActionBar).
 
@@ -15,6 +15,7 @@ signal handed_changed(left: bool)
 
 var sfx := true
 var left_handed := true
+var player_name := ""  # the last name typed in the lobby ("" until there is one)
 
 
 func _ready() -> void:
@@ -42,6 +43,14 @@ static func side_text(left: bool) -> String:
 	return "Controls on: %s" % ("LEFT" if left else "RIGHT")
 
 
+## The lobby's name, remembered for next time.
+func set_player_name(n: String, path: String = SETTINGS_PATH) -> void:
+	if n == player_name:
+		return
+	player_name = n
+	save_settings(path)
+
+
 func set_left_handed(left: bool, path: String = SETTINGS_PATH) -> void:
 	if left == left_handed:
 		return
@@ -66,6 +75,7 @@ func save_settings(path: String = SETTINGS_PATH) -> void:
 	cfg.load(path)  # keep other sections if the file exists
 	cfg.set_value("audio", "sfx", sfx)
 	cfg.set_value("controls", "left_handed", left_handed)
+	cfg.set_value("player", "name", player_name)
 	cfg.save(path)
 
 
@@ -74,3 +84,4 @@ func load_settings(path: String = SETTINGS_PATH) -> void:
 	cfg.load(path)  # missing file -> defaults
 	sfx = bool(cfg.get_value("audio", "sfx", true))
 	left_handed = bool(cfg.get_value("controls", "left_handed", true))
+	player_name = str(cfg.get_value("player", "name", ""))

@@ -133,7 +133,7 @@ func _game() -> Node2D:
 	return game
 
 
-func test_right_handed_moves_the_ship_pill_and_popups_right() -> void:
+func test_right_handed_moves_the_ship_button_and_popups_right() -> void:
 	var saved_peer := multiplayer.multiplayer_peer
 	var game := _game()
 	var panel: ShipPanel = game.get_node("PointerControls/ShipPanel")
@@ -164,3 +164,55 @@ func test_right_handed_lines_the_bar_up_from_the_right() -> void:
 	assert_almost_eq(lasers.end.x, screen.x - ActionBar.MARGIN, 0.01)
 	assert_eq(bar.action_for_key(KEY_1), &"lasers", "key 1 is still LASERS")
 	multiplayer.multiplayer_peer = saved_peer
+
+
+# --- Settings menus ------------------------------------------------------------------
+
+func test_settings_live_in_a_small_settings_menu_and_play_stands_out() -> void:
+	var main: Node = MainScene.instantiate()
+	add_child_autofree(main)
+	for menu in [main.main_menu, main.pause_menu]:
+		var box: Control = menu.get_node("%SettingsBox")
+		assert_false(box.visible, "tucked away")
+		assert_true(box.is_ancestor_of(menu.get_node("%MusicToggle")))
+		assert_true(box.is_ancestor_of(menu.get_node("%SfxToggle")))
+		assert_true(box.is_ancestor_of(menu.get_node("%HandSide")))
+		var settings: Button = menu.get_node("%SettingsButton")
+		menu.show_settings(false)
+		settings.pressed.emit()
+		assert_true(box.visible)
+		assert_false(menu.get_node("%MainButtons").visible, "in place of the main buttons")
+		menu.get_node("%BackButton").pressed.emit()
+		assert_false(box.visible)
+		assert_true(menu.get_node("%MainButtons").visible)
+	var play: Button = main.main_menu.get_node("%PlayButton")
+	var settings_button: Button = main.main_menu.get_node("%SettingsButton")
+	assert_gt(play.custom_minimum_size.y, settings_button.custom_minimum_size.y * 2.0, "Play is the big one")
+	assert_gt(play.get_theme_font_size("font_size"), settings_button.get_theme_font_size("font_size") * 2)
+	var resume: Button = main.pause_menu.get_node("%ResumeButton")
+	assert_gt(resume.custom_minimum_size.y, main.pause_menu.get_node("%SettingsButton").custom_minimum_size.y * 2.0)
+	Net.stop_browsing()
+
+
+func test_settings_close_when_the_menu_is_shown_again() -> void:
+	var main: Node = MainScene.instantiate()
+	add_child_autofree(main)
+	main.main_menu.show_settings(true)
+	main.main_menu.visible = false
+	main.main_menu.visible = true
+	assert_false(main.main_menu.get_node("%SettingsBox").visible)
+	Net.stop_browsing()
+
+
+# --- Name ----------------------------------------------------------------------------
+
+func test_the_lobby_remembers_your_name() -> void:
+	Settings.set_player_name("", PATH)
+	Settings.set_player_name("Paul", PATH)
+	Settings.player_name = ""
+	Settings.load_settings(PATH)
+	assert_eq(Settings.player_name, "Paul")
+	var lobby: Node = preload("res://scenes/lobby.tscn").instantiate()
+	add_child_autofree(lobby)
+	assert_eq(lobby.name_edit.text, "Paul", "filled in next time")
+	Settings.player_name = ""

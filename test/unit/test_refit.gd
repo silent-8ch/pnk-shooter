@@ -218,7 +218,7 @@ func test_ready_panel_shows_only_during_a_refit() -> void:
 	assert_false(panel.list[0].ready)
 
 
-func test_ready_pill_readies_and_the_refit_ends() -> void:
+func test_ready_button_readies_and_the_refit_ends() -> void:
 	var panel: RefitPanel = game.get_node("PointerControls/RefitPanel")
 	game.begin_refit(false)
 	var ev := InputEventScreenTouch.new()

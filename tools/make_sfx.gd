@@ -21,12 +21,17 @@ const GAIN := 0.7
 const EDGE := 0.002  # fade at each layer's ends so nothing clicks
 
 const SOUNDS := {
-	# Player blaster, "pe-cheer":
+	# Photon shot, barely there (it's space): a tiny high "pip", a soft triangle
+	# blip that dips a little and is gone.
+	"shoot": [
+		{wave = "triangle", dur = 0.035, f0 = 1900.0, f1 = 1500.0, v0 = 0.35, v1 = 0.0, curve = 0.6},
+	],
+	# Kept for later (the photons' old sound): a blaster, "pe-cheer":
 	#   "pe"   a short thin pluck that dips in pitch,
 	#   "ch"   a bright hiss burst as the consonant,
 	#   "eer"  a tone flying away (Doppler): pitch keeps falling, it fades and dulls as the
 	#          bright pulse dies first, leaving the soft triangle under it.
-	"shoot": [
+	"blaster": [
 		{wave = "pulse12", dur = 0.06, f0 = 750.0, f1 = 500.0, v0 = 0.5, v1 = 0.2},
 		{wave = "noise", at = 0.05, dur = 0.1, f0 = 7000.0, f1 = 3500.0, v0 = 0.4, v1 = 0.0, curve = 0.6},
 		{wave = "pulse25", at = 0.07, dur = 0.36, f0 = 1100.0, f1 = 560.0, v0 = 0.38, v1 = 0.0, curve = 0.2},
@@ -149,6 +154,7 @@ const SOUNDS := {
 ##   curve        +- fraction of every volume curve
 const VARIANTS := {
 	"shoot": {count = 3, pitch = 0.5, layer_pitch = 0.0, length = 0.04, curve = 0.0},
+	"blaster": {count = 3, pitch = 0.5, layer_pitch = 0.0, length = 0.04, curve = 0.0},
 	"hit": {count = 4, pitch = 2.0, layer_pitch = 3.0, length = 0.2, curve = 0.3},
 	"implosion": {count = 3, pitch = 2.0, layer_pitch = 2.0, length = 0.15, curve = 0.3},
 	"explosion": {count = 4, pitch = 2.0, layer_pitch = 3.0, length = 0.2, curve = 0.3},

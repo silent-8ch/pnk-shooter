@@ -31,15 +31,18 @@ const HOME_Y := 140.0  # px above the bottom of its movement area it hunts from
 const LEAD := 0.35  # s of an enemy's sideways drift it aims ahead
 const AIM := 16.0  # px: lined up enough to fire
 const SAFE_LINE := 26.0  # px: a friendly ship this close to its column holds its fire
-const PICKUP_REACH := 220.0  # px it detours for exp
+const PICKUP_REACH := 520.0  # px it detours for exp (nearly anywhere on screen)
 const THREAT_REACH := 420.0  # px: farther things are ignored
 const TETRAN_RANGE := 280.0  # px from Tetran's core it likes to sit
 const TETRAN_GAP_MARGIN := 0.35  # rad it keeps from either arm of its gap
+const KEEP_COST := 0.2  # per unit of change from its current move: no flip-flopping between equals
+const STEER_SMOOTH := 0.3  # of the way to the new best move each frame
 const MANAGE_EVERY := 1.0  # s between loadout checks (power, guns)
 const READY_DELAY := 1.5  # s it browses the refit before tapping READY
-const SYSTEM_ORDER: Array[StringName] = [&"shields", &"engines", &"drones", &"medbay", &"piloting", &"weapons"]
+const SYSTEM_ORDER: Array[StringName] = [&"shields", &"engines", &"option", &"rescue", &"medbay", &"autopilot", &"beacon", &"weapons"]
 const SKIP_BUYS: Array[StringName] = [&"healbeam"]
 
+var _move := Vector2.ZERO  # the move it's making, eased toward each frame's best
 var _last := {}  # instance id -> position last frame, for how things are moving
 var _vel := {}  # instance id -> px/s
 var _manage_left := 0.0
@@ -68,7 +71,8 @@ func think(ship: Node2D, delta: float) -> void:
 	_track(game, delta)
 	_refit(ship, game, delta)
 	var goal := goal_for(ship, game)
-	ship.input_dir = best_move(ship, game, goal)
+	_move = _move.lerp(best_move(ship, game, goal), STEER_SMOOTH)  # eases between choices instead of snapping
+	ship.input_dir = _move
 	if not game.refit and not game.fork_open():
 		_use_guns(ship, game)
 
@@ -359,6 +363,7 @@ func best_move(ship: Node2D, game: Node, goal: Vector2) -> Vector2:
 		cost += goal.distance_to(Geometry2D.get_closest_point_to_segment(goal, ship.position, at)) * GOAL_WEIGHT
 		if at.x <= bounds.position.x + 1.0 or at.x >= bounds.end.x - 1.0:
 			cost += 0.3  # cornered against an edge
+		cost += (m - _move).length() * KEEP_COST  # sticks with what it's doing unless something's better
 		if cost < best_cost - 0.0001:
 			best_cost = cost
 			best_dir = m

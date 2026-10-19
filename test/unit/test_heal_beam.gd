@@ -46,9 +46,11 @@ func _give_power() -> void:
 	player.levels[&"weapons"] = Systems.max_level(&"weapons")
 
 
+## Armed, with the HEAL button held down.
 func _arm_healbeam() -> void:
 	_give_power()
 	assert_true(player.arm(&"healbeam"))
+	player._heal_held = true
 
 
 func _heal_shot(shooter: int, at: Vector2) -> Area2D:
@@ -80,7 +82,7 @@ func test_a_weapons_gun() -> void:
 	assert_eq(Systems.gun_for_action(&"heal"), &"healbeam")
 
 
-func test_adds_a_heal_toggle() -> void:
+func test_adds_a_heal_button_the_first_press_arms_it() -> void:
 	player._gather_input()
 	assert_false(bar.is_shown(&"heal"))
 	_buy_healbeam()
@@ -91,20 +93,53 @@ func test_adds_a_heal_toggle() -> void:
 	assert_true(bar.press(&"heal"))
 	player._gather_input()
 	assert_true(player.is_armed(&"healbeam"))
-	assert_true(bar._lit.get(&"heal", false), "lit while on")
+	assert_true(bar._lit.get(&"heal", false), "lit while armed")
 	bar._process(1.0)
 	assert_true(bar.press(&"heal"))
 	player._gather_input()
-	assert_false(player.is_armed(&"healbeam"), "and off again")
+	assert_true(player.is_armed(&"healbeam"), "not a toggle: pressing again doesn't switch it off")
 
 
-func test_streams_fast_shots_straight_up_while_on() -> void:
+func test_fires_only_while_held() -> void:
+	_buy_healbeam()
+	_arm_healbeam()
+	player._heal_held = false
+	for i in 30:
+		player._simulate(1.0 / 60.0)
+	assert_eq(_heal_bullets().size(), 0, "armed but not held")
+	player._heal_held = true
+	player._simulate(1.0 / 60.0)
+	assert_gt(_heal_bullets().size(), 0)
+
+
+func test_holding_the_button_holds_the_trigger() -> void:
+	_buy_healbeam()
+	_give_power()
+	game.get_node("PointerControls").visible = true
+	player._gather_input()
+	var ev := InputEventScreenTouch.new()
+	ev.pressed = true
+	ev.index = 3
+	ev.position = bar.button_rect(ActionBar.ACTIONS.map(func(a): return a.id).find(&"heal")).get_center()
+	bar._input(ev)
+	player._gather_input()
+	assert_true(player.is_armed(&"healbeam"))
+	assert_true(player._heal_held, "finger down")
+	ev = ev.duplicate()
+	ev.pressed = false
+	bar._input(ev)
+	player._gather_input()
+	assert_false(player._heal_held, "let go")
+
+
+func test_streams_very_fast_shots_straight_up_while_held() -> void:
 	_buy_healbeam()
 	_arm_healbeam()
 	for i in 60:
 		player._simulate(1.0 / 60.0)
 	var shots := _heal_bullets()
-	assert_almost_eq(shots.size(), int(1.0 / PlayerScript.HEALBEAM_INTERVAL), 1, "about ten a second")
+	assert_almost_eq(shots.size(), int(1.0 / PlayerScript.HEALBEAM_INTERVAL), 1, "a dense stream")
+	assert_lt(PlayerScript.HEALBEAM_INTERVAL, 0.1, "faster than it was")
 	for b in shots:
 		assert_eq(b.direction, Vector2.UP)
 	assert_gt(BulletScript.KINDS[BulletScript.HEAL].speed, BulletScript.KINDS[BulletScript.LASER].speed, "fast")
@@ -157,6 +192,7 @@ func test_heal_shots_make_enemies_stronger_and_bigger() -> void:
 	var hp_before: int = e.hp
 	for i in 10:
 		e._on_area_entered(_heal_shot(1, e.position))
+	await wait_frames(1)  # hit reports reach the host at the end of the frame
 	assert_eq(e.hp, hp_before + 1, "ten shots, a hit point")
 	assert_eq(e.max_hp, hp_before + 1)
 	assert_almost_eq(e.scale.x, 1.0 + EnemyScript.GROW_STEP, 0.0001, "and a bit bigger")
@@ -172,6 +208,7 @@ func test_heal_shots_never_hurt_enemies() -> void:
 	var e := _enemy(Vector2(270, 300))
 	for i in 25:
 		e._on_area_entered(_heal_shot(1, e.position))
+	await wait_frames(1)  # hit reports reach the host at the end of the frame
 	assert_false(e.is_queued_for_deletion())
 	assert_gt(e.hp, EnemyScript.TYPES[EnemyScript.WEAVER].hp)
 

@@ -90,7 +90,7 @@ func test_pod_takes_many_hits() -> void:
 		game.report_pod_hit(pod_name, 1.0)
 	assert_true(game.get_node("Pods").has_node(pod_name), "still there")
 	game.report_pod_hit(pod_name, 1.0)
-	assert_false(game.get_node("Pods").has_node(pod_name), "destroyed")
+	assert_true(_gone(game.get_node("Pods"), pod_name), "destroyed")
 
 
 func test_blasts_wear_it_down_too() -> void:
@@ -107,6 +107,7 @@ func test_every_shot_hits_it_owners_too() -> void:
 		game.get_node("Bullets").add_child(b)
 		pod._on_area_entered(b)
 		assert_true(b.is_queued_for_deletion(), "shot from %d hits" % shooter)
+	await wait_frames(1)  # hit reports reach the host at the end of the frame
 	assert_almost_eq(pod.hp, PodScript.PLAYER_HP - 1.0, 0.0001, "the local shooter's hit counts")
 
 
@@ -139,7 +140,7 @@ func test_upgrades_lost_on_respawn_come_back_when_you_touch_your_pod() -> void:
 	assert_eq(player.reactor(), Systems.start_level(&"reactor"))
 	assert_eq(player.hp, PlayerScript.MAX_HP)
 	pod.claim_from([player])
-	assert_false(game.get_node("Pods").has_node(String(pod.name)), "picked up")
+	assert_true(_gone(game.get_node("Pods"), String(pod.name)), "picked up")
 	assert_eq(player.level(&"speed"), 2, "ENGINES powered again")
 	assert_eq(player.level(&"option"), 1, "DRONES powered again")
 	assert_eq(player.level(&"armor"), 1)
@@ -169,7 +170,7 @@ func test_another_ship_can_touch_it_but_drones_only_take_enemy_pods_by_touch() -
 	game.request_rescue("EnemyPod", false)
 	assert_true(game.get_node("Pods").has_node("EnemyPod"), "enemy pods need a drone")
 	game.request_rescue(String(pod.name), false)
-	assert_false(game.get_node("Pods").has_node(String(pod.name)))
+	assert_true(_gone(game.get_node("Pods"), String(pod.name)))
 
 
 func test_destroyed_pods_astronauts_carry_the_upgrades() -> void:
@@ -177,7 +178,7 @@ func test_destroyed_pods_astronauts_carry_the_upgrades() -> void:
 	var pod := _die()
 	var pod_name := String(pod.name)
 	game.destroy_pod(pod_name)
-	assert_false(game.get_node("Pods").has_node(pod_name))
+	assert_true(_gone(game.get_node("Pods"), pod_name))
 	var a: Node = game.get_node("Pods/%s_A" % pod_name)
 	assert_true(a.astronaut)
 	assert_eq(a.owner_peer, 1)
@@ -216,3 +217,10 @@ func test_each_death_drops_its_own_pod() -> void:
 func test_pod_names_must_carry_the_senders_id() -> void:
 	game.spawn_player_pod(Vector2(10, 10), "PlayerPod7_1", Color.RED, 0, 0)
 	assert_eq(game.get_node("Pods").get_child_count(), 0, "peer 1 can't name another's pod")
+
+
+## Gone from `parent`: removed, or on its way out (removal waits for the end
+## of a physics frame).
+func _gone(parent: Node, n: String) -> bool:
+	var c := parent.get_node_or_null(n)
+	return c == null or c.is_queued_for_deletion()

@@ -104,6 +104,9 @@ func test_no_cheat_no_upgrades() -> void:
 	Net.all_weapons = false
 	var p := _player()
 	for s in Systems.ITEMS:
+		if Systems.is_builtin(s.id):
+			assert_eq(p.level(s.id), 0, "%s: comes with PILOTING, unpowered" % s.id)
+			continue
 		assert_eq(p.level(s.id), Systems.start_level(s.id), String(s.id))
 	for s in Systems.systems():
 		assert_eq(p.power_of(s.id), Systems.START_POWER.get(s.id, 0), String(s.id))
