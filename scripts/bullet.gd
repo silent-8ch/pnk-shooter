@@ -87,6 +87,8 @@ func _ready() -> void:
 	$Body.scale = Vector2.ONE * (HEIGHT / frames.get_frame_texture(&"default", 0).get_height()) * k.scale
 	$Light.energy *= k.light
 	$Body.play()
+	# Start each bullet on a random frame so a volley doesn't animate in lockstep (looks only, so not synced).
+	$Body.frame = randi() % frames.get_frame_count(&"default")
 	$Light.color = c
 	$Light.range_item_cull_mask = Ships.LIGHT_MASK
 	rotation = Vector2.UP.angle_to(direction)

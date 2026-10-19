@@ -133,17 +133,13 @@ func test_palette_swap_keeps_collect_animation_going() -> void:
 	assert_true(p.sprite.is_playing())
 
 
-func test_uncollected_blinks_then_expires() -> void:
+func test_uncollected_never_fades_or_expires() -> void:
 	var p := _pickup()
-	p._process(PickupScript.LIFETIME - PickupScript.BLINK_TIME + 0.05)
-	var seen_hidden := false
-	for i in 40:
-		p._process(0.025)
-		if not p.visible:
-			seen_hidden = true
-	assert_true(seen_hidden, "blinks near the end")
-	p._process(PickupScript.LIFETIME)
-	assert_true(p.is_queued_for_deletion())
+	for i in 600:
+		p._process(0.1)
+		assert_true(p.visible)
+		assert_eq(p.modulate.a, 1.0)
+	assert_false(p.is_queued_for_deletion())
 
 
 func test_collect_plays_to_last_frame_holds_then_fades() -> void:

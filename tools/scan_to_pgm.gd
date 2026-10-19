@@ -4,6 +4,7 @@ extends SceneTree
 ##   Godot --headless -s tools/scan_to_pgm.gd -- <in.jpeg|png> <out.pgm> [size]
 ## Crops to the ink (pixels darker than INK) plus MARGIN, then scales so the
 ## longer side is `size` px (default 600, like the other ships).
+## Size 0 keeps the whole scan as is, for drawing sheets (tools/ship-painter/sheet.js read).
 ## An .svg input (line art already traced) is rendered whole instead, no crop,
 ## onto white, so scan.js --svg can paint fills under its own paths.
 
@@ -35,6 +36,8 @@ static func scan_to_pgm(src: String, dst: String, size: int) -> String:
 	if img == null or img.is_empty():
 		return "can't read " + src
 	img.convert(Image.FORMAT_L8)
+	if size <= 0:
+		return _write_pgm(img, dst)
 	var box := ink_box(img)
 	if box.size.x <= 0 or box.size.y <= 0:
 		return "no ink found in " + src
@@ -52,7 +55,8 @@ static func _svg_to_pgm(src: String, dst: String, size: int) -> String:
 	if svg == "" or probe.load_svg_from_string(svg, 1.0) != OK:
 		return "can't read " + src
 	var img := Image.new()
-	img.load_svg_from_string(svg, float(size) / maxf(probe.get_width(), probe.get_height()))
+	var scale := 1.0 if size <= 0 else float(size) / maxf(probe.get_width(), probe.get_height())
+	img.load_svg_from_string(svg, scale)
 	img.convert(Image.FORMAT_RGBA8)
 	var paper := Image.create(img.get_width(), img.get_height(), false, Image.FORMAT_RGBA8)
 	paper.fill(Color.WHITE)

@@ -10,7 +10,7 @@ extends Area2D
 ## either way) while it waits, and each frame of the
 ## collect animation shows at its own random angle (seeded from its name, so
 ## every peer sees the same). It pulses a little in size and wanders a little
-## around its spot. Uncollected, it blinks out after LIFETIME.
+## around its spot. Uncollected, it stays until someone takes it.
 ##
 ## Each palette step is the painted frames re-rendered by PaletteFrames (cached).
 ## Every slot cycles, outline included.
@@ -29,8 +29,6 @@ const COLLECT_SOUND := preload("res://assets/sfx/xp.tres")  # random pick of the
 const COLLECT_FPS := 4.0  # slow enough to see every frame
 const HOLD_TIME := 0.6  # on the last frame before fading
 const FADE_TIME := 0.3
-const LIFETIME := 8.0
-const BLINK_TIME := 2.0  # blinks during the last this-many seconds
 const SPIN := 0.35  # rad/s it turns while waiting to be collected
 const PULSE := 0.22  # it grows and shrinks this much either way while it waits (its first frame)
 const COLLECT_PULSE := 0.08  # and this much as it plays out
@@ -167,13 +165,7 @@ func _process(delta: float) -> void:
 		if _shown_frame > 0:
 			sprite.rotation = _rng.randf() * TAU  # every frame of the collect animation at its own angle
 	if not collected:
-		var left := LIFETIME - _age
-		if left <= 0.0:
-			queue_free()
-		elif left < BLINK_TIME:
-			visible = fmod(left, 0.2) > 0.1
 		return
-	visible = true
 	var f := clampi(sprite.frame, 0, COLLECT_ALPHAS.size() - 1)
 	modulate.a = COLLECT_ALPHAS[f]
 	if sprite.is_playing():

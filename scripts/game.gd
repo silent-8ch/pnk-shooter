@@ -69,6 +69,7 @@ const FORK_TIME := 10.0  # s the party has to vote at a fork
 const GATE_POS: Array[Vector2] = [Vector2(135, 330), Vector2(405, 330)]  # left, right
 const GateScript := preload("res://scripts/gate.gd")
 const BOSS_PICKUPS := 6  # pickups a boss bursts into
+const DROID_PICKUP_SPREAD := 16.0  # px: a droid's pickups land in a ring this wide
 const BOSS_SHOT_COLOR := Color("ff4d6d")
 const BANNER_TIME := 2.5  # s a stage banner stays up
 const WARP_TIME := 0.3  # s an enemy cleared by a refit takes to warp out
@@ -114,6 +115,7 @@ var _refit_votes := {}  # host: peer id -> ready to leave the refit
 var _elite_done := false  # host: this stage's mini boss has been sent in
 var peer_names := {}  # host: peer id -> player name (kept between runs, for the ready screen)
 var last_results := ""  # the last run's results, for the ready screen
+var fun_time := FunTime.new()  # host: fun minutes and their droids
 
 signal ready_changed(list: Array)  # [{name, ready}] for the ready screen
 signal run_started  # restart_run brought everyone into a new run
@@ -179,6 +181,7 @@ func start() -> void:
 		SpriteEffect.explosion_frames(ramp)  # recolor the painted explosion once per ramp
 	PickupScript.warm()  # render the pickup's palette cycle up front
 	_rng.randomize()
+	fun_time.reset()
 	streak_aim = 0
 	streak_untouched = 0
 	best_aim = 0
@@ -336,6 +339,7 @@ func stop() -> void:
 	_end_refit_here()
 	_elite_done = false
 	_player_count = 0
+	fun_time.reset()
 	ready_peers = {1: true}
 
 
@@ -361,6 +365,8 @@ func _process(delta: float) -> void:
 func _physics_process(delta: float) -> void:
 	if not active or multiplayer.multiplayer_peer == null or over:
 		return
+	if multiplayer.is_server() and not demo:
+		fun_time.update(self)  # refits and forks too: the clock doesn't wait
 	var from := level_time
 	var boss_up := boss_alive() or elite_alive()
 	if refit:
@@ -446,6 +452,8 @@ func register_player(pname: String, ship: int, palette: int) -> void:
 	for e in enemies.get_children():
 		if e.has_bar():
 			boss_hp.rpc_id(id, String(e.name), e.hp)  # its bar starts where the host's is
+	for d in droids():
+		spawn_droid.rpc_id(id, d.peer, String(d.name))
 	set_ready_peers.rpc_id(id, ready_peers.keys())
 	set_level_time.rpc_id(id, level_time)
 	if scenery:
@@ -1462,6 +1470,10 @@ func continue_solo(old_id: int) -> void:
 	for pod in pods.get_children():
 		if pod.owner_peer == old_id:
 			pod.owner_peer = me_id
+	for d in droids():
+		if d.peer == old_id:
+			d.peer = me_id
+	fun_time.count = maxi(fun_time.count, _max_suffix(effects, "Droid"))
 	_enemy_count = maxi(_enemy_count, _max_suffix(enemies, "Enemy"))
 	_pickup_count = maxi(_pickup_count, _max_suffix(pickups, "Pickup"))
 	_pod_count = maxi(_pod_count, _max_suffix(pods, "Pod"))
@@ -1635,6 +1647,78 @@ func _set_scenery() -> void:
 func add_score(points: int) -> void:
 	if multiplayer.is_server():
 		score += points * score_mult
+
+
+# --- Fun time -----------------------------------------------------------------------
+
+## Every fun-time droid still out (see FunTime, Droid).
+func droids() -> Array[Droid]:
+	var out: Array[Droid] = []
+	for d in effects.get_children():
+		if d is Droid and not d.is_queued_for_deletion():
+			out.append(d)
+	return out
+
+
+## Host -> everyone: a fun-time droid comes out to orbit `peer`'s ship. Its
+## pilot sees "FUN TIME!" over the ship.
+@rpc("authority", "call_local", "reliable")
+func spawn_droid(peer: int, droid_name: String) -> void:
+	if effects.has_node(droid_name):
+		return
+	var d := Droid.new()
+	d.name = droid_name
+	d.peer = peer
+	var ship := players.get_node_or_null(str(peer))
+	if ship:
+		d.position = ship.position
+	effects.add_child(d)
+	if ship and peer == multiplayer.get_unique_id():
+		FloatText.spawn(effects, ship.position + Vector2(0, -40), "FUN TIME!", UiStyle.AMBER)
+
+
+## Ship owner -> host: something touched the droid orbiting its ship.
+@rpc("any_peer", "call_local", "reliable")
+func report_droid_hit(droid_name: String) -> void:
+	if not multiplayer.is_server() or between_levels():
+		return
+	var d := effects.get_node_or_null(droid_name)
+	if not d is Droid or d.is_queued_for_deletion():
+		return
+	var ship := players.get_node_or_null(str(d.peer))
+	if ship == null or ship.get_multiplayer_authority() != _sender():
+		return  # only the peer flying that ship checks its droid
+	fun_time.hit(self, d)
+
+
+@rpc("authority", "call_local", "unreliable")
+func flash_droid(droid_name: String) -> void:
+	var d := effects.get_node_or_null(droid_name)
+	if d is Droid:
+		d.flash()
+
+
+## Host: the droid bursts into `exp_count` pickups where it is.
+func pop_droid(droid_name: String, exp_count: int) -> void:
+	var d := effects.get_node_or_null(droid_name)
+	if d == null:
+		return
+	for i in exp_count:
+		_pickup_count += 1
+		var at: Vector2 = d.position + (Vector2.from_angle(TAU * i / exp_count) * DROID_PICKUP_SPREAD if exp_count > 1 else Vector2.ZERO)
+		spawn_pickup.rpc(at, "Pickup%d" % _pickup_count)
+	burst_droid.rpc(droid_name)
+
+
+## Every peer: the droid blows up like a rescue drone.
+@rpc("authority", "call_local", "reliable")
+func burst_droid(droid_name: String) -> void:
+	var d := effects.get_node_or_null(droid_name)
+	if d == null:
+		return
+	_detach(effects, d)
+	drone_destroyed(d.position)
+	d.queue_free()
 
 
 # --- Refits -------------------------------------------------------------------------
