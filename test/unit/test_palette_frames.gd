@@ -3,6 +3,7 @@ extends GutTest
 
 const BULLET := preload("res://assets/effects/bullet.tres")
 const EXPLOSION := preload("res://assets/effects/explosion.tres")
+const EXPLOSION2 := preload("res://assets/effects/explosion2.tres")
 const RED := Color(1, 0, 0)
 const GREEN := Color(0, 1, 0)
 
@@ -19,7 +20,7 @@ func _has_color(tex: Texture2D, c: Color) -> bool:
 
 
 func test_keeps_frames_speed_and_loop() -> void:
-	for src in [BULLET, EXPLOSION]:
+	for src in [BULLET, EXPLOSION, EXPLOSION2]:
 		var out := PaletteFrames.recolor(src, [Color.WHITE, RED])
 		for anim in src.get_animation_names():
 			assert_eq(out.get_frame_count(anim), src.get_frame_count(anim))
@@ -54,7 +55,7 @@ func test_non_svg_frames_pass_through() -> void:
 
 func test_painted_effect_art_is_registered_as_palette() -> void:
 	var db: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://assets/assets.json"))
-	for src in [BULLET, EXPLOSION]:
+	for src in [BULLET, EXPLOSION, EXPLOSION2]:
 		for i in src.get_frame_count(&"default"):
 			var res := PaletteFrames.source_svg(src.get_frame_texture(&"default", i))
 			assert_ne(res, "", "frame %d has a painted SVG" % i)

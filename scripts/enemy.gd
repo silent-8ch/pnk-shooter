@@ -140,6 +140,7 @@ func _ready() -> void:
 	# the shared normal map lights correctly upside down; no flipped variant needed.
 	body.flip_v = true
 	body.light_mask = Ships.LIGHT_MASK
+	DropShadow.attach(body)
 	if not is_tetran():
 		var jets := Thrusters.new()  # flare as it changes course
 		jets.name = "Thrusters"

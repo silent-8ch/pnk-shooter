@@ -49,3 +49,11 @@ Add an entry to `pieces.json` with these fields:
 - Optional: `spin`, `tile`, `caps`, and `cap: true` for an end cap
 
 The level designer and the game both read this file.
+
+## Drawn so far
+
+- `asteroid_s`, `asteroid_m`, `asteroid_l`: drawn on drawing sheet 16 (page 2 of
+  `tools/ship-painter/sheet.js`), scanned as `Scan 7.jpeg`, traced by hand into one SVG
+  (`scan7/LP4Hb01.svg`) and cut into one SVG per asteroid. Fills were added under the
+  outline by `scan.js --svg` and colored by hand: slot 1 outline, slot 2 the rock,
+  slot 3 the craters (`fixed` in `assets/assets.json`).

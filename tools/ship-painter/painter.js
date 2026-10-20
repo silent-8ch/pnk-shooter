@@ -282,6 +282,135 @@
     return out;
   }
 
+  // --- erasing outlines -------------------------------------------------------------
+  // A traced outline is often one <path> holding many closed pieces (subpaths): its outer
+  // edges, the holes in them, and sometimes stray bits of a neighbouring drawing. The Erase
+  // tool removes pieces one at a time, so each piece is cut out as a standalone path.
+
+  const PATH_ARGS = { m: 2, l: 2, h: 1, v: 1, c: 6, s: 4, q: 4, t: 2, a: 7, z: 0 };
+  const PATH_TOKEN_RE = /([MmLlHhVvCcSsQqTtAaZz])|(-?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?)/g;
+
+  function parsePathCommands(d) {
+    const cmds = [];
+    const re = new RegExp(PATH_TOKEN_RE.source, 'g');
+    let m, cur = null;
+    while ((m = re.exec(String(d))) !== null) {
+      if (m[1]) { cur = { cmd: m[1], args: [] }; cmds.push(cur); }
+      else if (cur) cur.args.push(parseFloat(m[2]));
+      else throw new Error('path data must start with a command');
+    }
+    cmds.forEach(function (c) {
+      const n = PATH_ARGS[c.cmd.toLowerCase()];
+      if (n === 0 ? c.args.length : !c.args.length || c.args.length % n) {
+        throw new Error('bad path data near "' + c.cmd + '"');
+      }
+    });
+    return cmds;
+  }
+
+  function fmt(n) { return String(+n.toFixed(4)); }
+
+  // Path data -> its closed pieces, each standalone: { d, start: [x, y], bbox: [x0, y0, x1, y1] }.
+  // Each piece starts with an absolute M, so it draws the same on its own as inside the
+  // original path; the rest of its commands are kept as they were.
+  function splitSubpaths(d) {
+    const cmds = parsePathCommands(d);
+    const out = [];
+    let x = 0, y = 0, sx = 0, sy = 0, piece = null;
+    function grow(px, py) {
+      const b = piece.bbox;
+      if (px < b[0]) b[0] = px; if (py < b[1]) b[1] = py;
+      if (px > b[2]) b[2] = px; if (py > b[3]) b[3] = py;
+    }
+    cmds.forEach(function (c) {
+      const lower = c.cmd.toLowerCase(), rel = c.cmd !== c.cmd.toUpperCase(), a = c.args;
+      if (lower === 'm') {
+        x = rel ? x + a[0] : a[0]; y = rel ? y + a[1] : a[1];
+        sx = x; sy = y;
+        piece = { parts: ['M' + fmt(x) + ' ' + fmt(y)], start: [x, y], bbox: [x, y, x, y] };
+        out.push(piece);
+        if (a.length > 2) {
+          piece.parts.push((rel ? 'l' : 'L') + a.slice(2).map(fmt).join(' '));
+          for (let i = 2; i < a.length; i += 2) { x = rel ? x + a[i] : a[i]; y = rel ? y + a[i + 1] : a[i + 1]; grow(x, y); }
+        }
+        return;
+      }
+      if (!piece) throw new Error('path data must start with a moveto');
+      piece.parts.push(c.cmd + a.map(fmt).join(' '));
+      if (lower === 'z') { x = sx; y = sy; return; }
+      const n = PATH_ARGS[lower];
+      for (let i = 0; i < a.length; i += n) {
+        const g = a.slice(i, i + n);
+        const ox = x, oy = y;
+        if (lower === 'h') { x = rel ? x + g[0] : g[0]; }
+        else if (lower === 'v') { y = rel ? y + g[0] : g[0]; }
+        else if (lower === 'a') { x = rel ? x + g[5] : g[5]; y = rel ? y + g[6] : g[6]; }
+        else {
+          for (let k = 0; k + 1 < n - 2; k += 2) grow(rel ? ox + g[k] : g[k], rel ? oy + g[k + 1] : g[k + 1]); // control points
+          x = rel ? x + g[n - 2] : g[n - 2]; y = rel ? y + g[n - 1] : g[n - 1];
+        }
+        grow(x, y);
+      }
+    });
+    return out.map(function (p) { return { d: p.parts.join(''), start: p.start, bbox: p.bbox }; });
+  }
+
+  // The index-th shape tag in state.svg (the order state.shapes follows).
+  function shapeMatch(svg, index) {
+    const re = new RegExp(SHAPE_RE.source, 'g');
+    let m, i = 0;
+    while ((m = re.exec(svg)) !== null) {
+      if (i === index) return m;
+      i += 1;
+    }
+    return null;
+  }
+
+  // Delete outline shape `shapeIndex` (the whole element) from the drawing.
+  function removeShape(state, shapeIndex) {
+    if (shapeIndex < 0 || shapeIndex >= state.shapes.length) throw new RangeError('shape index out of range');
+    if (state.shapes.length <= 1) throw new Error('cannot erase the last outline');
+    const m = shapeMatch(state.svg, shapeIndex);
+    let end = m.index + m[0].length;
+    if (!m[3]) { // <path ...> ... </path>: drop the closing tag too
+      const close = new RegExp('</' + m[1] + '\\s*>', 'g');
+      close.lastIndex = end;
+      const c = close.exec(state.svg);
+      if (c) end = c.index + c[0].length;
+    }
+    let start = m.index;
+    while (start > 0 && /[ \t]/.test(state.svg[start - 1])) start -= 1;
+    if (state.svg[start - 1] === '\n') start -= 1;
+    state.svg = state.svg.slice(0, start) + state.svg.slice(end);
+    state.shapes.splice(shapeIndex, 1);
+    return state;
+  }
+
+  // Erase pieces (indexes into splitSubpaths of its d) from outline shape `shapeIndex`.
+  // Erasing every piece, or erasing a shape that isn't a <path>, removes the whole shape.
+  function removeSubpaths(state, shapeIndex, pieces) {
+    if (shapeIndex < 0 || shapeIndex >= state.shapes.length) throw new RangeError('shape index out of range');
+    const m = shapeMatch(state.svg, shapeIndex);
+    if (m[1] !== 'path') return removeShape(state, shapeIndex);
+    const d = getAttr(m[2], 'd');
+    const all = d ? splitSubpaths(unescapeAttr(d)) : [];
+    const drop = new Set(pieces);
+    pieces.forEach(function (k) { if (!(k >= 0 && k < all.length)) throw new RangeError('piece index out of range'); });
+    const keep = all.filter(function (p, k) { return !drop.has(k); });
+    if (!keep.length) return removeShape(state, shapeIndex);
+    const attrs = setAttr(m[2], 'd', escapeAttr(keep.map(function (p) { return p.d; }).join(' ')));
+    state.svg = state.svg.slice(0, m.index) + '<' + m[1] + attrs + m[3] + '>' + state.svg.slice(m.index + m[0].length);
+    return state;
+  }
+
+  // The pieces of shape `shapeIndex`'s path data (empty for shapes that aren't paths).
+  function shapePieces(state, shapeIndex) {
+    const m = shapeMatch(state.svg, shapeIndex);
+    if (!m || m[1] !== 'path') return [];
+    const d = getAttr(m[2], 'd');
+    return d ? splitSubpaths(unescapeAttr(d)) : [];
+  }
+
   function exportManifest(state) {
     const counts = countBySlot(state);
     const fillCounts = countFillsBySlot(state);
@@ -305,6 +434,10 @@
     addFill: addFill,
     setFillSlot: setFillSlot,
     removeFill: removeFill,
+    splitSubpaths: splitSubpaths,
+    shapePieces: shapePieces,
+    removeSubpaths: removeSubpaths,
+    removeShape: removeShape,
     countFillsBySlot: countFillsBySlot,
     clone: clone,
     setSlot: setSlot,

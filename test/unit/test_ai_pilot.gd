@@ -2,7 +2,7 @@ extends GutTest
 ## AiPilot: an AI flying a player's own ship (the idle demo, "AI plays for
 ## me"). It steers the safest way toward its goal, shoots what's above it, uses
 ## its upgrades, spends exp and taps READY at refits, and picks a gate at forks.
-## The demo: a random ship with random upgrades in a random kind of level,
+## The demo: a random ship with random upgrades in the asteroid belt,
 ## starting over when it's shot down; idle on the title screen starts it and
 ## any press ends it.
 
@@ -301,19 +301,18 @@ func test_no_pilot_by_default() -> void:
 
 # --- Demo ----------------------------------------------------------------------------
 
-func test_demo_flies_a_random_ship_through_a_random_kind() -> void:
-	var kinds := {}
+func test_demo_flies_a_random_ship_through_the_asteroid_belt() -> void:
+	assert_true(LevelKinds.is_kind(game.DEMO_KIND))
+	assert_eq(game.DEMO_KIND, "asteroid_belt")
 	var ships := {}
 	for i in 12:
 		game.start_demo()
 		assert_true(game.demo)
-		assert_true(LevelKinds.is_kind(game.kind))
-		kinds[game.kind] = true
+		assert_eq(game.kind, game.DEMO_KIND, "always the asteroid belt")
 		var p: Node = game.get_node("Players/1")
 		assert_not_null(p.pilot)
 		ships[p.ship] = true
 		game.stop()
-	assert_gt(kinds.size(), 1, "kinds vary")
 	assert_gt(ships.size(), 1, "ships vary")
 
 

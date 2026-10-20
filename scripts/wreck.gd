@@ -48,6 +48,7 @@ var exploded := false
 var pod_name := ""  # its own escape pod, which it doesn't hit
 
 var fire_ramp := 0  # index into FIRE_RAMPS, rolled from the seed
+var explosion_set := 0  # index into SpriteEffect.EXPLOSIONS, rolled from the seed
 var breakoffs: Array[Dictionary] = []  # parts shed during the veer: {piece, time}
 
 var hull: Node2D  # holds one sprite per part
@@ -67,6 +68,7 @@ func setup(texture: Texture2D, base_scale: Vector2, fx_seed: int, parts: Array =
 	_rng.seed = fx_seed
 	_roll_motion(_rng)
 	fire_ramp = _rng.randi_range(0, FIRE_RAMPS.size() - 1)
+	explosion_set = _rng.randi_range(0, SpriteEffect.EXPLOSIONS.size() - 1)
 
 	_base_scale = base_scale
 	hull = Node2D.new()
@@ -79,6 +81,7 @@ func setup(texture: Texture2D, base_scale: Vector2, fx_seed: int, parts: Array =
 		sprite.position = part.offset
 		sprite.light_mask = Ships.LIGHT_MASK  # dimmed and lit like ships (no normal map)
 		hull.add_child(sprite)
+		DropShadow.attach(sprite)
 	_apply_hull_scale(1.0)
 	_roll_breakoffs(_rng, parts)
 
@@ -170,7 +173,7 @@ func explode() -> void:
 			var speed := _rng.randf_range(PIECE_SPEED.x, PIECE_SPEED.y) * _boom_size
 			_detach(piece, speed, velocity * 0.3)
 	# Painted blast at the blast point, sized by depth.
-	SpriteEffect.spawn(self, _boom_origin, SpriteEffect.explosion_frames(FIRE_RAMPS[fire_ramp]),
+	SpriteEffect.spawn(self, _boom_origin, SpriteEffect.explosion_frames(FIRE_RAMPS[fire_ramp], explosion_set),
 		BLAST_HEIGHT * _boom_size)
 	# Nearer blasts sound deeper and louder, farther ones higher and quieter.
 	explosion_sound.pitch_scale = clampf(1.0 / sqrt(_boom_size), 0.75, 1.4)
@@ -189,6 +192,7 @@ func _detach(piece: Sprite2D, speed: float, inherit: Vector2) -> void:
 	sprite.texture = piece.texture
 	sprite.light_mask = piece.light_mask
 	add_child(sprite)
+	DropShadow.attach(sprite)
 	sprite.global_transform = xf
 	var out := sprite.position - hull.position
 	var dir := out.normalized() if out.length() > 1.0 else Vector2.from_angle(_rng.randf() * TAU)

@@ -175,13 +175,40 @@ func test_game_has_subtractive_ship_shade() -> void:
 	var shade: Light2D = game.get_node("ShipShade")
 	assert_eq(shade.blend_mode, Light2D.BLEND_MODE_SUB)
 	assert_eq(shade.range_item_cull_mask, Ships.LIGHT_MASK)
-	assert_almost_eq(shade.energy, 0.55, 0.01, "ships sit at ~45% brightness")
+	assert_almost_eq(shade.energy, 0.7, 0.01, "ships sit at ~30% brightness out of the sun")
 	assert_false(shade.shadow_enabled)
 	# The shade must cover the whole arena plus the spawn/exit margins.
 	var half: Vector2 = shade.texture.get_size() * shade.texture_scale / 2.0
 	var covered := Rect2(shade.position - half, half * 2.0)
 	assert_true(covered.encloses(game.ARENA.grow(60)), "covers arena")
 	assert_gt(shade.height, 1000.0, "near-vertical so it subtracts evenly")
+
+
+func test_game_has_a_sun_up_and_left() -> void:
+	var game := _game()
+	var sun: PointLight2D = game.get_node("Sun")
+	assert_eq(sun.blend_mode, Light2D.BLEND_MODE_ADD)
+	assert_eq(sun.range_item_cull_mask, Ships.LIGHT_MASK, "lights ships only")
+	assert_false(sun.shadow_enabled)
+	var toward: Vector2 = (game.ARENA.get_center() - sun.position).normalized()
+	assert_almost_eq(toward, DropShadow.LIGHT_DIR, Vector2(0.001, 0.001), "shines the way shadows fall")
+	assert_lt(sun.position.x, 0.0, "left of the arena")
+	assert_lt(sun.position.y, 0.0, "above it")
+	var elevation: float = atan2(sun.height, sun.position.distance_to(game.ARENA.get_center()))
+	assert_between(elevation, deg_to_rad(20.0), deg_to_rad(60.0), "low enough to shade one side")
+	var half: Vector2 = sun.texture.get_size() * sun.texture_scale / 2.0
+	assert_true(Rect2(sun.position - half, half * 2.0).encloses(game.ARENA.grow(60)), "reaches the whole arena")
+
+
+func test_sun_lights_the_side_facing_it() -> void:
+	# A normal tilted toward the sun catches more of it than one tilted away.
+	var game := _game()
+	var sun: PointLight2D = game.get_node("Sun")
+	var at: Vector2 = game.ARENA.get_center()
+	var to_sun := Vector3(sun.position.x - at.x, sun.position.y - at.y, sun.height).normalized()
+	var facing := Vector3(-0.5, -0.5, 0.7).normalized()
+	var away := Vector3(0.5, 0.5, 0.7).normalized()
+	assert_gt(facing.dot(to_sun), away.dot(to_sun) + 0.5)
 
 
 func test_no_canvas_modulate() -> void:
@@ -201,7 +228,7 @@ func test_ship_lights_only_target_the_ship_bit() -> void:
 	var bullet: Area2D = BulletScene.instantiate()
 	game.get_node("Bullets").add_child(bullet)
 	var lights := _ship_lights(game)
-	assert_eq(lights.size(), 2, "shade + bullet light")
+	assert_eq(lights.size(), 3, "shade + sun + bullet light")
 	for light in lights:
 		assert_eq(light.range_item_cull_mask, Ships.LIGHT_MASK, str(light.get_path()))
 		for path in ["Background", "Starfield"]:

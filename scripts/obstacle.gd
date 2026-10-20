@@ -8,7 +8,9 @@ extends Area2D
 ## a girder or hull run of any length.
 ##
 ## Art: assets/obstacles/<piece id>.png or .svg, drawn at the piece's size.
-## Until a piece has art, its outline is drawn with its id on it.
+## Until a piece has art, its outline is drawn with its id on it. A piece with a
+## <piece id>_normal.png beside its art (tools/bake_asteroid_normals.gd) is lit
+## like the ships (lit_art, Ships.LIGHT_MASK): shaded by the sun, dimmed out of it.
 ##
 ## Solid to players: Game.resolve_obstacles pushes ships out (the owner does
 ## this for its own ship), and a ship pinned against the bottom of the screen is
@@ -160,6 +162,31 @@ static func art(id: String) -> Texture2D:
 	return null
 
 
+static var _lit := {}  # piece id -> CanvasTexture
+
+
+## Piece `id`'s normal map, or null if it has none.
+static func normal_art(id: String) -> Texture2D:
+	var path := ART_DIR + id + "_normal.png"
+	return load(path) if ResourceLoader.exists(path) else null
+
+
+## Piece `id`'s art with its normal map (a CanvasTexture, shared), or the plain art if it
+## has no normal map; null without art.
+static func lit_art(id: String) -> Texture2D:
+	if _lit.has(id):
+		return _lit[id]
+	var tex := art(id)
+	var normal := normal_art(id)
+	if tex and normal:
+		var lit := CanvasTexture.new()
+		lit.diffuse_texture = tex
+		lit.normal_texture = normal
+		_lit[id] = lit
+		return lit
+	return tex
+
+
 # --- Node -----------------------------------------------------------------------
 
 func _ready() -> void:
@@ -188,14 +215,17 @@ func _ready() -> void:
 			shape.shape.size = pp.size
 		shape.position = part.offset
 		add_child(shape)
-		var tex := art(part.piece)
+		var tex := lit_art(part.piece)
 		if tex:
 			var s := Sprite2D.new()
 			s.texture = tex
 			s.scale = pp.size / tex.get_size()
 			s.position = part.offset
 			s.flip_h = mirror
+			if tex is CanvasTexture:
+				s.light_mask = Ships.LIGHT_MASK  # lit by the sun and dimmed like the ships
 			add_child(s)
+			DropShadow.attach(s, DropShadow.OBSTACLE_HEIGHT)
 	area_entered.connect(_on_area_entered)
 
 
@@ -274,7 +304,8 @@ func flash() -> void:
 ## `effects` since the obstacle itself is freed.
 func burst(effects: Node) -> void:
 	var size: Vector2 = piece(piece_id).get("size", Vector2(32, 32))
-	SpriteEffect.spawn(effects, position, SpriteEffect.explosion_frames(WreckScript.FIRE_RAMPS[1]), size.y * 1.2)
+	SpriteEffect.spawn(effects, position,
+		SpriteEffect.explosion_frames(WreckScript.FIRE_RAMPS[1], SpriteEffect.random_set(hash(String(name)))), size.y * 1.2)
 
 
 ## Every peer removes a bullet that hits; only the shooter's copy reports it.

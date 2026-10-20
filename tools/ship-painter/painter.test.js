@@ -307,3 +307,89 @@ test('parseShip: slotByColor on outlined multi-color art keeps its colors', () =
   const after = out.match(/fill="#[0-9a-f]{6}"/g);
   assert.deepEqual(after, before);
 });
+
+// --- erasing outlines -------------------------------------------------------------
+
+const PIECES = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+<g transform="translate(0,100) scale(0.1,-0.1)">
+<path d="M100 100 l200 0 0 200 -200 0 z m50 50 l0 100 100 0 0 -100 z M600 600 c10 0 20 10 20 20 l-20 0 z"/>
+<path d="M800 800 l50 0 0 50 z"/>
+</g>
+</svg>
+`;
+
+test('splitSubpaths: one standalone piece per subpath, absolute start, bbox', () => {
+  const p = P.splitSubpaths('M100 100 l200 0 0 200 -200 0 z m50 50 l0 100 100 0 0 -100 z M600 600 c10 0 20 10 20 20 l-20 0 z');
+  assert.equal(p.length, 3);
+  assert.deepEqual(p.map((x) => x.start), [[100, 100], [150, 150], [600, 600]]);
+  assert.equal(p[1].d, 'M150 150l0 100 100 0 0 -100z', 'relative m after z starts from the closed subpath');
+  assert.deepEqual(p[0].bbox, [100, 100, 300, 300]);
+  assert.deepEqual(p[1].bbox, [150, 150, 250, 250]);
+  assert.deepEqual(p[2].bbox, [600, 600, 620, 620], 'control points count');
+});
+
+test('splitSubpaths: extra moveto pairs are linetos, relative or absolute', () => {
+  assert.equal(P.splitSubpaths('m10 10 5 0 0 5z')[0].d, 'M10 10l5 0 0 5z');
+  assert.equal(P.splitSubpaths('M10 10 15 10 15 15z')[0].d, 'M10 10L15 10 15 15z');
+});
+
+test('splitSubpaths: an unclosed subpath moves on from its last point', () => {
+  const p = P.splitSubpaths('M0 0 l10 0 m5 5 l1 1');
+  assert.deepEqual(p[1].start, [15, 5]);
+});
+
+test('splitSubpaths: H, V, S, Q, A and exponents track the pen', () => {
+  const p = P.splitSubpaths('M0 0 H10 v10 s5 5 10 0 q0 5 5 5 a5 5 0 0 1 10 0 L1e1 0 z m1 1 l1 0z');
+  assert.deepEqual(p[1].start, [1, 1], 'after z the pen is back at 0 0');
+  assert.deepEqual(p[0].bbox, [0, 0, 35, 15]);
+});
+
+test('splitSubpaths: rejects bad data', () => {
+  assert.throws(() => P.splitSubpaths('10 10'));
+  assert.throws(() => P.splitSubpaths('M10'));
+  assert.throws(() => P.splitSubpaths('l10 10'));
+});
+
+test('splitSubpaths: pieces joined back draw the same points', () => {
+  const d = 'M100 100 l200 0 0 200 -200 0 z m50 50 l0 100 100 0 0 -100 z';
+  const again = P.splitSubpaths(P.splitSubpaths(d).map((x) => x.d).join(' '));
+  assert.deepEqual(again.map((x) => [x.start, x.bbox]), P.splitSubpaths(d).map((x) => [x.start, x.bbox]));
+});
+
+test('removeSubpaths erases pieces and keeps the rest drawn the same', () => {
+  const s = P.parseShip(PIECES, 'pieces.svg');
+  P.removeSubpaths(s, 0, [2]);
+  const left = P.shapePieces(s, 0);
+  assert.deepEqual(left.map((x) => x.start), [[100, 100], [150, 150]]);
+  assert.equal(s.shapes.length, 2);
+  const again = P.parseShip(P.exportSvg(s), 'pieces.svg');
+  assert.equal(again.shapes.length, 2, 'export still parses');
+  assert.deepEqual(P.shapePieces(again, 1).map((x) => x.start), [[800, 800]], 'other shape untouched');
+});
+
+test('removeSubpaths: erasing every piece removes the shape', () => {
+  const s = P.parseShip(PIECES, 'pieces.svg');
+  P.removeSubpaths(s, 1, [0]);
+  assert.equal(s.shapes.length, 1);
+  assert.equal((s.svg.match(/<path/g) || []).length, 1);
+  assert.throws(() => P.removeSubpaths(s, 0, [7]), RangeError);
+});
+
+test('removeShape removes non-path shapes and keeps slots of the others', () => {
+  const s = painted(); // shapes: path (slot 1), path (slot 2), rect
+  P.removeShape(s, 0);
+  assert.deepEqual(s.shapes.map((x) => x.slot), [2, 1]);
+  P.removeSubpaths(s, 1, []); // the rect has no pieces: goes whole
+  assert.equal(s.shapes.length, 1);
+  assert.ok(!/<rect/.test(s.svg));
+  assert.throws(() => P.removeShape(s, 0), /last outline/);
+  const out = P.exportSvg(s);
+  assert.equal(P.parseShip(out, 'x.svg').shapes[0].slot, 2);
+});
+
+test('removeShape drops a paired closing tag', () => {
+  const s = P.parseShip('<svg viewBox="0 0 10 10"><path d="M0 0h1v1z"><title>a</title></path>\n  <path d="M5 5h1v1z"/></svg>', 'x.svg');
+  P.removeShape(s, 0);
+  assert.ok(!/<title>|<\/path>/.test(s.svg), s.svg);
+  assert.equal(s.shapes.length, 1);
+});

@@ -1,6 +1,7 @@
 extends "res://scripts/scenery/scenery.gd"
 ## Asteroid Belt: dense drifting rocks. Behind the action, distant dim rocks
-## and dust drift down in slow parallax (cosmetic). Hazards (host only, as
+## (the asteroid art as flat silhouettes, one color each) and dust drift down
+## in slow parallax (cosmetic). Hazards (host only, as
 ## obstacle events everyone sees): a medium asteroid shot apart breaks into two
 ## small ones, and every SHOWER_INTERVAL a rock shower of small asteroids falls
 ## in (lanes from `roll`). The boss hurls rocks: a wide arc of shots, and every
@@ -13,7 +14,8 @@ const FAR_ROCKS := 14  # distant lumpy rocks in the background
 const DUST := 40  # distant specks
 const FAR_SPEED := Vector2(6.0, 22.0)  # px/s parallax range (slower = farther)
 const FAR_SIZE := Vector2(5.0, 18.0)  # px radius range of the distant rocks
-const ROCK_SIDES := 7  # corners of a distant rock's outline
+const ROCK_SIDES := 7  # corners of a distant rock's outline (when there's no asteroid art)
+const FAR_PIECES: Array[String] = ["asteroid_s", "asteroid_m", "asteroid_l"]  # art for distant rocks
 const FAR_COLOR := Color(0.32, 0.25, 0.2, 0.35)  # dimmest; nearer ones are lighter
 const NEAR_COLOR := Color(0.5, 0.4, 0.3, 0.5)
 const DUST_COLOR := Color(0.75, 0.62, 0.48, 0.25)
@@ -46,6 +48,7 @@ var _far_pos := PackedVector2Array()  # start positions
 var _far_speed := PackedFloat32Array()
 var _far_size := PackedFloat32Array()
 var _far_spin := PackedFloat32Array()
+var _far_art: Array[Texture2D] = []  # per distant rock: its silhouette, or null (polygon)
 var _rock_shape := PackedVector2Array()  # unit outline shared by distant rocks
 var _dust_pos := PackedVector2Array()
 var _dust_speed := PackedFloat32Array()
@@ -63,12 +66,38 @@ func _ready() -> void:
 		_far_speed.append(lerpf(FAR_SPEED.x, FAR_SPEED.y, depth))
 		_far_size.append(lerpf(FAR_SIZE.x, FAR_SIZE.y, depth))
 		_far_spin.append(rng.randf_range(-0.4, 0.4))
+		_far_art.append(silhouette(FAR_PIECES[rng.randi_range(0, FAR_PIECES.size() - 1)]))
 	for i in ROCK_SIDES:
 		var a := TAU * i / ROCK_SIDES
 		_rock_shape.append(Vector2(cos(a), sin(a)) * rng.randf_range(0.7, 1.0))
 	for i in DUST:
 		_dust_pos.append(Vector2(rng.randf() * ARENA_SIZE.x, rng.randf() * ARENA_SIZE.y))
 		_dust_speed.append(rng.randf_range(FAR_SPEED.x, FAR_SPEED.y) * 0.6)
+
+
+static var _silhouettes := {}  # piece id -> Texture2D (or null without art)
+
+
+## Piece `id`'s asteroid art as a flat white silhouette (its alpha kept), to be
+## drawn in one color; null if the piece has no art. Built once per piece.
+static func silhouette(id: String) -> Texture2D:
+	if _silhouettes.has(id):
+		return _silhouettes[id]
+	var tex: Texture2D = ObstacleScript.art(id)
+	var out: Texture2D = null
+	if tex:
+		var img := tex.get_image()
+		if img:
+			img = img.duplicate()
+			if img.is_compressed():
+				img.decompress()
+			img.convert(Image.FORMAT_RGBA8)
+			for y in img.get_height():
+				for x in img.get_width():
+					img.set_pixel(x, y, Color(1, 1, 1, img.get_pixel(x, y).a))
+			out = ImageTexture.create_from_image(img)
+	_silhouettes[id] = out
+	return out
 
 
 func step(_delta: float) -> void:
@@ -150,6 +179,13 @@ func _draw() -> void:
 	for i in _far_pos.size():
 		var depth := inverse_lerp(FAR_SPEED.x, FAR_SPEED.y, _far_speed[i])
 		var at := Vector2(_far_pos[i].x, fposmod(_far_pos[i].y + _far_speed[i] * time, h) - WRAP)
-		draw_set_transform(at, _far_spin[i] * time, Vector2.ONE * _far_size[i])
-		draw_colored_polygon(_rock_shape, FAR_COLOR.lerp(NEAR_COLOR, depth))
+		var color := FAR_COLOR.lerp(NEAR_COLOR, depth)
+		var art: Texture2D = _far_art[i] if i < _far_art.size() else null
+		if art:
+			draw_set_transform(at, _far_spin[i] * time)
+			var r := _far_size[i]
+			draw_texture_rect(art, Rect2(-r, -r, r * 2.0, r * 2.0), false, color)
+		else:
+			draw_set_transform(at, _far_spin[i] * time, Vector2.ONE * _far_size[i])
+			draw_colored_polygon(_rock_shape, color)
 	draw_set_transform(Vector2.ZERO)

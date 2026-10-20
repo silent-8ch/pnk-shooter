@@ -191,6 +191,19 @@ func test_outline_placeholder_until_art_exists() -> void:
 	pass_test("drew outlines without errors")
 
 
+func test_asteroids_have_drawn_art() -> void:
+	for id in ["asteroid_s", "asteroid_m", "asteroid_l"]:
+		var tex := ObstacleScript.art(id)
+		assert_not_null(tex, id + " has art")
+		assert_eq(tex.get_width(), tex.get_height(), id + " is square")
+		var size: Vector2 = ObstacleScript.piece(id).size
+		assert_gte(tex.get_width(), int(size.x), id + " is drawn at least at its size")
+		var o := _obstacle(id, Vector2(270, 300))
+		var sprites := o.find_children("*", "Sprite2D", false, false)
+		assert_eq(sprites.size(), 1, id + " shows its art")
+		assert_almost_eq(sprites[0].texture.get_width() * sprites[0].scale.x, size.x, 0.01, id + " scaled to its size")
+
+
 func test_spawn_rejects_bad_data() -> void:
 	game.spawn_obstacle({"name": "Bogus", "piece": "girder", "x": 0, "y": 0})
 	game.spawn_obstacle({"name": "Obstacle99", "piece": "girder_end_l", "x": 0, "y": 0})
@@ -280,3 +293,10 @@ func test_a_plain_one_drops_nothing() -> void:
 		game.report_obstacle_hit(n, 1.0)
 	assert_true(o.is_queued_for_deletion(), "broken")
 	assert_eq(game.get_node("Pickups").get_child_count(), 0)
+
+
+func test_asteroid_sprites_sit_on_the_ship_light_bit() -> void:
+	var o := _obstacle("asteroid_l", Vector2(270, 300))
+	var s: Sprite2D = o.find_children("*", "Sprite2D", false, false)[0]
+	assert_is(s.texture, CanvasTexture, "has its normal map")
+	assert_eq(s.light_mask, Ships.LIGHT_MASK, "the sun and the shade reach it")

@@ -21,7 +21,9 @@ extends Node2D
 ## next stage starts, refits and forks alike (between_levels).
 ##
 ## Lighting: ship bodies sit on Ships.LIGHT_MASK. ShipShade (a SUB PointLight2D covering the
-## arena, very high so it subtracts evenly) dims them to ~45%; bullet lights add color back.
+## arena, very high so it subtracts evenly) dims them to ~30%; the Sun (DropShadow.make_sun,
+## far up and left) lights the side of each normal-mapped ship that faces it, and bullet
+## lights add color back. Shadows fall the other way (DropShadow).
 ## Not a DirectionalLight2D: the Compatibility renderer ignores its range_item_cull_mask and
 ## would darken everything. Not CanvasModulate either, for the same reason.
 
@@ -50,6 +52,7 @@ const SpriteEffect := preload("res://scripts/sprite_effect.gd")
 const ARENA := Rect2(0, 0, 540, 960)
 const DEMO_RESTART := 2.5  # s after the demo's ship goes down before a new demo
 const DEMO_UPGRADES := Vector2i(3, 14)  # free upgrade levels a demo ship starts with
+const DEMO_KIND := "asteroid_belt"  # the kind of level the demo always flies through
 const BOSS_KILLS := 30  # kills before the first boss ...
 const BOSS_KILLS_STEP := 10  # ... and this many more each stage
 const BOSS_ADD_INTERVAL := 8.0  # s between small groups during a boss fight
@@ -131,7 +134,7 @@ signal run_ended  # the results were up for RESULTS_TIME; the host starts the ne
 var active := false
 var rival_chance := RIVAL_CHANCE  # tests that count a level's enemies switch rivals off
 var resume := {}  # host: a saved run (SaveGame) to pick up when start() runs
-var demo := false  # the title screen's idle demo: an AI flies a random ship through a random kind of level
+var demo := false  # the title screen's idle demo: an AI flies a random ship through DEMO_KIND
 var _demo_dead := 0.0  # s the demo's ship has been down
 var input_enabled := true  # false while the pause menu is open
 var _enemy_timer := 0.0
@@ -158,14 +161,16 @@ var ready_peers := {1: true}
 
 
 func _ready() -> void:
+	add_child(DropShadow.make_sun(ARENA.get_center()))
+	move_child($Sun, $ShipShade.get_index() + 1)
 	multiplayer.peer_disconnected.connect(_on_peer_disconnected)
 	hud.visible = false
 	pointer_controls.visible = false
 
 
 ## The idle demo (offline): a random ship with random upgrades, flown by an
-## AiPilot through a random kind of level. When it's shot down the demo starts
-## over with a new ship and kind (DEMO_RESTART s later); no high scores.
+## AiPilot through DEMO_KIND. When it's shot down the demo starts over with a
+## new ship (DEMO_RESTART s later); no high scores.
 func start_demo() -> void:
 	demo = true
 	start()
@@ -179,7 +184,8 @@ func _restart_demo() -> void:
 func start() -> void:
 	Ships.prewarm_enemy_parts()  # avoid a hitch on the first kill
 	for ramp in WreckScript.FIRE_RAMPS:
-		SpriteEffect.explosion_frames(ramp)  # recolor the painted explosion once per ramp
+		for s in SpriteEffect.EXPLOSIONS.size():
+			SpriteEffect.explosion_frames(ramp, s)  # recolor each painted explosion once per ramp
 	PickupScript.warm()  # render the pickup's palette cycle up front
 	_rng.randomize()
 	fun_time.reset()
@@ -189,8 +195,7 @@ func start() -> void:
 	best_untouched = 0
 	kind = LevelKinds.FIRST
 	if demo:
-		var kinds: Array = LevelKinds.KINDS.keys()
-		kind = kinds[_rng.randi_range(0, kinds.size() - 1)]
+		kind = DEMO_KIND
 	level = LevelKinds.load_level(kind)
 	_demo_dead = 0.0
 	_close_fork()
@@ -1284,7 +1289,8 @@ func _send_cleanup_bots() -> void:
 ## Drone owner -> everyone: one of its rescue drones was destroyed at `at`.
 @rpc("any_peer", "call_local", "reliable")
 func drone_destroyed(at: Vector2) -> void:
-	SpriteEffect.spawn(effects, at, SpriteEffect.explosion_frames(WreckScript.FIRE_RAMPS[0]), PodScript.BURST_HEIGHT)
+	SpriteEffect.spawn(effects, at, SpriteEffect.explosion_frames(WreckScript.FIRE_RAMPS[0], SpriteEffect.random_set(hash(at))),
+		PodScript.BURST_HEIGHT)
 	var sound := AudioStreamPlayer.new()
 	sound.stream = PodScript.BURST_SOUND
 	sound.volume_db = -10.0

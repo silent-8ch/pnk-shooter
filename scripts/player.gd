@@ -228,6 +228,7 @@ func _ready() -> void:
 	body.texture = Ships.get_lit_texture(ship, palette)
 	body.scale = Ships.get_scale(ship, palette)
 	body.light_mask = Ships.LIGHT_MASK
+	DropShadow.attach(body)
 	Ships.apply_hitbox(self, ship, body)
 	area_entered.connect(_on_area_entered)
 	var jets := Thrusters.new()  # flare as it changes course

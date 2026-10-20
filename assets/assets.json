@@ -33,6 +33,46 @@
         "Slot 2"
       ]
     },
+    "assets/effects/explosion2_00.svg": {
+      "strategy": "palette",
+      "role": "fx",
+      "slots": [
+        "Slot 1",
+        "Slot 2",
+        "Slot 3",
+        "Slot 4"
+      ]
+    },
+    "assets/effects/explosion2_01.svg": {
+      "strategy": "palette",
+      "role": "fx",
+      "slots": [
+        "Slot 1",
+        "Slot 2",
+        "Slot 3",
+        "Slot 4"
+      ]
+    },
+    "assets/effects/explosion2_02.svg": {
+      "strategy": "palette",
+      "role": "fx",
+      "slots": [
+        "Slot 1",
+        "Slot 2",
+        "Slot 3",
+        "Slot 4"
+      ]
+    },
+    "assets/effects/explosion2_03.svg": {
+      "strategy": "palette",
+      "role": "fx",
+      "slots": [
+        "Slot 1",
+        "Slot 2",
+        "Slot 3",
+        "Slot 4"
+      ]
+    },
     "assets/effects/explosion_00.svg": {
       "strategy": "palette",
       "role": "fx",
@@ -119,6 +159,36 @@
         "Slot 4",
         "Slot 5",
         "Slot 6"
+      ]
+    },
+    "assets/obstacles/asteroid_l.svg": {
+      "strategy": "palette",
+      "role": "obstacle",
+      "slots": [
+        "Outline",
+        "Rock",
+        "Craters",
+        "Slot 4"
+      ]
+    },
+    "assets/obstacles/asteroid_m.svg": {
+      "strategy": "palette",
+      "role": "obstacle",
+      "slots": [
+        "Outline",
+        "Rock",
+        "Craters",
+        "Slot 4"
+      ]
+    },
+    "assets/obstacles/asteroid_s.svg": {
+      "strategy": "palette",
+      "role": "obstacle",
+      "slots": [
+        "Outline",
+        "Rock",
+        "Craters",
+        "Slot 4"
       ]
     },
     "assets/ship01.svg": {

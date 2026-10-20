@@ -269,7 +269,8 @@ func _on_area_entered(area: Area2D) -> void:
 ## Blows up with a very small explosion (every peer, from Game.destroy_pod).
 ## The effect goes in `effects` since the pod itself is freed.
 func burst(effects: Node) -> void:
-	SpriteEffect.spawn(effects, position, SpriteEffect.explosion_frames(WreckScript.FIRE_RAMPS[0]), BURST_HEIGHT)
+	SpriteEffect.spawn(effects, position,
+		SpriteEffect.explosion_frames(WreckScript.FIRE_RAMPS[0], SpriteEffect.random_set(hash(String(name)))), BURST_HEIGHT)
 	var sound := AudioStreamPlayer.new()
 	sound.stream = BURST_SOUND
 	sound.volume_db = -10.0

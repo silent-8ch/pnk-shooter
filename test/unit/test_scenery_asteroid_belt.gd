@@ -147,3 +147,24 @@ func test_draws_without_errors() -> void:
 	s.time = 37.0
 	await wait_process_frames(2)
 	assert_gt(s.time, 37.0)
+
+
+func test_distant_rocks_are_flat_asteroid_silhouettes() -> void:
+	for id in BeltScript.FAR_PIECES:
+		var tex: Texture2D = BeltScript.silhouette(id)
+		assert_not_null(tex, id + " has a silhouette")
+		assert_same(tex, BeltScript.silhouette(id), "built once")
+		var img := tex.get_image()
+		var solid := 0
+		for y in range(0, img.get_height(), 4):
+			for x in range(0, img.get_width(), 4):
+				var c := img.get_pixel(x, y)
+				if c.a > 0.0:
+					solid += 1
+					assert_eq(Color(c.r, c.g, c.b), Color.WHITE, "one flat color")
+		assert_gt(solid, 0, id + " isn't empty")
+	var s := _belt()
+	assert_eq(s._far_art.size(), BeltScript.FAR_ROCKS)
+	for art in s._far_art:
+		assert_not_null(art, "every distant rock uses asteroid art")
+	assert_null(BeltScript.silhouette("girder"), "no art, no silhouette")

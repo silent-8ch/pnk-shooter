@@ -47,6 +47,14 @@ func test_rolls_within_ranges() -> void:
 		var r: Vector2 = WreckScript.GROW_RANGE if grows else WreckScript.SHRINK_RANGE
 		assert_between(w.end_scale, r.x, r.y)
 		assert_between(w.fire_ramp, 0, WreckScript.FIRE_RAMPS.size() - 1)
+		assert_between(w.explosion_set, 0, WreckScript.SpriteEffect.EXPLOSIONS.size() - 1)
+
+
+func test_explosion_set_varies_by_seed() -> void:
+	var seen := {}
+	for s in 30:
+		seen[_wreck(s).explosion_set] = true
+	assert_eq(seen.size(), WreckScript.SpriteEffect.EXPLOSIONS.size())
 
 
 func test_both_grow_and_shrink_happen() -> void:
@@ -194,7 +202,7 @@ func test_sprite_blast_plays_at_explosion_point_scaled_by_depth() -> void:
 	assert_eq(blasts.size(), 1)
 	var boom: AnimatedSprite2D = blasts[0]
 	assert_eq(boom.position, w.hull.position)
-	var frames_now := WreckScript.SpriteEffect.explosion_frames(WreckScript.FIRE_RAMPS[w.fire_ramp])
+	var frames_now := WreckScript.SpriteEffect.explosion_frames(WreckScript.FIRE_RAMPS[w.fire_ramp], w.explosion_set)
 	assert_same(boom.sprite_frames, frames_now)
 	var h := WreckScript.SpriteEffect.frame_height(frames_now)
 	assert_almost_eq(boom.scale.x, WreckScript.BLAST_HEIGHT * w.end_scale / h, 0.0001)

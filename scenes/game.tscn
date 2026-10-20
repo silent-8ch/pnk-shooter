@@ -58,7 +58,7 @@ script = ExtResource("2")
 [node name="ShipShade" type="PointLight2D" parent="."]
 position = Vector2(270, 480)
 blend_mode = 1
-energy = 0.55
+energy = 0.7
 range_item_cull_mask = 2
 texture = SubResource("GradientTexture2D_shade")
 texture_scale = 80.0

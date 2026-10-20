@@ -9,6 +9,10 @@ Each frame is available as SVG and transparent PNG. Explosion frames use a share
 
 Use `explosion.tres` or `bullet.tres` with Godot AnimatedSprite2D. Both play at 12 FPS; the bullet loops and the explosion plays once. Adjust playback speed as needed. The resources use the SVG frames.
 
+## explosion2
+
+A second explosion set, drawn on drawing sheet 64 (page 5 of `tools/ship-painter/sheet.js`), scanned as `Scan 6.jpeg`, read into per-frame PGMs with `sheet.js read`, combined into one image and traced by hand into one SVG (`scan6/ZPygX01.svg`). Each frame `explosion2_00`–`explosion2_03` is that whole trace cropped to its sheet cell (a shared 150 × 205 canvas, 3.66 px per game px, the cell's center at (75, 102.5)), with fills added under the outline by `scan.js --svg`: slot 1 outline, slot 2 the silhouette, slot 3 the areas inside. `explosion2.tres` plays once at 12 FPS. `SpriteEffect.EXPLOSIONS` holds both sets and every explosion picks one at random.
+
 ## william
 
 Cut from the 4 frames stacked top to bottom in `william.svg` (repo root) as `william_00`–`william_03`. Frames use a shared 456 × 272 canvas with each sprite centered, at the sheet's 1:1 scale. Stray tracing marks between frames were removed. The frames are unpainted line art (`unassigned` in `assets/assets.json`) until they're painted in the Ship Painter. `william.tres` plays once at 12 FPS. Nothing in the game uses it yet.

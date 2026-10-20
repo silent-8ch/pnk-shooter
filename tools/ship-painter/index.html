@@ -84,6 +84,8 @@
   #canvas.isolate :is([data-idx],[data-fidx]):not(.in-slot) { opacity: .15; }
   #canvas.numbers :is([data-idx],[data-fidx]) { fill: var(--slot-tint) !important; }
   #canvas[data-tool="erase"] [data-fidx]:hover { stroke: var(--danger); }
+  #canvas[data-tool="erase"] [data-idx] { cursor: pointer; }
+  #overlay .erase-preview { pointer-events: none; }
   #canvas.hide-fills [data-layer="fills"] { display: none; }
   #canvas.hide-outlines [data-idx] { opacity: 0; }
   #overlay * { pointer-events: none; }
@@ -147,7 +149,7 @@
       <button data-tool="bucket" title="Fill an enclosed area under the outlines">Bucket<small>F</small></button>
       <button data-tool="polygon" title="Click points to draw a fill shape">Polygon<small>P</small></button>
       <button data-tool="brush" title="Drag to paint a fill shape">Brush<small>B</small></button>
-      <button data-tool="erase" title="Click a fill to delete it">Erase<small>E</small></button>
+      <button data-tool="erase" title="Click a fill or a piece of outline to delete it">Erase<small>E</small></button>
       <button data-tool="thrusters" disabled title="Place and aim thrusters (library assets with role ship)">Thrust<small>T</small></button>
     </div>
     <p class="tool-hint" id="toolHint"></p>
@@ -271,7 +273,7 @@
     bucket: 'Click inside an enclosed area to fill it under the outlines. Raise gap close if it leaks.',
     polygon: 'Click to add points. Click the first point, double-click or press Enter to close. Esc cancels, Backspace undoes a point.',
     brush: 'Drag to paint a fill shape in the active slot.',
-    erase: 'Click a fill to delete it.',
+    erase: 'Click a fill to delete it, or a piece of outline to erase that piece (with anything inside it). Hover shows what goes.',
     thrusters: 'Click the ship to add a thruster (the first is the main booster). Drag from a marker to aim its flame. Delete removes the selected one.',
   };
 
@@ -291,6 +293,9 @@
   let selectedPath = null;
   let thrusterSel = -1;   // selected index in state.thrusters
   let aiming = null;      // thruster drag: { i, before }
+  let eraseHover = null;  // outline pieces the Erase tool would remove: { shape, drop, d, matrix }
+  let piecesCache = null; // { svg, shape, pieces, paths }
+  const hitCtx = document.createElement('canvas').getContext('2d');
 
   function snapshot() { return P.clone(state); }
 
@@ -396,6 +401,10 @@
       overlay.append(line);
     }
     if (tool === 'thrusters' && state && state.thrusters) drawThrusters(overlay, scale);
+    if (tool === 'erase' && eraseHover) {
+      overlay.append(svgEl('path', { d: eraseHover.d, transform: eraseHover.matrix, class: 'erase-preview',
+        fill: '#ff4b4b', 'fill-opacity': 0.55, stroke: '#ff4b4b', 'stroke-width': 2, 'vector-effect': 'non-scaling-stroke' }));
+    }
   }
 
   function svgEl(tag, attrs) {
@@ -437,8 +446,12 @@
   function renderShapeList() {
     $('shapes').replaceChildren(...state.shapes.map((s, i) => {
       const b = swatchButton('#' + i, s.slot,
-        'Outline ' + i + ' is in slot ' + s.slot + '. Click to assign slot ' + active + '.',
-        () => { if (s.slot !== active) commit(() => P.setSlot(state, i, active)); },
+        'Outline ' + i + ' is in slot ' + s.slot + '. Click to ' +
+          (tool === 'erase' ? 'erase the whole outline (Erase tool).' : 'assign slot ' + active + '.'),
+        () => {
+          if (tool === 'erase') commit(() => P.removeShape(state, i));
+          else if (s.slot !== active) commit(() => P.setSlot(state, i, active));
+        },
         '[data-idx="' + i + '"]');
       if (s.locked) {
         b.disabled = true;
@@ -594,7 +607,7 @@
   function setTool(t) {
     if (!HINTS[t] || (t === 'thrusters' && !thrusterAllowed())) return;
     tool = t;
-    poly = []; brushPts = null; aiming = null;
+    poly = []; brushPts = null; aiming = null; eraseHover = null;
     $('canvas').dataset.tool = t;
     document.querySelectorAll('#tools button').forEach((b) => b.classList.toggle('on', b.dataset.tool === t));
     $('toolHint').textContent = HINTS[t];
@@ -788,10 +801,71 @@
     paintCanvas();
   }
 
+  // The pieces of outline `shape` (cached until the drawing changes), each as a Path2D.
+  function piecesOf(shape) {
+    if (!piecesCache || piecesCache.svg !== state.svg || piecesCache.shape !== shape) {
+      const pieces = P.shapePieces(state, shape);
+      piecesCache = { svg: state.svg, shape: shape, pieces: pieces, paths: pieces.map((p) => new Path2D(p.d)) };
+    }
+    return piecesCache;
+  }
+
+  // What the Erase tool takes at the pointer from outline `shape`: the smallest piece under it
+  // plus every piece that starts inside that one (its holes and anything drawn in them).
+  // drop is empty for a shape that isn't a path (it goes whole); null if no piece is hit.
+  function erasePieces(e, shape) {
+    const el = $('canvas').querySelector('[data-idx="' + shape + '"]');
+    if (!el) return null;
+    const c = piecesOf(shape);
+    if (!c.pieces.length) return { el: el, drop: [], d: '' };
+    const pt = new DOMPoint(e.clientX, e.clientY).matrixTransform(el.getScreenCTM().inverse());
+    let hit = -1, best = Infinity;
+    c.pieces.forEach((p, k) => {
+      if (!hitCtx.isPointInPath(c.paths[k], pt.x, pt.y)) return;
+      const area = (p.bbox[2] - p.bbox[0]) * (p.bbox[3] - p.bbox[1]);
+      if (area < best) { best = area; hit = k; }
+    });
+    if (hit < 0) return null;
+    const drop = [hit];
+    c.pieces.forEach((p, k) => { if (k !== hit && hitCtx.isPointInPath(c.paths[hit], p.start[0], p.start[1])) drop.push(k); });
+    return { el: el, drop: drop, d: drop.map((k) => c.pieces[k].d).join(' ') };
+  }
+
+  function matrixAttr(m) { return 'matrix(' + [m.a, m.b, m.c, m.d, m.e, m.f].join(' ') + ')'; }
+
+  function hoverErase(e) {
+    const h = hitAt(e);
+    let next = null;
+    if (h && h.shape !== undefined) {
+      const r = erasePieces(e, h.shape);
+      if (r) {
+        const d = r.drop.length ? r.d : null;
+        const overlay = $('overlay');
+        next = { shape: h.shape, drop: r.drop, d: d || '', matrix: overlay && d
+          ? matrixAttr(overlay.getScreenCTM().inverse().multiply(r.el.getScreenCTM())) : '' };
+      }
+    }
+    const key = (o) => (o ? o.shape + ':' + o.drop.join(',') : '');
+    if (key(next) === key(eraseHover)) return;
+    eraseHover = next && next.d ? next : null;
+    drawOverlay();
+  }
+
+  function eraseAt(e) {
+    const h = hitAt(e);
+    if (!h) return;
+    if (h.fill !== undefined) { commit(() => P.removeFill(state, h.fill)); return; }
+    const r = erasePieces(e, h.shape);
+    if (!r) return;
+    eraseHover = null;
+    commit(() => (r.drop.length ? P.removeSubpaths(state, h.shape, r.drop) : P.removeShape(state, h.shape)));
+  }
+
   const canvas = $('canvas');
   canvas.addEventListener('pointerdown', (e) => {
     if (!state || e.button !== 0 || !rootSvg()) return;
     if (tool === 'thrusters') { thrusterDown(e); return; }
+    if (tool === 'erase' && !e.altKey) { eraseAt(e); return; } // geometry, not color: any strategy
     if (current && $('assetStrategy').value !== 'palette') { showError('Set the strategy to palette to paint this asset.'); return; }
     if (e.altKey) { const h = hitAt(e); if (h) setActive(slotOfHit(h)); return; }
     if (tool === 'paint') {
@@ -801,9 +875,6 @@
       paintAt(e);
     } else if (tool === 'bucket') {
       bucketAt(e);
-    } else if (tool === 'erase') {
-      const h = hitAt(e);
-      if (h && h.fill !== undefined) commit(() => P.removeFill(state, h.fill));
     } else if (tool === 'polygon') {
       const p = toVB(e);
       if (e.detail >= 2) { finishPolygon(); return; }
@@ -817,7 +888,9 @@
       drawOverlay();
     }
   });
+  canvas.addEventListener('pointerleave', () => { if (eraseHover) { eraseHover = null; drawOverlay(); } });
   canvas.addEventListener('pointermove', (e) => {
+    if (tool === 'erase' && state) { hoverErase(e); return; }
     if (aiming) thrusterMove(e);
     else if (painting) paintAt(e);
     else if (tool === 'brush' && brushPts) {
