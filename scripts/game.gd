@@ -21,9 +21,10 @@ extends Node2D
 ## next stage starts, refits and forks alike (between_levels).
 ##
 ## Lighting: ship bodies sit on Ships.LIGHT_MASK. ShipShade (a SUB PointLight2D covering the
-## arena, very high so it subtracts evenly) dims them to ~30%; the Sun (DropShadow.make_sun,
-## far up and left) lights the side of each normal-mapped ship that faces it, and bullet
-## lights add color back. Shadows fall the other way (DropShadow).
+## arena, very high so it subtracts evenly) dims them to ~30%; the Sun (Sun.make,
+## a spotlight in the ships' plane off the top-left corner) lights the side of each
+## normal-mapped ship that faces it, ships and obstacles shadow each other from it, and
+## bullet lights add color back. The background is never shaded.
 ## Not a DirectionalLight2D: the Compatibility renderer ignores its range_item_cull_mask and
 ## would darken everything. Not CanvasModulate either, for the same reason.
 
@@ -161,7 +162,7 @@ var ready_peers := {1: true}
 
 
 func _ready() -> void:
-	add_child(DropShadow.make_sun(ARENA.get_center()))
+	add_child(Sun.make(ARENA))
 	move_child($Sun, $ShipShade.get_index() + 1)
 	multiplayer.peer_disconnected.connect(_on_peer_disconnected)
 	hud.visible = false

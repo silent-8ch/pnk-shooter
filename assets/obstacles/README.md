@@ -57,3 +57,8 @@ The level designer and the game both read this file.
   (`scan7/LP4Hb01.svg`) and cut into one SVG per asteroid. Fills were added under the
   outline by `scan.js --svg` and colored by hand: slot 1 outline, slot 2 the rock,
   slot 3 the craters (`fixed` in `assets/assets.json`).
+- `solar_panel`, `reactor`, `ring_arc`: drawn on drawing sheet 48 (page 4), scanned as
+  `Scan 8.jpeg`, traced by hand into one SVG (`scan8/ux6qO01.svg`) and cut into one SVG
+  per piece, fills added by `scan.js --svg`. `ring_arc` was flipped to bow upward.
+  Slot 1 is the outline. Normal maps (`<id>_normal.png`) give them girth; rebake with
+  `Godot --headless -s tools/bake_station_normals.gd` after repainting.

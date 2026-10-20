@@ -191,6 +191,37 @@
         "Slot 4"
       ]
     },
+    "assets/obstacles/reactor.svg": {
+      "strategy": "palette",
+      "role": "obstacle",
+      "slots": [
+        "Outline",
+        "Slot 2",
+        "Slot 3",
+        "Slot 4",
+        "Slot 5"
+      ]
+    },
+    "assets/obstacles/ring_arc.svg": {
+      "strategy": "palette",
+      "role": "obstacle",
+      "slots": [
+        "Outline",
+        "Slot 2",
+        "Slot 3",
+        "Slot 4",
+        "Slot 5",
+        "Slot 6"
+      ]
+    },
+    "assets/obstacles/solar_panel.svg": {
+      "strategy": "palette",
+      "role": "obstacle",
+      "slots": [
+        "Outline",
+        "Slot 2"
+      ]
+    },
     "assets/ship01.svg": {
       "strategy": "palette",
       "role": "ship",

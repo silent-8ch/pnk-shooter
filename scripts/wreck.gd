@@ -81,7 +81,6 @@ func setup(texture: Texture2D, base_scale: Vector2, fx_seed: int, parts: Array =
 		sprite.position = part.offset
 		sprite.light_mask = Ships.LIGHT_MASK  # dimmed and lit like ships (no normal map)
 		hull.add_child(sprite)
-		DropShadow.attach(sprite)
 	_apply_hull_scale(1.0)
 	_roll_breakoffs(_rng, parts)
 
@@ -192,7 +191,6 @@ func _detach(piece: Sprite2D, speed: float, inherit: Vector2) -> void:
 	sprite.texture = piece.texture
 	sprite.light_mask = piece.light_mask
 	add_child(sprite)
-	DropShadow.attach(sprite)
 	sprite.global_transform = xf
 	var out := sprite.position - hull.position
 	var dir := out.normalized() if out.length() > 1.0 else Vector2.from_angle(_rng.randf() * TAU)

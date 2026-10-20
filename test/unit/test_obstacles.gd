@@ -204,6 +204,21 @@ func test_asteroids_have_drawn_art() -> void:
 		assert_almost_eq(sprites[0].texture.get_width() * sprites[0].scale.x, size.x, 0.01, id + " scaled to its size")
 
 
+func test_station_parts_have_drawn_art() -> void:
+	for id in ["solar_panel", "reactor", "ring_arc"]:
+		var tex := ObstacleScript.art(id)
+		assert_not_null(tex, id + " has art")
+		var size: Vector2 = ObstacleScript.piece(id).size
+		assert_almost_eq(tex.get_size().aspect(), size.aspect(), 0.02, id + " has its piece's shape")
+		assert_gte(tex.get_width(), int(size.x), id + " is drawn at least at its size")
+		var o := _obstacle(id, Vector2(270, 300))
+		var sprites := o.find_children("*", "Sprite2D", false, false)
+		assert_eq(sprites.size(), 1, id + " shows its art")
+		assert_almost_eq(sprites[0].texture.get_size() * sprites[0].scale, size, Vector2(0.01, 0.01), id + " scaled to its size")
+		assert_eq(sprites[0].find_children("*", "Sprite2D", false, false).size(), 0, id + " casts no shadow on the background")
+		assert_gt(sprites[0].find_children("*", "LightOccluder2D", false, false).size(), 0, id + " blocks the light")
+
+
 func test_spawn_rejects_bad_data() -> void:
 	game.spawn_obstacle({"name": "Bogus", "piece": "girder", "x": 0, "y": 0})
 	game.spawn_obstacle({"name": "Obstacle99", "piece": "girder_end_l", "x": 0, "y": 0})

@@ -225,7 +225,7 @@ func _ready() -> void:
 			if tex is CanvasTexture:
 				s.light_mask = Ships.LIGHT_MASK  # lit by the sun and dimmed like the ships
 			add_child(s)
-			DropShadow.attach(s, DropShadow.OBSTACLE_HEIGHT)
+			Sun.occlude(s)
 	area_entered.connect(_on_area_entered)
 
 

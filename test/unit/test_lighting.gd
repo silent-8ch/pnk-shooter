@@ -184,20 +184,75 @@ func test_game_has_subtractive_ship_shade() -> void:
 	assert_gt(shade.height, 1000.0, "near-vertical so it subtracts evenly")
 
 
-func test_game_has_a_sun_up_and_left() -> void:
+func test_game_has_a_spotlight_in_the_plane_up_and_left() -> void:
 	var game := _game()
 	var sun: PointLight2D = game.get_node("Sun")
 	assert_eq(sun.blend_mode, Light2D.BLEND_MODE_ADD)
-	assert_eq(sun.range_item_cull_mask, Ships.LIGHT_MASK, "lights ships only")
-	assert_false(sun.shadow_enabled)
-	var toward: Vector2 = (game.ARENA.get_center() - sun.position).normalized()
-	assert_almost_eq(toward, DropShadow.LIGHT_DIR, Vector2(0.001, 0.001), "shines the way shadows fall")
-	assert_lt(sun.position.x, 0.0, "left of the arena")
-	assert_lt(sun.position.y, 0.0, "above it")
-	var elevation: float = atan2(sun.height, sun.position.distance_to(game.ARENA.get_center()))
-	assert_between(elevation, deg_to_rad(20.0), deg_to_rad(60.0), "low enough to shade one side")
+	assert_eq(sun.range_item_cull_mask, Ships.LIGHT_MASK, "lights ships and obstacles only")
+	var toward: Vector2 = (game.ARENA.position - sun.position).normalized()
+	assert_almost_eq(toward, Sun.LIGHT_DIR, Vector2(0.001, 0.001), "shines from the top left")
+	assert_lt(sun.position.x, game.ARENA.position.x, "left of the arena")
+	assert_lt(sun.position.y, game.ARENA.position.y, "above it")
+	assert_lt(sun.height, 200.0, "low over the ships' plane")
 	var half: Vector2 = sun.texture.get_size() * sun.texture_scale / 2.0
 	assert_true(Rect2(sun.position - half, half * 2.0).encloses(game.ARENA.grow(60)), "reaches the whole arena")
+
+
+func test_the_sun_casts_shadows_from_ships_and_obstacles_only() -> void:
+	var game := _game()
+	var sun: PointLight2D = game.get_node("Sun")
+	assert_true(sun.shadow_enabled)
+	assert_eq(sun.shadow_item_cull_mask, Ships.LIGHT_MASK, "only occluders on the ship bit")
+	for path in ["Background", "Starfield"]:
+		assert_eq(sun.range_item_cull_mask & game.get_node(path).light_mask, 0, path + " is never shaded")
+
+
+func test_ships_and_obstacles_block_the_light() -> void:
+	var e: Node2D = EnemyScene.instantiate()
+	e.set_physics_process(false)
+	add_child_autofree(e)
+	var player: Node2D = PlayerScene.instantiate()
+	add_child_autofree(player)
+	var o: Area2D = load("res://scripts/obstacle.gd").new()
+	o.piece_id = "reactor"
+	add_child_autofree(o)
+	var rock: Sprite2D = o.find_children("*", "Sprite2D", false, false)[0]
+	for sprite in [e.body, player.body, rock]:
+		var occ: Array = sprite.find_children("*", "LightOccluder2D", false, false)
+		assert_gt(occ.size(), 0, str(sprite.get_path()))
+		for oc in occ:
+			assert_eq(oc.occluder_light_mask, Ships.LIGHT_MASK)
+			assert_eq(oc.occluder.cull_mode, OccluderPolygon2D.CULL_CLOCKWISE, "only the far side casts")
+			assert_true(Geometry2D.is_polygon_clockwise(oc.occluder.polygon))
+		assert_eq(sprite.find_children("*", "Sprite2D", false, false).size(), 0, "no shadow sprite on the background")
+
+
+func test_outlines_trace_the_opaque_part_around_the_middle() -> void:
+	var img := Image.create(40, 20, false, Image.FORMAT_RGBA8)
+	img.fill_rect(Rect2i(20, 0, 20, 20), Color.WHITE)  # right half opaque
+	var tex := ImageTexture.create_from_image(img)
+	var outlines := Sun.outlines(tex)
+	assert_eq(outlines.size(), 1)
+	var box := Rect2(outlines[0][0], Vector2.ZERO)
+	for p in outlines[0]:
+		box = box.expand(p)
+	assert_almost_eq(box.position.x, 0.0, 1.6, "starts at the middle")
+	assert_almost_eq(box.end.x, 20.0, 1.6, "reaches the right edge")
+	assert_almost_eq(box.size.y, 20.0, 1.6, "full height")
+	assert_same(Sun.outlines(tex), outlines, "cached")
+
+
+func test_flipped_sprites_flip_their_occluders() -> void:
+	var img := Image.create(40, 20, false, Image.FORMAT_RGBA8)
+	img.fill_rect(Rect2i(20, 0, 20, 20), Color.WHITE)
+	var s := Sprite2D.new()
+	add_child_autofree(s)
+	s.texture = ImageTexture.create_from_image(img)
+	s.flip_h = true
+	var occ := Sun.occlude(s)
+	for p in occ[0].occluder.polygon:
+		assert_lt(p.x, 1.6, "on the left once flipped")
+	assert_true(Geometry2D.is_polygon_clockwise(occ[0].occluder.polygon), "still wound for the cull")
 
 
 func test_sun_lights_the_side_facing_it() -> void:
