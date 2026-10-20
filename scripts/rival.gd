@@ -3,10 +3,9 @@ extends RefCounted
 ## The brain of a RIVAL (Enemy): a ship that flies and fights like a player,
 ## facing down. The host runs it: it holds the top of the screen, lines up
 ## over the nearest player (leading them), fires photon-style shots straight
-## down when lined up, and dodges ships, obstacles and players' shots the way
-## the AI pilot does (scoring a fan of moves a moment ahead). It's no ace: it
-## only spots some shots (NOTICE_CHANCE each), and only once they're close
-## (NOTICE_RANGE), so steady fire gets through. From stage
+## down when lined up, and steers clear of ships and obstacles the way the AI
+## pilot does (scoring a fan of moves a moment ahead). It never dodges
+## players' shots. From stage
 ## DOUBLE_AT it fires pairs, from TRIPLE_AT threes. Other peers just follow
 ## the positions the host sends (Enemy.rival_at).
 
@@ -29,19 +28,11 @@ const HIT := 60.0
 const GOAL_WEIGHT := 0.012
 const KEEP_COST := 0.2
 const SMOOTH := 0.3
-const NOTICE_CHANCE := 0.4  # of a player's shots it sees coming at all
-const NOTICE_RANGE := 200.0  # px: a shot it sees, it sees only this close
 
 var move := Vector2.ZERO
 var _cooldown := 0.6  # a moment before its first shot
 var _last := {}  # player instance id -> position, for their drift
 var _vel := {}
-var _noticed := {}  # bullet instance id -> whether it saw that shot
-var rng := RandomNumberGenerator.new()
-
-
-func _init() -> void:
-	rng.randomize()
 
 
 ## Host, each physics frame: where the rival at `at` goes and whether it fires.
@@ -106,25 +97,10 @@ func _track(game: Node, delta: float) -> void:
 		_last[id] = p.position
 
 
-## Whether it sees shot `b` (rolled once per shot).
-func notices(b: Node) -> bool:
-	var id := b.get_instance_id()
-	if not _noticed.has(id):
-		if _noticed.size() > 256:
-			_noticed.clear()
-		_noticed[id] = rng.randf() < NOTICE_CHANCE
-	return _noticed[id]
-
-
-## The safest move toward `goal` (length at most 1), dodging the players'
-## shots it notices, ships and obstacles a moment ahead.
+## The safest move toward `goal` (length at most 1), clear of ships and
+## obstacles a moment ahead. Shots don't count: it doesn't dodge them.
 func best_move(e: Node2D, game: Node, goal: Vector2) -> Vector2:
 	var threats: Array = []
-	for b in game.bullets.get_children():
-		if b.is_queued_for_deletion() or b.is_hostile() or b.is_heal():
-			continue
-		if b.position.distance_to(e.position) < NOTICE_RANGE and notices(b):
-			threats.append({"pos": b.position, "vel": b.velocity(), "r": 6.0})
 	for p in game.players.get_children():
 		if p.is_alive():
 			threats.append({"pos": p.position, "vel": Vector2.ZERO, "r": 20.0})

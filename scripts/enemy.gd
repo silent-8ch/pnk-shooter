@@ -21,7 +21,7 @@ extends Area2D
 ##   TETRAN  (a boss, Deep Space's): a big armored core with four straight
 ##           arms that run off the screen and turn steadily one way, so ships
 ##           orbit it (see tetran.gd); only the core can be hurt, and it never
-##           fires. Its look is drawn in code.
+##           fires. Every so often its arms pull in for a break. Its look is drawn in code.
 ## `stage` (Game.stage at spawn, 0 first) makes every enemy tougher: more hp
 ## (STAGE_HP), faster (STAGE_SPEED, capped) and worth more (STAGE_POINTS), and
 ## changes its colors (Ships.enemy_colors).
@@ -45,7 +45,7 @@ const TYPES: Array[Dictionary] = [
 	{"ship": 4, "hp": 40, "points": 500, "speed": 90.0, "group": [1, 1], "height": 130.0, "boss": true},
 	{"ship": 2, "hp": 3, "points": 30, "speed": 60.0, "group": [1, 2], "height": 34.0},
 	{"ship": 3, "hp": 20, "points": 200, "speed": 70.0, "group": [1, 1], "height": 84.0, "elite": true},
-	{"ship": 4, "hp": 60, "points": 800, "speed": 90.0, "group": [1, 1], "height": 112.0, "boss": true, "tetran": true},
+	{"ship": 4, "hp": 20, "points": 800, "speed": 90.0, "group": [1, 1], "height": 112.0, "boss": true, "tetran": true},
 	{"ship": 0, "hp": 4, "points": 60, "speed": 260.0, "group": [1, 1], "height": 44.0, "rival": true},
 ]
 const RIVAL_SYNC := 0.05  # s between the host's position updates for a rival

@@ -179,3 +179,43 @@ func test_shooting_it_down_ends_the_stage() -> void:
 	game.destroy_enemy(e, true)
 	assert_eq(game.stage, 1)
 	assert_true(game.refit)
+
+
+func test_arms_pull_in_for_a_break_then_come_back() -> void:
+	var cycle := TetranScript.ARMS_OUT + TetranScript.ARMS_MOVE * 2.0 + TetranScript.ARMS_BREAK
+	assert_eq(TetranScript.arm_reach(0.0), 1.0, "out at the start")
+	assert_eq(TetranScript.arm_reach(TetranScript.ARMS_OUT - 0.1), 1.0)
+	var pulling := TetranScript.ARMS_OUT + TetranScript.ARMS_MOVE / 2.0
+	assert_almost_eq(TetranScript.arm_reach(pulling), 0.5, 0.001, "pulling in")
+	var gone := TetranScript.ARMS_OUT + TetranScript.ARMS_MOVE + TetranScript.ARMS_BREAK / 2.0
+	assert_eq(TetranScript.arm_reach(gone), 0.0, "a break with no arms")
+	for arm in TetranScript.arm_points(gone):
+		assert_eq(arm.size(), 0)
+	assert_almost_eq(TetranScript.arm_reach(cycle - TetranScript.ARMS_MOVE / 2.0), 0.5, 0.001, "coming back")
+	assert_eq(TetranScript.arm_reach(cycle + 0.1), 1.0, "and round again")
+
+
+func test_pulled_in_arms_neither_hurt_nor_block() -> void:
+	var e := _tetran()
+	var arms: Area2D = e.get_node("Tetran")
+	_fly(e, 30.0)  # settled at HOVER
+	var t: float = e._time
+	var cycle := TetranScript.ARMS_OUT + TetranScript.ARMS_MOVE * 2.0 + TetranScript.ARMS_BREAK
+	var start := t - fposmod(t, cycle)
+	e._time = start + 1.0  # out
+	arms._place_shapes()
+	var dir := Vector2.from_angle(TetranScript.arm_angle(TetranScript.angle_at(e._time), 0))
+	var on_arm: Vector2 = e.position + dir * (TetranScript.CORE_RADIUS + 150.0) * e.scale.x
+	assert_true(arms.touches(on_arm, 4.0))
+	e._time = start + TetranScript.ARMS_OUT + TetranScript.ARMS_MOVE + 1.0  # the break
+	arms._place_shapes()
+	dir = Vector2.from_angle(TetranScript.arm_angle(TetranScript.angle_at(e._time), 0))
+	on_arm = e.position + dir * (TetranScript.CORE_RADIUS + 150.0) * e.scale.x
+	assert_false(arms.touches(on_arm, 4.0), "no arms to touch")
+	for s in arms.get_children():
+		if s is CollisionShape2D:
+			assert_true(s.disabled, "nothing to block shots or ram")
+
+
+func test_a_third_of_its_old_hp() -> void:
+	assert_eq(EnemyScript.TYPES[EnemyScript.TETRAN].hp, 20)

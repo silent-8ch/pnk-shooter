@@ -1,6 +1,6 @@
 extends GutTest
-## Heal beam: a WEAPONS gun that adds a HEAL on/off button; while armed (on),
-## the ship streams fast heal shots straight up. They heal other ships they hit, and
+## Heal beam: a WEAPONS gun that adds a HEAL button; the first tap arms it, each
+## tap after streams fast heal shots straight up for a burst, a long press disarms. They heal other ships they hit, and
 ## make enemies they hit stronger and bigger.
 
 const PlayerScript := preload("res://scripts/player.gd")
@@ -46,11 +46,11 @@ func _give_power() -> void:
 	player.levels[&"weapons"] = Systems.max_level(&"weapons")
 
 
-## Armed, with the HEAL button held down.
+## Armed, firing a burst.
 func _arm_healbeam() -> void:
 	_give_power()
 	assert_true(player.arm(&"healbeam"))
-	player._heal_held = true
+	player._heal_burst = PlayerScript.HEAL_BURST
 
 
 func _heal_shot(shooter: int, at: Vector2) -> Area2D:
@@ -100,19 +100,24 @@ func test_adds_a_heal_button_the_first_press_arms_it() -> void:
 	assert_true(player.is_armed(&"healbeam"), "not a toggle: pressing again doesn't switch it off")
 
 
-func test_fires_only_while_held() -> void:
+func test_fires_a_burst_then_stops() -> void:
 	_buy_healbeam()
 	_arm_healbeam()
-	player._heal_held = false
+	player._heal_burst = 0.0
 	for i in 30:
 		player._simulate(1.0 / 60.0)
-	assert_eq(_heal_bullets().size(), 0, "armed but not held")
-	player._heal_held = true
-	player._simulate(1.0 / 60.0)
-	assert_gt(_heal_bullets().size(), 0)
+	assert_eq(_heal_bullets().size(), 0, "armed but not tapped")
+	player._heal_burst = PlayerScript.HEAL_BURST
+	for i in 60:
+		player._simulate(1.0 / 60.0)
+	var fired := _heal_bullets().size()
+	assert_gt(fired, 0)
+	for i in 60:
+		player._simulate(1.0 / 60.0)
+	assert_eq(_heal_bullets().size(), fired, "the burst ended")
 
 
-func test_holding_the_button_holds_the_trigger() -> void:
+func test_a_tap_on_the_button_fires_a_burst() -> void:
 	_buy_healbeam()
 	_give_power()
 	game.get_node("PointerControls").visible = true
@@ -123,22 +128,25 @@ func test_holding_the_button_holds_the_trigger() -> void:
 	ev.position = bar.button_rect(ActionBar.ACTIONS.map(func(a): return a.id).find(&"heal")).get_center()
 	bar._input(ev)
 	player._gather_input()
-	assert_true(player.is_armed(&"healbeam"))
-	assert_true(player._heal_held, "finger down")
-	ev = ev.duplicate()
-	ev.pressed = false
+	assert_true(player.is_armed(&"healbeam"), "first tap arms")
+	assert_eq(player._heal_burst, 0.0)
+	var up := ev.duplicate()
+	up.pressed = false
+	bar._input(up)
+	bar._process(10.0)
 	bar._input(ev)
+	bar._input(up)
 	player._gather_input()
-	assert_false(player._heal_held, "let go")
+	assert_eq(player._heal_burst, PlayerScript.HEAL_BURST, "next tap fires")
 
 
-func test_streams_very_fast_shots_straight_up_while_held() -> void:
+func test_a_burst_streams_very_fast_shots_straight_up() -> void:
 	_buy_healbeam()
 	_arm_healbeam()
 	for i in 60:
 		player._simulate(1.0 / 60.0)
 	var shots := _heal_bullets()
-	assert_almost_eq(shots.size(), int(1.0 / PlayerScript.HEALBEAM_INTERVAL), 1, "a dense stream")
+	assert_almost_eq(shots.size(), roundi(PlayerScript.HEAL_BURST / PlayerScript.HEALBEAM_INTERVAL), 2, "a dense stream")
 	assert_lt(PlayerScript.HEALBEAM_INTERVAL, 0.1, "faster than it was")
 	for b in shots:
 		assert_eq(b.direction, Vector2.UP)
@@ -150,7 +158,7 @@ func test_level_two_fires_twice_as_fast() -> void:
 	_arm_healbeam()
 	for i in 60:
 		player._simulate(1.0 / 60.0)
-	assert_almost_eq(_heal_bullets().size(), int(2.0 / PlayerScript.HEALBEAM_INTERVAL), 2)
+	assert_almost_eq(_heal_bullets().size(), roundi(2.0 * PlayerScript.HEAL_BURST / PlayerScript.HEALBEAM_INTERVAL), 3)
 
 
 func test_off_or_unbought_fires_nothing() -> void:

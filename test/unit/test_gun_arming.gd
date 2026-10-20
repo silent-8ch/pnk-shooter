@@ -165,10 +165,15 @@ func test_auto_tap_toggles() -> void:
 	assert_false(player.is_armed(&"auto"))
 
 
-func test_heal_first_tap_arms_and_more_taps_keep_it_armed() -> void:
+func test_heal_first_tap_arms_more_taps_fire_and_a_long_press_disarms() -> void:
 	_buy(&"healbeam")
 	_long_press(&"lasers")
 	_tap(&"heal")
 	assert_true(player.is_armed(&"healbeam"))
+	assert_eq(player._heal_burst, 0.0, "arming doesn't fire")
 	_tap(&"heal")
-	assert_true(player.is_armed(&"healbeam"), "hold-to-fire, not a toggle")
+	assert_true(player.is_armed(&"healbeam"), "not a toggle")
+	assert_eq(player._heal_burst, player.HEAL_BURST, "a tap fires a burst")
+	_long_press(&"heal")
+	assert_false(player.is_armed(&"healbeam"), "a long press turns it off")
+	assert_eq(player._heal_burst, 0.0)

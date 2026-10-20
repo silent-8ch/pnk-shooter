@@ -1,7 +1,7 @@
 extends GutTest
 ## Rivals: enemies that fly and fight like players, facing down. The host
 ## flies them (Rival): they hold the top of the screen, line up over a player
-## and fire down, dodge players' shots, and other peers follow the host.
+## and fire down (they don't dodge shots), and other peers follow the host.
 
 const EnemyScript := preload("res://scripts/enemy.gd")
 const PlayerScene := preload("res://scenes/player.tscn")
@@ -78,17 +78,13 @@ func test_more_shots_at_later_stages() -> void:
 	assert_eq(Rival.volley(Vector2(100, 100), 3).size(), 3)
 
 
-func test_it_dodges_a_shot_coming_up_at_it() -> void:
+func test_it_does_not_dodge_shots() -> void:
 	_player(Vector2(270, 750))
 	var e := _rival(Vector2(270, 170))
-	game.fire_bullet(Vector2(270, 300), Color.RED)  # a player's photon, flying up at it
-	var shot: Area2D = game.get_node("Bullets").get_children().back()
-	var closest := INF
-	for i in 30:
-		e._physics_process(1.0 / 60.0)
-		shot.position += shot.velocity() / 60.0
-		closest = minf(closest, e.position.distance_to(shot.position))
-	assert_gt(closest, Rival.RADIUS + 4.0, "out of the way")
+	var brain := Rival.new()
+	var calm: Vector2 = brain.best_move(e, game, e.position)
+	game.fire_bullet(Vector2(270, 230), Color.RED)  # a player's photon, about to hit it
+	assert_eq(brain.best_move(e, game, e.position), calm, "same move as with no shot")
 
 
 func test_other_peers_follow_the_hosts_positions() -> void:

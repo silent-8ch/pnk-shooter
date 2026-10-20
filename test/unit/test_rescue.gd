@@ -408,21 +408,20 @@ func _drone_out_at(at: Vector2) -> void:
 	player.drones = [at]
 
 
-func test_touching_an_enemy_destroys_a_drone() -> void:
+func test_touching_an_enemy_spares_a_drone() -> void:
 	_drone_out_at(Vector2(270, 400))
 	var e := preload("res://scenes/enemy.tscn").instantiate()
 	e.position = Vector2(270, 400)
 	game.get_node("Enemies").add_child(e)
 	player._fly_drones(1.0 / 60.0)
-	assert_eq(player.drones.size(), 0, "gone")
-	assert_eq(player.drones_ready(), 0, "rebuilding")
+	assert_eq(player.drones.size(), 1, "only shots destroy drones")
 
 
-func test_touching_an_obstacle_destroys_a_drone() -> void:
+func test_touching_an_obstacle_spares_a_drone() -> void:
 	_drone_out_at(Vector2(270, 400))
 	game.spawn_obstacle({"name": "Obstacle1", "piece": "asteroid_l", "x": 270.0, "y": 400.0, "count": 1, "dir": 1.0})
 	player._fly_drones(1.0 / 60.0)
-	assert_eq(player.drones.size(), 0)
+	assert_eq(player.drones.size(), 1, "only shots destroy drones")
 
 
 func test_any_shot_destroys_a_drone_even_its_owners() -> void:
@@ -452,14 +451,13 @@ func test_a_destroyed_drone_spills_what_it_carried_and_rebuilds() -> void:
 			break
 	assert_eq(player.drone_carrying, 1)
 	var at: Vector2 = player.drones[0]
-	var e := preload("res://scenes/enemy.tscn").instantiate()
-	e.position = at
-	game.get_node("Enemies").add_child(e)
+	game.fire_bullet(at, Color.RED)
+	var b: Area2D = game.get_node("Bullets").get_children().back()
+	b._travelled = PlayerScript.DRONE_SAFE_SHOT + 1.0
 	player._fly_drones(1.0 / 60.0)
 	assert_eq(player.drone_carrying, 0)
 	var astronauts := game.get_node("Pods").get_children().filter(func(n): return n.astronaut)
 	assert_eq(astronauts.size(), 2, "the pod, as two astronauts")
-	e.queue_free()
 	await wait_frames(1)
 	assert_false(player.launch_drone(), "still rebuilding")
 	_fly(PlayerScript.DRONE_REBUILD + 0.1)

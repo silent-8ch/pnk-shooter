@@ -154,14 +154,27 @@ func test_report_hit_for_unknown_enemy_is_ignored() -> void:
 
 # --- Pickups ----------------------------------------------------------------
 
-func test_local_player_claims_pickup_and_host_grants_once() -> void:
+func test_local_player_takes_its_own_copy_once() -> void:
 	var p := _player(multiplayer.get_unique_id())
 	game.spawn_pickup(Vector2(270, 700), "Pickup1")
 	var pk: Node = game.get_node("Pickups/Pickup1")
+	var before: int = p.exp_total
 	pk._on_area_entered(p)
 	assert_true(pk.collected)
-	game.request_pickup("Pickup1")  # a late second claim
-	assert_true(pk.collected)
+	assert_eq(p.exp_total, before + game.exp_mult)
+	pk._on_area_entered(p)  # touching it again
+	game.collect_pickup("Pickup1", multiplayer.get_unique_id())
+	assert_eq(p.exp_total, before + game.exp_mult, "banked once")
+
+
+func test_exp_is_not_zero_sum() -> void:
+	_player(multiplayer.get_unique_id())
+	game.spawn_pickup(Vector2(270, 700), "Pickup1")
+	var pk: Node = game.get_node("Pickups/Pickup1")
+	assert_false(game.has_method("request_pickup"), "no claim through the host")
+	var other := _player(4242)  # someone else's ship: their copy is on their peer
+	pk._on_area_entered(other)
+	assert_false(pk.collected, "still here for this peer's ship")
 
 
 func test_remote_player_touching_pickup_does_not_claim_it_here() -> void:

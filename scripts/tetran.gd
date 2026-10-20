@@ -6,6 +6,8 @@ extends Area2D
 ## arms soak up shots and hurt any ship they touch (group "hazard", see
 ## Player). It never fires; the small groups that come in during any boss
 ## fight (Game.BOSS_ADD_TYPES) keep the pressure on.
+## Every so often the arms pull into the core for a break (arm_reach): out for
+## ARMS_OUT s, in over ARMS_MOVE s, gone for ARMS_BREAK s, back out over ARMS_MOVE s.
 ## A child of its Enemy (type TETRAN). Everything follows the Enemy's flight
 ## time, so every peer sees the same core and arms with no syncing.
 ## Drawn in code until it has art: a pulsing core in an armored ring, arms of
@@ -20,6 +22,9 @@ const CORE_RADIUS := 56.0
 const HOVER := Vector2(270, 400)  # where it holds, a little above the middle
 const SPIN := 0.45  # radians per second
 const START_ANGLE := PI / 4.0  # an X, so the ships at the bottom start in a gap
+const ARMS_OUT := 9.0  # s the arms stay fully out
+const ARMS_MOVE := 1.5  # s to pull in, and to come back out
+const ARMS_BREAK := 4.0  # s with no arms
 const CORE_COLOR := Color("ff5a3c")
 const ARMOR_COLOR := Color("7f8aa3")
 const SEG_COLOR := Color("5d6a85")
@@ -56,10 +61,27 @@ func _physics_process(_delta: float) -> void:
 
 func _place_shapes() -> void:
 	var turn := angle_at(_time())
+	var length := arm_length() * arm_reach(_time())
 	for a in ARMS:
 		var dir := arm_angle(turn, a)
-		_shapes[a].position = Vector2.from_angle(dir) * (CORE_RADIUS + arm_length() / 2.0)
+		_shapes[a].disabled = length <= 0.0
+		_shapes[a].shape.size = Vector2(maxf(length, 1.0), ARM_WIDTH)
+		_shapes[a].position = Vector2.from_angle(dir) * (CORE_RADIUS + length / 2.0)
 		_shapes[a].rotation = dir
+
+
+## How far out the arms are at `time`: 1 fully out, 0 pulled into the core.
+static func arm_reach(time: float) -> float:
+	var t := fposmod(time, ARMS_OUT + ARMS_MOVE * 2.0 + ARMS_BREAK)
+	if t < ARMS_OUT:
+		return 1.0
+	t -= ARMS_OUT
+	if t < ARMS_MOVE:
+		return 1.0 - t / ARMS_MOVE
+	t -= ARMS_MOVE
+	if t < ARMS_BREAK:
+		return 0.0
+	return (t - ARMS_BREAK) / ARMS_MOVE
 
 
 ## From the core's edge to the last segment's centre.
@@ -87,27 +109,34 @@ static func angle_at(time: float) -> float:
 
 
 ## Every segment centre, arm by arm, relative to the core (game space, not
-## scaled): straight out from the core at its quarter of the turn.
+## scaled): straight out from the core at its quarter of the turn. A pulled-in
+## arm slides back into the core; segments inside it are left out.
 static func arm_points(time: float) -> Array:
 	var out: Array = []
 	var turn := angle_at(time)
+	var pulled := arm_length() * (1.0 - arm_reach(time))
 	for a in ARMS:
 		var dir := Vector2.from_angle(arm_angle(turn, a))
 		var arm: Array[Vector2] = []
 		for i in SEGMENTS:
-			arm.append(dir * (CORE_RADIUS + SEG_RADIUS.x * 0.5 + i * SEG_LEN))
+			var d := SEG_RADIUS.x * 0.5 + i * SEG_LEN - pulled
+			if d > 0.0:
+				arm.append(dir * (CORE_RADIUS + d))
 		out.append(arm)
 	return out
 
 
 ## Whether a circle at `at` (game space), radius `r`, touches an arm.
 func touches(at: Vector2, r: float) -> bool:
+	var length := arm_length() * arm_reach(_time())
+	if length <= 0.0:
+		return false
 	var turn := angle_at(_time())
 	var s: float = enemy.scale.x
 	for a in ARMS:
 		var dir := Vector2.from_angle(arm_angle(turn, a))
 		var root: Vector2 = enemy.position + dir * CORE_RADIUS * s
-		var tip: Vector2 = enemy.position + dir * (CORE_RADIUS + arm_length()) * s
+		var tip: Vector2 = enemy.position + dir * (CORE_RADIUS + length) * s
 		if at.distance_to(Geometry2D.get_closest_point_to_segment(at, root, tip)) < ARM_WIDTH * 0.5 * s + r:
 			return true
 	return false
@@ -124,9 +153,11 @@ func _on_area_entered(area: Area2D) -> void:
 func _draw() -> void:
 	var time := _time()
 	for arm in arm_points(time):
-		for i in range(SEGMENTS - 1, -1, -1):  # outermost first, so the root sits on top
+		var first: int = SEGMENTS - arm.size()  # segments pulled into the core are left out
+		for j in range(arm.size() - 1, -1, -1):  # outermost first, so the root sits on top
+			var i := first + j
 			var r := segment_radius(i)
-			var p: Vector2 = arm[i]
+			var p: Vector2 = arm[j]
 			draw_circle(p, r + 1.5, Color(0, 0, 0, 0.6))
 			draw_circle(p, r, SEG_COLOR.lerp(ARMOR_COLOR, float(i % 2)))
 			draw_circle(p + Vector2(-r, -r) * 0.3, r * 0.35, Color(1, 1, 1, 0.18))

@@ -33,6 +33,7 @@ extends Area2D
 ## a tail, up to TAIL_MAX; flying near a rescue Station turns them all in for
 ## an exp each and score. When the ship is lost, its tail and whatever its
 ## drones carry spill out as astronauts (two per pod) to be rescued again.
+## Only shots destroy a drone (drone_hit).
 ## MISSILE adds a MISSILE button: the ship and each option fire a salvo of
 ## seeking missiles (each does a laser's damage), one per MISSILE level, fanned
 ## out sideways before they curl in on targets, trailing smoke. Each level also
@@ -52,13 +53,13 @@ extends Area2D
 ## Guns fire from the action bar once armed: a tap on a gun's button arms it
 ## (if WEAPONS has the bars, adding them from the reactor if it can), the next
 ## taps fire, and a long press disarms it. AUTO fires on its own while armed,
-## so for it a tap is the on/off switch. HEAL is a machine gun: the first
-## press arms it, then it fires while the button is held.
+## so for it a tap is the on/off switch. HEAL fires in bursts: the first tap
+## arms it, each tap after fires a burst, and a long press disarms it.
 ## AUTOCAN adds an AUTO on/off button for a vulcan cannon: point defence.
 ## While on, it hoses the nearest enemy shot within AUTO_RANGE (leading it),
 ## and only enemy shots; it never picks enemies or other ships.
-## HEALBEAM adds a HEAL button: held down, the ship streams very fast HEAL
-## shots straight up (HEALBEAM_INTERVAL, halved at level 2). Another ship they
+## HEALBEAM adds a HEAL button: each tap streams very fast HEAL shots straight
+## up for HEAL_BURST s (HEALBEAM_INTERVAL, halved at level 2). Another ship they
 ## hit heals a tenth of a hit per shot; an enemy they hit gets stronger and
 ## bigger instead (Enemy.strengthen), so aim it with care.
 
@@ -124,7 +125,8 @@ const BEAM_SPACING := 7.0  # px between columns; level n has 2n-1 columns
 const AUTO_RANGE := 130.0  # px: targets this close
 const AUTO_COOLDOWN := 0.035  # s between vulcan rounds (halved at level 2)
 const AUTO_SPREAD := 0.09  # rad: rounds scatter up to this much either way
-const HEALBEAM_INTERVAL := 0.035  # s between heal shots while HEAL is held (halved at level 2)
+const HEALBEAM_INTERVAL := 0.035  # s between heal shots in a burst (halved at level 2)
+const HEAL_BURST := 0.35  # s a tap on HEAL fires for
 const HEAL_SOUND_GAP := 0.5  # s: a stream of heals chimes at most this often
 const REPAIR_COOLDOWN := 10.0  # matches the REPAIR button cooldown
 const AI_WINGMAN_GAP := 80.0  # px beside its leader
@@ -173,7 +175,7 @@ var _launch_requested := false
 var _seen_rescues := -1  # local: RESCUE button press count already handled
 var _drone_sprites: Array[Sprite2D] = []
 var _healbeam_cooldown := 0.0
-var _heal_held := false  # local: the HEAL button is held down (it fires while it is)
+var _heal_burst := 0.0  # local: s left of the HEAL burst firing now
 var _seen_heals := -1  # local: HEAL button press count already handled
 var _heal_sound_at := -INF  # local: when this ship last chimed (s, engine time)
 var _missile_requested := false
@@ -308,10 +310,17 @@ func _gather_input() -> void:
 			toggle_gun(&"auto")
 		_seen_autos = autos
 		var heals: int = bar.presses[&"heal"]
-		if _seen_heals >= 0 and heals != _seen_heals and not is_armed(&"healbeam"):
-			arm(&"healbeam")  # the first press arms it; after that it fires while held
+		if _seen_heals >= 0 and heals != _seen_heals:
+			if is_armed(&"healbeam"):
+				_heal_burst = HEAL_BURST
+			else:
+				arm(&"healbeam")  # the first press arms it; after that each fires a burst
 		_seen_heals = heals
-		_heal_held = bar.is_held(&"heal")
+		var heal_holds: int = bar.holds.get(&"heal", 0)
+		if _seen_holds.get(&"heal", -1) >= 0 and heal_holds != _seen_holds[&"heal"]:
+			disarm(&"healbeam")
+			_heal_burst = 0.0
+		_seen_holds[&"heal"] = heal_holds
 		for g in [&"lasers", &"missile", &"beam"]:  # a long press disarms
 			var holds: int = bar.holds.get(g, 0)
 			if _seen_holds.get(g, -1) >= 0 and holds != _seen_holds[g]:
@@ -1083,9 +1092,11 @@ func _fire_vulcan(target: Node2D, lag := 0.0, from := Vector2.INF) -> void:
 
 func _run_healbeam(delta: float) -> void:
 	_healbeam_cooldown -= delta
-	if level(&"healbeam") <= 0 or not _heal_held:
+	if level(&"healbeam") <= 0 or _heal_burst <= 0.0:
+		_heal_burst = 0.0
 		_healbeam_cooldown = maxf(_healbeam_cooldown, 0.0)
 		return
+	_heal_burst -= delta
 	var game := get_tree().get_first_node_in_group("game")
 	while _healbeam_cooldown <= 0.0:  # faster than the frame rate: several a frame, strung out
 		var lag := -_healbeam_cooldown
@@ -1296,23 +1307,9 @@ static func _push_from(at: Vector2, from: Vector2, reach: float) -> Vector2:
 	return (d / dist if dist > 0.01 else Vector2.UP) * (1.0 - dist / reach)
 
 
-## Whether a drone at `at` touches an enemy (its hitbox), an obstacle, or a
-## shot (any shot, past the muzzle; the shot is used up).
+## Whether a drone at `at` touches a shot (any shot, past the muzzle; the shot
+## is used up). Only shots destroy drones: enemies, obstacles and hazards don't.
 func drone_hit(game: Node, at: Vector2) -> bool:
-	for e in game.enemies.get_children():
-		if e.is_queued_for_deletion():
-			continue
-		var r: float = EnemyScript.TYPES[e.type].get("height", EnemyScript.HEIGHT) * 0.4 * e.scale.x
-		if e.is_tetran():
-			r = preload("res://scripts/tetran.gd").CORE_RADIUS * e.scale.x
-		if at.distance_to(e.position) < r + DRONE_RADIUS:
-			return true
-	for h in get_tree().get_nodes_in_group("hazard"):
-		if h.has_method("touches") and h.touches(at, DRONE_RADIUS):
-			return true
-	for o in game.obstacles.get_children():
-		if not o.is_queued_for_deletion() and o.push_out(at, DRONE_RADIUS).distance_to(at) > 0.01:
-			return true
 	for b in game.bullets.get_children():
 		if b.is_queued_for_deletion() or b._travelled < DRONE_SAFE_SHOT:
 			continue

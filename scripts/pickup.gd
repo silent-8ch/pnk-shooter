@@ -4,7 +4,7 @@ extends Area2D
 ## first frame and william_00 the last. While waiting it holds the first frame
 ## while its painted color slots cycle through STAR_COLORS (a Mario-star
 ## palette cycle: each step shifts every slot to the next color). When
-## the host says a player took it, it plays through to the last frame (each frame
+## this peer's ship takes it, it plays through to the last frame (each frame
 ## drawn fainter than the one before), holds there shrinking away as it fades
 ## out, with an xp sound. It lands at a random angle and spins very slowly (SPIN,
 ## either way) while it waits, and each frame of the
@@ -127,7 +127,7 @@ func _apply_color() -> void:
 		sprite.play(&"default")
 
 
-## Plays the collect animation (every peer, from Game.collect_pickup).
+## Plays the collect animation (this peer only, from Game.collect_pickup).
 func collect() -> void:
 	if collected:
 		return
@@ -176,7 +176,7 @@ func _process(delta: float) -> void:
 		queue_free()
 
 
-## The touching ship's owner claims it; the host gives it to the first claim.
+## This peer's own ship takes this peer's copy; other players take theirs.
 func _on_area_entered(area: Area2D) -> void:
 	if collected or multiplayer.multiplayer_peer == null:
 		return
@@ -184,4 +184,4 @@ func _on_area_entered(area: Area2D) -> void:
 		return
 	var game := get_tree().get_first_node_in_group("game")
 	if game:
-		game.request_pickup.rpc_id(1, String(name))
+		game.collect_pickup(String(name), multiplayer.get_unique_id())

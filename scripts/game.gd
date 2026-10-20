@@ -6,7 +6,8 @@ extends Node2D
 ##   shooter's copy reports hits, to the host;
 ## - enemies are announced by the host (spawn_enemy rpc) but move on every peer
 ##   from their deterministic patterns, with no per-frame sync;
-## - the host still decides enemy damage/deaths, score, and who gets a pickup.
+## - the host still decides enemy damage/deaths and score; each peer's ship takes
+##   its own copy of every pickup (exp isn't zero sum).
 ## Everything is created by rpc into each peer's own copy of the world (no
 ## MultiplayerSpawner, which would delete the host's nodes when it leaves); a
 ## late joiner gets a snapshot of the current players and enemies.
@@ -835,8 +836,8 @@ func _play_sound(node_name: String) -> void:
 		sound.play()
 
 
-## Every peer adds the same pickup under the same name, so the server can name it
-## in collect_pickup.
+## Every peer adds the same pickup under the same name. Exp isn't zero sum:
+## each peer's copy is there for its own ship to take (collect_pickup).
 @rpc("authority", "call_local", "reliable")
 func spawn_pickup(pos: Vector2, pickup_name: String) -> void:
 	var p := PickupScript.new()
@@ -845,12 +846,14 @@ func spawn_pickup(pos: Vector2, pickup_name: String) -> void:
 	pickups.add_child(p)
 
 
-## Server: `peer` took the pickup; every peer plays its collect animation, and
-## the taker's own ship banks the exp (see ShipPanel).
-@rpc("authority", "call_local", "reliable")
+## This peer's ship (`peer`) took its copy of the pickup: it plays its collect
+## animation here only, so every other player can still take theirs, and the
+## ship banks the exp (see ShipPanel).
 func collect_pickup(pickup_name: String, peer: int) -> void:
 	var p := pickups.get_node_or_null(pickup_name)
-	if p:
+	if p is PickupScript:
+		if p.collected:
+			return
 		p.collect()
 	var me := local_player()
 	if me and peer == multiplayer.get_unique_id():
@@ -1440,16 +1443,6 @@ func dock_tail(station_name: String, from: Array, types: Array) -> void:
 		_play_sound("DockSound")
 	if multiplayer.is_server():
 		add_score(RESCUE_POINTS * clampi(types.size(), 0, PlayerScript.TAIL_MAX))
-
-
-## Ship owner -> host: it touched a pickup; the first claim wins.
-@rpc("any_peer", "call_local", "reliable")
-func request_pickup(pickup_name: String) -> void:
-	if not multiplayer.is_server():
-		return
-	var p := pickups.get_node_or_null(pickup_name)
-	if p is PickupScript and not p.collected:
-		collect_pickup.rpc(pickup_name, _sender())
 
 
 ## The host left and we're now offline as peer 1 (see Net): drop the other

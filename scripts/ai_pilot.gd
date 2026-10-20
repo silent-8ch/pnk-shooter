@@ -406,7 +406,7 @@ func _danger(at: Vector2, t: float, threats: Dictionary, game: Node) -> float:
 		if tetran == null:
 			continue
 		var turn := TetranScript.angle_at(tetran._time() + t)
-		var reach: float = (TetranScript.CORE_RADIUS + TetranScript.arm_length()) * e.scale.x
+		var reach: float = (TetranScript.CORE_RADIUS + TetranScript.arm_length() * TetranScript.arm_reach(tetran._time() + t)) * e.scale.x
 		for a in TetranScript.ARMS:
 			var tip: Vector2 = e.position + Vector2.from_angle(TetranScript.arm_angle(turn, a)) * reach
 			var c := Geometry2D.get_closest_point_to_segment(at, e.position, tip)

@@ -6,7 +6,7 @@ extends Node2D
 ## has earned so far. Local on every peer, following its own copy of the ship,
 ## named by the host (Game.spawn_droid).
 ## The ship's owner (the host, for the AI buddy) checks what touches it, like
-## a rescue drone: an enemy, a hazard, an obstacle or an enemy shot (the shot
+## an enemy, a hazard, an obstacle or an enemy shot (the shot
 ## is used up). Its own side's shots pass through. Each touch is reported to
 ## the host (Game.report_droid_hit), which keeps its HP; it flashes white when
 ## hit and can't be hit again for HIT_COOLDOWN. Nothing hurts it between
@@ -93,7 +93,7 @@ func _process(delta: float) -> void:
 
 
 ## Whether it touches an enemy, a hazard, an obstacle or an enemy shot at `at`
-## (the shot is used up), like Player.drone_hit but safe from its own side.
+## (the shot is used up); its own side's shots pass through.
 func touched(game: Node, at: Vector2) -> bool:
 	for e in game.enemies.get_children():
 		if e.is_queued_for_deletion():

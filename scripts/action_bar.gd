@@ -28,7 +28,7 @@ const ACTIONS: Array[Dictionary] = [
 	{"id": &"beam", "label": "BEAM", "cooldown": 3.0, "color": UiStyle.PALE, "hidden": true},
 	{"id": &"auto", "label": "AUTO", "cooldown": 0.3, "color": UiStyle.AMBER, "hidden": true},  # on/off
 	{"id": &"repair", "label": "REPAIR", "cooldown": 10.0, "color": UiStyle.MAGENTA, "hidden": true},
-	{"id": &"heal", "label": "HEAL", "cooldown": 0.0, "color": UiStyle.VIOLET, "hidden": true},  # hold to fire
+	{"id": &"heal", "label": "HEAL", "cooldown": 0.0, "color": UiStyle.VIOLET, "hidden": true},  # tap for a burst
 ]
 const MOUSE_INDEX := -2
 const LONG_PRESS := 0.45  # s a finger stays on a button for a long press
@@ -163,12 +163,6 @@ func cooldown_left(id: StringName) -> float:
 
 
 ## Presses `id` if it's off cooldown; returns whether it fired.
-## Whether `id`'s button (or its number key) is being held down now: a
-## hold-to-fire gun (HEAL) fires while it is.
-func is_held(id: StringName) -> bool:
-	return is_active() and _accepting_input() and (_held.values().has(id) or _held_keys.has(id))
-
-
 func press(id: StringName) -> bool:
 	if not presses.has(id) or not _shown[id] or not _enabled[id] or _cooldown[id] > 0.0 or not _accepting_input():
 		return false
