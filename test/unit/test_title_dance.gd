@@ -52,3 +52,26 @@ func test_the_dancers_have_thrusters() -> void:
 	add_child_autofree(dance)
 	var jets := dance.get_children().filter(func(n): return n is Sprite2D and n.has_node("Thrusters"))
 	assert_eq(jets.size(), 2)
+
+
+func test_the_dancers_are_lit_like_the_game() -> void:
+	var dance := TitleDance.new()
+	add_child_autofree(dance)
+	var shade: PointLight2D = dance.get_node("ShipShade")
+	assert_eq(shade.blend_mode, Light2D.BLEND_MODE_SUB)
+	assert_almost_eq(shade.energy, Sun.SHADE_ENERGY, 0.001, "as spooky as the game")
+	var sun: PointLight2D = dance.get_node("Sun")
+	assert_true(sun.shadow_enabled, "they shadow each other")
+	assert_lt(sun.position.x, 0.0, "off the top-left corner")
+	assert_lt(sun.position.y, 0.0)
+	var screen := dance.get_viewport_rect()
+	for light in [shade, sun]:
+		var half: Vector2 = light.texture.get_size() * light.texture_scale / 2.0
+		assert_true(Rect2(light.position - half, half * 2.0).encloses(screen), light.name + " covers the screen")
+	var ships := dance.find_children("*", "Sprite2D", false, false)
+	assert_eq(ships.size(), 2)
+	for s in ships:
+		assert_is(s.texture, CanvasTexture, "normal-mapped")
+		assert_eq(s.light_mask, Ships.LIGHT_MASK)
+		assert_gt(s.find_children("*", "LightOccluder2D", false, false).size(), 0, "blocks the light")
+

@@ -21,7 +21,7 @@ extends Node2D
 ## next stage starts, refits and forks alike (between_levels).
 ##
 ## Lighting: ship bodies sit on Ships.LIGHT_MASK. ShipShade (a SUB PointLight2D covering the
-## arena, very high so it subtracts evenly) dims them to ~30%; the Sun (Sun.make,
+## arena, very high so it subtracts evenly) dims them to ~8%; the Sun (Sun.make,
 ## a spotlight in the ships' plane off the top-left corner) lights the side of each
 ## normal-mapped ship that faces it, ships and obstacles shadow each other from it, and
 ## bullet lights add color back. The background is never shaded.
@@ -53,7 +53,7 @@ const SpriteEffect := preload("res://scripts/sprite_effect.gd")
 const ARENA := Rect2(0, 0, 540, 960)
 const DEMO_RESTART := 2.5  # s after the demo's ship goes down before a new demo
 const DEMO_UPGRADES := Vector2i(3, 14)  # free upgrade levels a demo ship starts with
-const DEMO_KIND := "asteroid_belt"  # the kind of level the demo always flies through
+const DEMO_KIND := "deep_space"  # the kind of level the demo always flies through
 const BOSS_KILLS := 30  # kills before the first boss ...
 const BOSS_KILLS_STEP := 10  # ... and this many more each stage
 const BOSS_ADD_INTERVAL := 8.0  # s between small groups during a boss fight

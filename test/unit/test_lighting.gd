@@ -175,7 +175,7 @@ func test_game_has_subtractive_ship_shade() -> void:
 	var shade: Light2D = game.get_node("ShipShade")
 	assert_eq(shade.blend_mode, Light2D.BLEND_MODE_SUB)
 	assert_eq(shade.range_item_cull_mask, Ships.LIGHT_MASK)
-	assert_almost_eq(shade.energy, 0.7, 0.01, "ships sit at ~30% brightness out of the sun")
+	assert_almost_eq(shade.energy, Sun.SHADE_ENERGY, 0.001, "ships sit at ~8% brightness out of the sun: spooky")
 	assert_false(shade.shadow_enabled)
 	# The shade must cover the whole arena plus the spawn/exit margins.
 	var half: Vector2 = shade.texture.get_size() * shade.texture_scale / 2.0

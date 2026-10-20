@@ -6,7 +6,8 @@ extends Node2D
 ## apart to start again. Their thrusters fire as they change course, like
 ## they do in the game (Thrusters). pose_at(t) is the whole routine, so it's easy to
 ## check and the same every time; each ship faces where it's heading, or its
-## partner when they're close.
+## partner when they're close. Lit like the game: dimmed by a shade, lit by the Sun
+## off the screen's top-left corner, and they shadow each other.
 
 const LOOP := 12.0  # s
 const WIDE := 140.0  # px apart (radius) while circling
@@ -29,12 +30,17 @@ var _time := 0.0
 
 
 func _ready() -> void:
+	var screen := get_viewport_rect()
+	add_child(Sun.make_shade(screen))
+	add_child(Sun.make(screen))
 	for pair in [[_a, 0], [_b, 1]]:
 		var s: Sprite2D = pair[0]
 		var ship: int = pair[1]
-		s.texture = Ships.get_texture(ship, Ships.palette_for(ship))
+		s.texture = Ships.get_lit_texture(ship, Ships.palette_for(ship))
 		s.scale = Ships.scale_for(s.texture, SHIP_HEIGHT)
+		s.light_mask = Ships.LIGHT_MASK
 		add_child(s)
+		Sun.occlude(s)
 		var jets := Thrusters.new()  # they fire as the dancers swoop and turn
 		jets.name = "Thrusters"
 		jets.radius = SHIP_HEIGHT / 2.0

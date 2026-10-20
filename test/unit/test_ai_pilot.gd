@@ -301,14 +301,14 @@ func test_no_pilot_by_default() -> void:
 
 # --- Demo ----------------------------------------------------------------------------
 
-func test_demo_flies_a_random_ship_through_the_asteroid_belt() -> void:
+func test_demo_flies_a_random_ship_through_deep_space() -> void:
 	assert_true(LevelKinds.is_kind(game.DEMO_KIND))
-	assert_eq(game.DEMO_KIND, "asteroid_belt")
+	assert_eq(game.DEMO_KIND, "deep_space")
 	var ships := {}
 	for i in 12:
 		game.start_demo()
 		assert_true(game.demo)
-		assert_eq(game.kind, game.DEMO_KIND, "always the asteroid belt")
+		assert_eq(game.kind, game.DEMO_KIND, "always deep space")
 		var p: Node = game.get_node("Players/1")
 		assert_not_null(p.pilot)
 		ships[p.ship] = true

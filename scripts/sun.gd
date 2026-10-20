@@ -14,6 +14,8 @@ const SUN_HEIGHT := 120.0  # px over the plane: low, so light rakes across the p
 const SUN_ENERGY := 1.0
 const SUN_COLOR := Color(1.0, 0.96, 0.88)  # warm light
 const SUN_REACH := 1600.0  # px its flat light covers from where it stands (the arena and margins)
+const SHADE_ENERGY := 0.92  # the shade takes ships and obstacles down to ~8% out of the light: spooky
+const SHADE_HEIGHT := 4096.0  # very high, so it subtracts evenly
 const SHADOW_COLOR := Color(0, 0, 0, 0)  # shadowed: none of this light, the shade's dimming stays
 const ALPHA_CUTOFF := 0.5  # texture alpha that blocks light
 const SIMPLIFY := 1.5  # px tolerance when tracing an outline
@@ -45,6 +47,28 @@ static func make(arena: Rect2) -> PointLight2D:
 	sun.texture = tex
 	sun.texture_scale = SUN_REACH * 2.0 / tex.width
 	return sun
+
+
+## The shade: a SUB light dimming everything on Ships.LIGHT_MASK across `area` evenly, so
+## only the sun (and bullet lights) bring color back. The game has its own (ShipShade).
+static func make_shade(area: Rect2) -> PointLight2D:
+	var shade := PointLight2D.new()
+	shade.name = "ShipShade"
+	shade.position = area.get_center()
+	shade.height = SHADE_HEIGHT
+	shade.blend_mode = Light2D.BLEND_MODE_SUB
+	shade.energy = SHADE_ENERGY
+	shade.range_item_cull_mask = Ships.LIGHT_MASK
+	var g := Gradient.new()
+	g.set_color(0, Color.WHITE)
+	g.set_color(1, Color.WHITE)
+	var tex := GradientTexture2D.new()
+	tex.gradient = g
+	tex.width = 16
+	tex.height = 16
+	shade.texture = tex
+	shade.texture_scale = area.size.length() * 2.0 / tex.width
+	return shade
 
 
 ## Makes `sprite` block the sun: one LightOccluder2D per opaque patch of its texture,
