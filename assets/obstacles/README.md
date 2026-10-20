@@ -40,6 +40,7 @@ Draw one and it replaces the outline everywhere that piece is used.
 | `solar_panel` | 44 x 88 | fixed | indestructible | Detached solar array: grid of dark blue cells on a frame, one corner crumpled. Tall and narrow. Indestructible. |
 | `ring_arc` | 120 x 44 | fixed | indestructible | Piece of a broken habitat ring: a curved band (bowing upward) with windows along it, both ends sheared off. Indestructible. |
 | `reactor` | 70 x 70 | fixed | indestructible | Round reactor module ripped from a station: concentric rings, a glowing center, stubs of pipes around the rim. Indestructible. |
+| `crystal_shard` | 30 x 66 | spins | 2 hits | Faceted crystal spike rained down by the storm cloud: a long angular splinter with flat facets and two bright seams down its length. Drawn top-down, point first. Spins slowly in game. Can be shot apart. |
 
 ## Adding a new piece
 

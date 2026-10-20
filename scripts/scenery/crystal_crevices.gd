@@ -16,12 +16,31 @@ extends "res://scripts/scenery/scenery.gd"
 ## host sees the break and tells everyone (shatter), so each peer hurts the
 ## ships it flies.
 ##
-## Boss: the three part Crystal boss (Enemy.CRYSTAL, crystal_boss.gd). It fires
-## a tight aimed spread, and every BOSS_BEAM_EVERY attacks it also lances a
-## resonance beam through its target. Each arm the party breaks makes it angrier:
-## BOSS_ARM_SHOTS more bullets a volley, and with both gone it lances every time.
+## Hazard: crystal rain. Shards fall out of the seam the whole level through
+## (rain_time), light and constant. They are ordinary obstacles, so they block
+## shots and can be shot apart to clear a lane.
+##
+## Boss: the Crystal Storm, the cloud the rain comes from (Enemy.CRYSTAL,
+## crystal_boss.gd). One target, no parts to break off — what it does instead is
+## open up: a downpour of shards across its target's column, a spread of shots,
+## and a resonance beam every BOSS_BEAM_EVERY attacks. The worse it's hurt the
+## more it drops, and the rain runs faster the whole time it's overhead.
+
+const ObstacleScript := preload("res://scripts/obstacle.gd")
 
 const ARENA := Vector2(540, 960)
+
+# --- Crystal rain ---
+## Shards drift down out of the seam the whole level through — light and
+## constant, where the Asteroid Belt's rocks come in heavy bursts. They are
+## ordinary obstacles, so they block shots and can be shot apart (2 hits) to
+## clear a lane. The boss is the cloud they fall from, and it rains harder
+## (RAIN_BOSS_SCALE) while it's up.
+const RAIN_PIECE := "crystal_shard"
+const RAIN_FIRST := 4.0  # s before the first shard
+const RAIN_INTERVAL := 2.6  # s between shards
+const RAIN_BOSS_SCALE := 0.45  # of the usual gap while the cloud is overhead
+const SALT_RAIN_LANE := 21
 
 # --- Resonance beams ---
 const BEAM_GAP := 4.0  # s between beams on average
@@ -44,10 +63,13 @@ const BURST_TIME := 0.3  # s the burst shows
 
 # --- Boss ---
 const BOSS_SPREAD := 0.19  # rad between its bullets
-const BOSS_BEAM_EVERY := 3  # every this many attacks it lances a beam too ...
-const BOSS_BEAM_ALWAYS := 0  # ... or every attack once this many arms are left
-const BOSS_ARM_SHOTS := 2  # extra bullets a volley for each arm it has lost
+const BOSS_BEAM_EVERY := 3  # every this many attacks it lances a beam too
+const BOSS_WEAR_SHOTS := 3  # extra bullets a volley by the time it's nearly done for
 const BOSS_BEAM_TILT := 150.0  # px the beam through the target slants by
+const DOWNPOUR_SHARDS := Vector2i(3, 6)  # shards a downpour drops, fresh cloud to worn out
+const DOWNPOUR_SPREAD := 150.0  # px across the target's column it covers
+const DOWNPOUR_STAGGER := 50.0  # px each later shard starts higher
+const DOWNPOUR_EDGE := 30.0  # px kept from the side walls
 
 # --- Look ---
 const SLABS := 11  # crystal slabs per wall
@@ -73,6 +95,7 @@ var _live := []  # beams on screen now: {a, b, left}
 var _pending := []  # beams still warning: {a, b, left}
 var _bursts := []  # {at, left}
 var _boss_attacks := 0  # host: volleys fired
+var _rained := 0  # host: shards sent down so far
 var _overlay: Node2D
 
 
@@ -163,6 +186,34 @@ func step(delta: float) -> void:
 	_bursts = _bursts.filter(func(b): return b.left > 0.0)
 	if _overlay:
 		_overlay.queue_redraw()
+	if game != null and game.multiplayer.is_server() and not _forking():
+		while time >= rain_time(_rained):
+			_place(RAIN_PIECE, rain_at(_rained))
+			_rained += 1
+
+
+# --- Crystal rain -----------------------------------------------------------------
+
+## When shard `k` (0, 1, ...) falls. They come closer together while the cloud
+## is overhead, so the boss fight rains hardest.
+func rain_time(k: int) -> float:
+	return RAIN_FIRST + rain_gap() * k
+
+
+func rain_gap() -> float:
+	var boss: bool = game != null and game.has_method("boss_alive") and game.boss_alive()
+	return RAIN_INTERVAL * (RAIN_BOSS_SCALE if boss else 1.0)
+
+
+## Where shard `k` comes down (the same lane on every peer).
+func rain_at(k: int) -> Vector2:
+	var lane := int(roll(k, SALT_RAIN_LANE) * ObstacleScript.LANES)
+	return Vector2(ObstacleScript.center_x(RAIN_PIECE, 1, lane, ARENA.x), ObstacleScript.spawn_y(RAIN_PIECE))
+
+
+## Host: one shard at exactly `at`, announced to everyone.
+func _place(piece: String, at: Vector2) -> void:
+	game.spawn_obstacle_at(piece, at)
 
 
 ## A beam lances from `a` to `b`: cuts the local ships on the line (if `hurts`)
@@ -222,21 +273,39 @@ func shatter(at: Vector2) -> void:
 ## Host: a tight aimed spread, wider for each arm the party has broken off, plus
 ## a resonance beam through the target every few volleys (every one once both
 ## arms are gone).
+## Host: the cloud opens up. A downpour of shards falls across the target's
+## column, wider the more the cloud has been worn down, plus a spread of shots;
+## every few attacks it also lances a resonance beam.
 func boss_attack(boss: Node2D, target: Node2D, n: int) -> bool:
 	if game == null:
 		return false
-	var arms: Node = boss.get_node_or_null("CrystalArms")
-	var alive: int = arms.arms_alive() if arms else 0
-	var lost: int = (arms.ARMS - alive) if arms else 0
-	var shots := n + BOSS_ARM_SHOTS * lost
+	var cloud: Node = boss.get_node_or_null("CrystalStorm")
+	var wear: float = cloud.wear() if cloud else 0.0
+	_boss_attacks += 1
+	for at in downpour(boss, target.position, wear):
+		_place(RAIN_PIECE, at)
+	var shots := n + int(round(BOSS_WEAR_SHOTS * wear))
 	var aim := (target.position - boss.position).normalized()
 	for i in shots:
 		game.fire_enemy_bullet.rpc(boss.position + aim * 50.0, aim.rotated((i - (shots - 1) / 2.0) * BOSS_SPREAD))
-	_boss_attacks += 1
-	if alive <= BOSS_BEAM_ALWAYS or _boss_attacks % BOSS_BEAM_EVERY == 0:
+	if _boss_attacks % BOSS_BEAM_EVERY == 0:
 		var line := boss_beam(target.position, _boss_attacks)
 		lance.rpc(line[0], line[1])
 	return true
+
+
+## Where a downpour's shards start: a row across the target's column, out of the
+## cloud's underside, stepped so they don't all land at once.
+func downpour(boss: Node2D, at: Vector2, wear: float) -> Array:
+	var out := []
+	var n := DOWNPOUR_SHARDS.x + int(round((DOWNPOUR_SHARDS.y - DOWNPOUR_SHARDS.x) * wear))
+	var top: float = boss.position.y + (boss.get_node_or_null("CrystalStorm").underside() if boss.get_node_or_null("CrystalStorm") else 0.0)
+	var edge := DOWNPOUR_SPREAD * 0.5
+	var cx := clampf(at.x, edge + DOWNPOUR_EDGE, ARENA.x - edge - DOWNPOUR_EDGE)
+	for j in n:
+		var x := cx + (j - (n - 1) / 2.0) * (DOWNPOUR_SPREAD / maxi(n - 1, 1))
+		out.append(Vector2(x, top + DOWNPOUR_STAGGER * j))
+	return out
 
 
 ## The beam the boss strings through `at` on volley `c`: wall to wall, slanted.

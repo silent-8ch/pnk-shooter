@@ -163,6 +163,51 @@ func test_other_pieces_dont_burst() -> void:
 	assert_eq(_health(p), hp, "only the crystal debris goes off")
 
 
+# --- Crystal rain -----------------------------------------------------------------
+
+func test_shards_rain_the_whole_level_through() -> void:
+	var s: Node2D = game.scenery
+	var obstacles := game.get_node("Obstacles")
+	var before := obstacles.get_child_count()
+	s.time = 0.0
+	s.step(0.0)
+	assert_eq(obstacles.get_child_count(), before, "none before RAIN_FIRST")
+	s.time = CrystalScript.RAIN_FIRST + CrystalScript.RAIN_INTERVAL * 5.0
+	s.step(0.0)
+	var fallen := obstacles.get_child_count() - before
+	assert_between(fallen, 5, 8, "a steady drip, not a burst")
+	for o in obstacles.get_children():
+		assert_eq(o.piece_id, CrystalScript.RAIN_PIECE)
+		assert_true(o.destructible(), "you can shoot a lane clear")
+
+
+func test_rain_comes_down_inside_the_walls_and_above_the_screen() -> void:
+	var s := _scenery(5)
+	var lanes := {}
+	for k in 40:
+		var at: Vector2 = s.rain_at(k)
+		assert_between(at.x, 0.0, CrystalScript.ARENA.x)
+		assert_lt(at.y, 0.0, "starts off the top")
+		lanes[snappedf(at.x, 1.0)] = true
+	assert_gt(lanes.size(), 3, "it spreads across the seam")
+
+
+func test_rain_schedule_is_deterministic_and_steady() -> void:
+	var a := _scenery(9)
+	var b := _scenery(9)
+	for k in 20:
+		assert_eq(a.rain_at(k), b.rain_at(k), "same on every peer")
+		assert_almost_eq(a.rain_time(k + 1) - a.rain_time(k), CrystalScript.RAIN_INTERVAL, 0.001)
+
+
+func test_it_rains_harder_while_the_cloud_is_overhead() -> void:
+	var s: Node2D = game.scenery
+	var calm: float = s.rain_gap()
+	game.spawn_boss()
+	assert_true(game.boss_alive())
+	assert_lt(s.rain_gap(), calm, "the storm is the boss")
+
+
 func test_boss_fires_a_spread_and_lances_a_beam() -> void:
 	var s: Node2D = game.scenery
 	var target := _ship(1, Vector2(270, 700))

@@ -22,11 +22,11 @@ extends Area2D
 ##           arms that run off the screen and turn steadily one way, so ships
 ##           orbit it (see tetran.gd); only the core can be hurt, and it never
 ##           fires. Every so often its arms pull in for a break. Its look is drawn in code.
-##   CRYSTAL (a boss, Crystal Crevices'): three targets in order. Two crystal
-##           arms reach out either side, each with its own hp and bar, and the
-##           core is shielded until both are broken (see crystal_boss.gd); the
-##           arms hurt any ship they touch. It fires through the level's scenery
-##           (CrystalCrevices.boss_attack), harder with each arm it loses.
+##   CRYSTAL (a boss, Crystal Crevices'): the Crystal Storm, a cloud hanging
+##           across the top (drawn from the scan, see crystal_boss.gd). One
+##           target, but it rains crystal shards the whole fight and opens up
+##           with a downpour over a player (CrystalCrevices.boss_attack); the
+##           worse it's hurt, the heavier the rain.
 ## `stage` (Game.stage at spawn, 0 first) makes every enemy tougher: more hp
 ## (STAGE_HP), faster (STAGE_SPEED, capped) and worth more (STAGE_POINTS), and
 ## changes its colors (Ships.enemy_colors).
@@ -148,7 +148,7 @@ func _ready() -> void:
 	body.flip_v = true
 	body.light_mask = Ships.LIGHT_MASK
 	Sun.occlude(body)
-	if not is_tetran():
+	if not is_tetran() and not is_crystal():  # neither one is a craft: no engines to flare
 		var jets := Thrusters.new()  # flare as it changes course
 		jets.name = "Thrusters"
 		jets.radius = TYPES[type].get("height", HEIGHT) / 2.0
@@ -162,12 +162,16 @@ func _ready() -> void:
 		var arms := TetranScript.new()
 		arms.name = "Tetran"
 		add_child(arms)
+	elif is_crystal():
+		body.visible = false  # the cloud is its own art, not a ship
+		var cloud := CrystalBossScript.new()
+		cloud.name = "CrystalStorm"
+		add_child(cloud)
+		var box := RectangleShape2D.new()  # wide and flat, like the cloud: a circle would miss its ends
+		box.size = Vector2(cloud.width(), cloud.underside() * 2.0)
+		$Shape.shape = box
 	else:
 		Ships.apply_hitbox(self, ship_index(), body)  # shots hit the art, not a circle
-	if is_crystal():  # its arms, each a target of its own (max_hp is set above: they scale off it)
-		var crystal := CrystalBossScript.new()
-		crystal.name = "CrystalArms"
-		add_child(crystal)
 	area_entered.connect(_on_area_entered)
 
 
@@ -190,12 +194,6 @@ func is_tetran() -> bool:
 
 func is_crystal() -> bool:
 	return TYPES[type].get("crystal", false)
-
-
-## Crystal boss: the core shrugs off everything while an arm still stands.
-func is_shielded() -> bool:
-	var arms := get_node_or_null("CrystalArms")
-	return arms != null and arms.arms_alive() > 0
 
 
 func is_rival() -> bool:
@@ -480,8 +478,6 @@ static func zigzag_center(start_x: float, dir: float, time: float) -> float:
 func take_damage(amount: float) -> void:
 	if multiplayer.multiplayer_peer == null or not multiplayer.is_server() or hp <= 0:
 		return
-	if is_shielded():
-		return  # break both arms first; shots spark off the shield for nothing
 	_damage_carry += amount
 	var hits := floori(_damage_carry + 0.0001)
 	_damage_carry = maxf(0.0, _damage_carry - hits)
