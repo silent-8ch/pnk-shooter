@@ -367,6 +367,7 @@ func best_move(ship: Node2D, game: Node, goal: Vector2) -> Vector2:
 func _threats(ship: Node2D, game: Node) -> Dictionary:
 	var moving: Array = []
 	var arms: Array = []
+	var hazards: Array = []  # nodes that say where they'll be: a Crystal boss's arms
 	for b in game.bullets.get_children():
 		if b.is_queued_for_deletion() or b.shooter == ship.peer_id or b.is_heal():
 			continue
@@ -383,6 +384,9 @@ func _threats(ship: Node2D, game: Node) -> Dictionary:
 		if e.is_tetran():
 			r = TetranScript.CORE_RADIUS * e.scale.x
 			arms.append(e)
+		var hazard: Node = e.get_node_or_null("CrystalArms")  # a boss whose arms say where they'll be
+		if hazard and hazard.has_method("danger_at"):
+			hazards.append(hazard)
 		moving.append({"pos": e.position, "vel": _vel.get(e.get_instance_id(), Vector2.ZERO), "r": r})
 	for o in game.obstacles.get_children():
 		if o.is_queued_for_deletion() or o.position.distance_to(ship.position) > THREAT_REACH + 200.0:
@@ -392,7 +396,7 @@ func _threats(ship: Node2D, game: Node) -> Dictionary:
 			var size: Vector2 = o.piece(part.piece).size
 			var c: Vector2 = o.position + Vector2(part.offset).rotated(o.rotation)
 			moving.append({"pos": c, "vel": v, "r": maxf(size.x, size.y) * 0.5})
-	return {"moving": moving, "arms": arms}
+	return {"moving": moving, "arms": arms, "hazards": hazards}
 
 
 ## How dangerous `at` is `t` s from now.
@@ -411,6 +415,8 @@ func _danger(at: Vector2, t: float, threats: Dictionary, game: Node) -> float:
 			var tip: Vector2 = e.position + Vector2.from_angle(TetranScript.arm_angle(turn, a)) * reach
 			var c := Geometry2D.get_closest_point_to_segment(at, e.position, tip)
 			cost += _near(at.distance_to(c) - TetranScript.ARM_WIDTH * 0.5 * e.scale.x - SHIP_RADIUS)
+	for h in threats.get("hazards", []):
+		cost += h.danger_at(at, t) * HIT
 	if game.get("scenery") and game.scenery.has_method("danger_at"):
 		cost += game.scenery.danger_at(at, t) * HIT
 	return cost

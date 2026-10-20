@@ -41,6 +41,12 @@ const KINDS := {
 		"color": Color("c08dff"), "bg": Color(0.07, 0.04, 0.11),
 		"level": "res://levels/storm.json", "stars": false, "boss_ship": 1,
 		"scenery": "res://scripts/scenery/storm.gd", "waves": [EnemyScript.DIVER, EnemyScript.WEAVER, EnemyScript.ORBITER]},
+	"crystal_crevices": {"name": "Crystal Crevices", "music": "res://assets/music/GB3AD1300063.mp3",
+		"color": Color("8de8ff"), "bg": Color(0.04, 0.09, 0.12),
+		"level": "res://levels/crystal_crevices.json", "stars": false, "boss_ship": 2,
+		"boss_type": EnemyScript.CRYSTAL,
+		"scenery": "res://scripts/scenery/crystal_crevices.gd",
+		"waves": [EnemyScript.ORBITER, EnemyScript.STRIKER, EnemyScript.TURRET, EnemyScript.WEAVER]},
 }
 
 ## What a fork's gate offers besides the next kind of level. "next stage" ones

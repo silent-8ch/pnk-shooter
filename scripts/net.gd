@@ -22,6 +22,7 @@ const ALL_WEAPONS_NAME := "p4u1 "  # cheat: typed exactly (trailing space) as th
 var ai_buddy := false  # host: add an AI wingman (Game.BUDDY_ID) when the game starts
 var ai_pilot := false  # host: an AI flies the host's own ship (AiPilot)
 var all_weapons := false  # cheat on: the local ship spawns with every upgrade maxed
+var start_kind := ""  # dev (--kind=<id>): a run starts in this kind of level instead of Deep Space
 var my_id := 0  # our peer id in the current session (still known after the host is gone)
 
 var _browser: PacketPeerUDP

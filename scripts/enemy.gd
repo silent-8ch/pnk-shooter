@@ -22,6 +22,11 @@ extends Area2D
 ##           arms that run off the screen and turn steadily one way, so ships
 ##           orbit it (see tetran.gd); only the core can be hurt, and it never
 ##           fires. Every so often its arms pull in for a break. Its look is drawn in code.
+##   CRYSTAL (a boss, Crystal Crevices'): three targets in order. Two crystal
+##           arms reach out either side, each with its own hp and bar, and the
+##           core is shielded until both are broken (see crystal_boss.gd); the
+##           arms hurt any ship they touch. It fires through the level's scenery
+##           (CrystalCrevices.boss_attack), harder with each arm it loses.
 ## `stage` (Game.stage at spawn, 0 first) makes every enemy tougher: more hp
 ## (STAGE_HP), faster (STAGE_SPEED, capped) and worth more (STAGE_POINTS), and
 ## changes its colors (Ships.enemy_colors).
@@ -32,7 +37,7 @@ extends Area2D
 ## The host spawns enemies and decides damage and death; movement is deterministic
 ## from the spawn data, so every peer runs it locally with no per-frame sync.
 
-enum { WEAVER, DIVER, STRIKER, TANK, ORBITER, BOSS, TURRET, ELITE, TETRAN, RIVAL }
+enum { WEAVER, DIVER, STRIKER, TANK, ORBITER, BOSS, TURRET, ELITE, TETRAN, RIVAL, CRYSTAL }
 
 ## `group`: default [min, max] ships when a group is sent in without a count.
 ## `height`: on-screen height (px); defaults to HEIGHT.
@@ -47,10 +52,12 @@ const TYPES: Array[Dictionary] = [
 	{"ship": 3, "hp": 20, "points": 200, "speed": 70.0, "group": [1, 1], "height": 84.0, "elite": true},
 	{"ship": 4, "hp": 20, "points": 800, "speed": 90.0, "group": [1, 1], "height": 112.0, "boss": true, "tetran": true},
 	{"ship": 0, "hp": 4, "points": 60, "speed": 260.0, "group": [1, 1], "height": 44.0, "rival": true},
+	{"ship": 2, "hp": 26, "points": 900, "speed": 85.0, "group": [1, 1], "height": 118.0, "boss": true, "crystal": true},
 ]
 const RIVAL_SYNC := 0.05  # s between the host's position updates for a rival
 const RIVAL_FOLLOW := 15.0  # how quickly other peers' copies catch up (per second)
 const TetranScript := preload("res://scripts/tetran.gd")
+const CrystalBossScript := preload("res://scripts/crystal_boss.gd")
 const WAVE_TYPES := 5  # TYPES before BOSS: the ones deep space's random waves send in
 const TURRET_SPACING := 140.0
 const TURRET_FIRE_INTERVAL := 2.4  # s between shots at stage 0, shrinking like the boss's
@@ -157,6 +164,10 @@ func _ready() -> void:
 		add_child(arms)
 	else:
 		Ships.apply_hitbox(self, ship_index(), body)  # shots hit the art, not a circle
+	if is_crystal():  # its arms, each a target of its own (max_hp is set above: they scale off it)
+		var crystal := CrystalBossScript.new()
+		crystal.name = "CrystalArms"
+		add_child(crystal)
 	area_entered.connect(_on_area_entered)
 
 
@@ -175,6 +186,16 @@ func is_boss() -> bool:
 
 func is_tetran() -> bool:
 	return TYPES[type].get("tetran", false)
+
+
+func is_crystal() -> bool:
+	return TYPES[type].get("crystal", false)
+
+
+## Crystal boss: the core shrugs off everything while an arm still stands.
+func is_shielded() -> bool:
+	var arms := get_node_or_null("CrystalArms")
+	return arms != null and arms.arms_alive() > 0
 
 
 func is_rival() -> bool:
@@ -264,7 +285,7 @@ func simulate(delta: float) -> void:
 		STRIKER:
 			position.y = _spawn_pos.y + striker_fall(_time, lunge_time(), speed_mult())
 			return
-		BOSS, ELITE:
+		BOSS, ELITE, CRYSTAL:
 			position = boss_position(_spawn_pos, _time, speed_mult(), type)
 			return
 		TETRAN:
@@ -459,6 +480,8 @@ static func zigzag_center(start_x: float, dir: float, time: float) -> float:
 func take_damage(amount: float) -> void:
 	if multiplayer.multiplayer_peer == null or not multiplayer.is_server() or hp <= 0:
 		return
+	if is_shielded():
+		return  # break both arms first; shots spark off the shield for nothing
 	_damage_carry += amount
 	var hits := floori(_damage_carry + 0.0001)
 	_damage_carry = maxf(0.0, _damage_carry - hits)

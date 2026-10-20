@@ -1,0 +1,314 @@
+{
+  "name": "Crystal Crevices",
+  "length": 110,
+  "repeat": true,
+  "kind": "crystal_crevices",
+  "events": [
+    {
+      "time": 0,
+      "type": "weaver",
+      "lane": 4,
+      "count": 3,
+      "dir": 1
+    },
+    {
+      "time": 3.5,
+      "type": "turret",
+      "lane": 0,
+      "count": 1,
+      "dir": 1
+    },
+    {
+      "time": 3.5,
+      "type": "turret",
+      "lane": 8,
+      "count": 1,
+      "dir": 1
+    },
+    {
+      "time": 7,
+      "type": "obstacle",
+      "piece": "debris",
+      "lane": 2,
+      "count": 2,
+      "dir": 1
+    },
+    {
+      "time": 9,
+      "type": "orbiter",
+      "lane": 5,
+      "count": 2,
+      "dir": 1
+    },
+    {
+      "time": 13,
+      "type": "striker",
+      "lane": 6,
+      "count": 3,
+      "dir": -1
+    },
+    {
+      "time": 15,
+      "type": "obstacle",
+      "piece": "girder",
+      "lane": 6,
+      "count": 3,
+      "dir": 1
+    },
+    {
+      "time": 18,
+      "type": "weaver",
+      "lane": 2,
+      "count": 3,
+      "dir": 1
+    },
+    {
+      "time": 21,
+      "type": "turret",
+      "lane": 8,
+      "count": 1,
+      "dir": 1
+    },
+    {
+      "time": 23,
+      "type": "obstacle",
+      "piece": "solar_panel",
+      "lane": 4,
+      "count": 2,
+      "dir": 1
+    },
+    {
+      "time": 25,
+      "type": "orbiter",
+      "lane": 3,
+      "count": 2,
+      "dir": 1
+    },
+    {
+      "time": 28,
+      "type": "striker",
+      "lane": 1,
+      "count": 3,
+      "dir": 1
+    },
+    {
+      "time": 31,
+      "type": "obstacle",
+      "piece": "debris",
+      "lane": 7,
+      "count": 3,
+      "dir": 1
+    },
+    {
+      "time": 33,
+      "type": "turret",
+      "lane": 0,
+      "count": 1,
+      "dir": 1
+    },
+    {
+      "time": 35,
+      "type": "weaver",
+      "lane": 6,
+      "count": 3,
+      "dir": -1
+    },
+    {
+      "time": 38,
+      "type": "obstacle",
+      "piece": "girder",
+      "lane": 2,
+      "count": 4,
+      "dir": 1
+    },
+    {
+      "time": 41,
+      "type": "orbiter",
+      "lane": 4,
+      "count": 3,
+      "dir": 1
+    },
+    {
+      "time": 44,
+      "type": "striker",
+      "lane": 7,
+      "count": 2,
+      "dir": -1
+    },
+    {
+      "time": 46,
+      "type": "obstacle",
+      "piece": "debris",
+      "lane": 5,
+      "count": 2,
+      "dir": 1
+    },
+    {
+      "time": 49,
+      "type": "turret",
+      "lane": 0,
+      "count": 1,
+      "dir": 1
+    },
+    {
+      "time": 49,
+      "type": "turret",
+      "lane": 8,
+      "count": 1,
+      "dir": 1
+    },
+    {
+      "time": 52,
+      "type": "weaver",
+      "lane": 4,
+      "count": 4,
+      "dir": 1
+    },
+    {
+      "time": 55,
+      "type": "obstacle",
+      "piece": "solar_panel",
+      "lane": 1,
+      "count": 3,
+      "dir": 1
+    },
+    {
+      "time": 58,
+      "type": "orbiter",
+      "lane": 6,
+      "count": 2,
+      "dir": 1
+    },
+    {
+      "time": 61,
+      "type": "striker",
+      "lane": 3,
+      "count": 3,
+      "dir": 1
+    },
+    {
+      "time": 63,
+      "type": "obstacle",
+      "piece": "girder",
+      "lane": 6,
+      "count": 4,
+      "dir": 1
+    },
+    {
+      "time": 66,
+      "type": "weaver",
+      "lane": 1,
+      "count": 3,
+      "dir": 1
+    },
+    {
+      "time": 69,
+      "type": "turret",
+      "lane": 8,
+      "count": 1,
+      "dir": 1
+    },
+    {
+      "time": 71,
+      "type": "obstacle",
+      "piece": "debris",
+      "lane": 3,
+      "count": 3,
+      "dir": 1
+    },
+    {
+      "time": 74,
+      "type": "orbiter",
+      "lane": 5,
+      "count": 3,
+      "dir": 1
+    },
+    {
+      "time": 77,
+      "type": "striker",
+      "lane": 2,
+      "count": 3,
+      "dir": -1
+    },
+    {
+      "time": 80,
+      "type": "obstacle",
+      "piece": "solar_panel",
+      "lane": 7,
+      "count": 2,
+      "dir": 1
+    },
+    {
+      "time": 82,
+      "type": "turret",
+      "lane": 0,
+      "count": 1,
+      "dir": 1
+    },
+    {
+      "time": 85,
+      "type": "weaver",
+      "lane": 5,
+      "count": 4,
+      "dir": -1
+    },
+    {
+      "time": 88,
+      "type": "obstacle",
+      "piece": "girder",
+      "lane": 4,
+      "count": 4,
+      "dir": 1
+    },
+    {
+      "time": 91,
+      "type": "orbiter",
+      "lane": 2,
+      "count": 3,
+      "dir": 1
+    },
+    {
+      "time": 94,
+      "type": "striker",
+      "lane": 6,
+      "count": 3,
+      "dir": 1
+    },
+    {
+      "time": 96,
+      "type": "obstacle",
+      "piece": "debris",
+      "lane": 1,
+      "count": 3,
+      "dir": 1
+    },
+    {
+      "time": 99,
+      "type": "turret",
+      "lane": 0,
+      "count": 1,
+      "dir": 1
+    },
+    {
+      "time": 99,
+      "type": "turret",
+      "lane": 8,
+      "count": 1,
+      "dir": 1
+    },
+    {
+      "time": 102,
+      "type": "weaver",
+      "lane": 3,
+      "count": 4,
+      "dir": 1
+    },
+    {
+      "time": 105,
+      "type": "orbiter",
+      "lane": 5,
+      "count": 3,
+      "dir": 1
+    }
+  ]
+}

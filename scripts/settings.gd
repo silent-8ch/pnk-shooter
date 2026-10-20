@@ -3,8 +3,9 @@ extends Node
 ## laid out for, kept in the same settings file as Music's choice.
 ## Sound effects: every AudioStreamPlayer that joins the tree on the Master bus
 ## (anything but the music) is moved to the SFX bus, which this mutes.
-## Handedness: left-handed (the default) puts the SHIP button and its popups
-## bottom left and the action buttons from the left edge, LASERS first;
+## Handedness: left-handed (the default) lines the action buttons up from the
+## left edge, LASERS first, and puts the SHIP button and its popups in the
+## opposite corner (bottom right) so a thumb on PHOTONS can't catch them;
 ## right-handed mirrors both (ShipPanel, ActionBar).
 
 const SETTINGS_PATH := "user://settings.cfg"

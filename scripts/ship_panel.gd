@@ -1,8 +1,9 @@
 class_name ShipPanel
 extends Control
 ## The ship's systems, in small console popups (see UiStyle and Systems). During
-## play only a SHIP button shows, bottom left above the ActionBar (bottom right
-## for right-handed controls, see Settings, popups too), with the
+## play only a SHIP button shows, in the bottom corner away from the ActionBar's
+## buttons (bottom right for left-handed controls, bottom left for right-handed,
+## see Settings, popups too), with the
 ## reactor bars spare and the exp to spend; it glows while there's something
 ## the exp can buy. Tapping it opens the systems popup: a row per system
 ## (plus the reactor and the hull) with its power. Tapping a row opens that
@@ -67,9 +68,11 @@ func tab_rect() -> Rect2:
 	return Rect2(Vector2(_left(TAB_SIZE.x), bottom - TAB_SIZE.y), TAB_SIZE)
 
 
-## The left edge of something `width` wide against the near side.
+## The left edge of something `width` wide against the far side: the tab sits in
+## the corner opposite the action buttons, so a thumb reaching for PHOTONS can't
+## catch it on the way (the two used to stack 20 px apart in the same corner).
 func _left(width: float) -> float:
-	return MARGIN if Settings.left_handed else get_viewport_rect().size.x - MARGIN - width
+	return get_viewport_rect().size.x - MARGIN - width if Settings.left_handed else MARGIN
 
 
 ## The open popup, sized to its rows, sitting on top of the tab.

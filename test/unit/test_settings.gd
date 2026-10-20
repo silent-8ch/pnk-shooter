@@ -133,19 +133,22 @@ func _game() -> Node2D:
 	return game
 
 
-func test_right_handed_moves_the_ship_button_and_popups_right() -> void:
+## The SHIP button sits opposite the action buttons, so handedness moves it the
+## other way: left-handed controls put the bar on the left and SHIP on the right.
+func test_right_handed_moves_the_ship_button_and_popups_left() -> void:
 	var saved_peer := multiplayer.multiplayer_peer
 	var game := _game()
 	var panel: ShipPanel = game.get_node("PointerControls/ShipPanel")
 	var screen := panel.get_viewport_rect().size
 	Settings.set_left_handed(true, PATH)
-	assert_lt(panel.tab_rect().get_center().x, screen.x / 2.0)
-	Settings.set_left_handed(false, PATH)
-	assert_gt(panel.tab_rect().get_center().x, screen.x / 2.0)
+	assert_gt(panel.tab_rect().get_center().x, screen.x / 2.0, "bar left, SHIP right")
 	assert_lte(panel.tab_rect().end.x, screen.x)
+	Settings.set_left_handed(false, PATH)
+	assert_lt(panel.tab_rect().get_center().x, screen.x / 2.0, "bar right, SHIP left")
+	assert_gte(panel.tab_rect().position.x, 0.0)
 	panel.page = ShipPanel.SYSTEMS_PAGE
-	assert_gt(panel.popup_rect().get_center().x, screen.x / 2.0)
-	assert_lte(panel.popup_rect().end.x, screen.x)
+	assert_lt(panel.popup_rect().get_center().x, screen.x / 2.0)
+	assert_gte(panel.popup_rect().position.x, 0.0)
 	multiplayer.multiplayer_peer = saved_peer
 
 

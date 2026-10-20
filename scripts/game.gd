@@ -197,6 +197,8 @@ func start() -> void:
 	kind = LevelKinds.FIRST
 	if demo:
 		kind = DEMO_KIND
+	if LevelKinds.is_kind(Net.start_kind):
+		kind = Net.start_kind  # dev: --kind=<id> starts the run here (see Main._handle_cmdline)
 	level = LevelKinds.load_level(kind)
 	_demo_dead = 0.0
 	_close_fork()
@@ -357,9 +359,6 @@ func _process(delta: float) -> void:
 		_shown_kind = kind
 		_set_scenery()
 		Music.set_level(load(LevelKinds.music_of(kind)))
-	var bar: ProgressBar = hud.get_node_or_null("BossBar")
-	if bar:
-		bar.value = 1.0 if boss_alive() else float(kills) / boss_kills_needed()
 	Music.set_boss((boss_alive() or elite_alive()) and not over, Music.BOSS_TRACK if boss_alive() else Music.MINI_BOSS_TRACK)
 	Music.set_fanfare((refit or fork_open()) and not over)
 	if over:

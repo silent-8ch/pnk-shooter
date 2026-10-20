@@ -10,6 +10,7 @@
 [ext_resource type="Script" path="res://scripts/refit_panel.gd" id="refit_panel"]
 [ext_resource type="Script" path="res://scripts/party_bars.gd" id="party_bars"]
 [ext_resource type="Script" path="res://scripts/status_bar.gd" id="status_bar"]
+[ext_resource type="Script" path="res://scripts/stage_bar.gd" id="stage_bar"]
 [ext_resource type="AudioStream" path="res://assets/sfx/game_over.wav" id="game_over"]
 [ext_resource type="AudioStream" path="res://assets/sfx/vulcan.tres" id="vulcan"]
 [ext_resource type="AudioStream" path="res://assets/sfx/heal.wav" id="heal"]
@@ -128,21 +129,19 @@ offset_bottom = 36.0
 mouse_filter = 2
 script = ExtResource("status_bar")
 
-[node name="BossBar" type="ProgressBar" parent="HUD"]
-modulate = Color(1, 0.4, 0.45, 0.85)
+[node name="StageBar" type="Control" parent="HUD" groups=["stage_bar"]]
 offset_left = 16.0
 offset_top = 42.0
-offset_right = 200.0
-offset_bottom = 47.0
+offset_right = 524.0
+offset_bottom = 60.0
 mouse_filter = 2
-max_value = 1.0
-show_percentage = false
+script = ExtResource("stage_bar")
 
 [node name="PartyBars" type="Control" parent="HUD"]
 offset_left = 16.0
-offset_top = 50.0
+offset_top = 66.0
 offset_right = 220.0
-offset_bottom = 170.0
+offset_bottom = 186.0
 mouse_filter = 2
 script = ExtResource("party_bars")
 

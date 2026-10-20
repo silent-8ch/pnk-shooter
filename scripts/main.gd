@@ -178,9 +178,15 @@ func _on_disconnected(old_id: int) -> void:
 	lobby.set_status("Disconnected from host")
 
 
-## Allows `godot -- --host` or `godot -- --join=192.168.1.5` for quick testing.
+## Allows `godot -- --host` or `godot -- --join=192.168.1.5` for quick testing,
+## and `--kind=<id>` to start the run in one kind of level (LevelKinds) instead
+## of flying to it through the forks. Read before --host, whatever the order.
 func _handle_cmdline() -> void:
-	for arg in OS.get_cmdline_user_args():
+	var args := OS.get_cmdline_user_args()
+	for arg in args:
+		if arg.begins_with("--kind="):
+			Net.start_kind = arg.trim_prefix("--kind=")
+	for arg in args:
 		if arg == "--host":
 			Net.host("Host")
 		elif arg.begins_with("--join="):

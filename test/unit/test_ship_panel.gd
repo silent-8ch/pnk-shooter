@@ -63,9 +63,32 @@ func test_only_the_ship_button_shows_in_play() -> void:
 	assert_eq(panel.buttons().size(), 1)
 	var tab := panel.tab_rect()
 	var screen := panel.get_viewport_rect().size
-	assert_lt(tab.position.x, screen.x / 2.0, "bottom left")
+	assert_gt(tab.position.x, screen.x / 2.0, "bottom right, away from the action buttons")
 	assert_lte(tab.end.y, screen.y - ActionBar.BAR_HEIGHT, "above the action bar")
 	assert_lt(tab.size.x * tab.size.y, screen.x * screen.y * 0.02, "small")
+
+
+## The misfire this fixes: the tab used to sit 20 px above PHOTONS in the same
+## corner, so a thumb reaching for the gun opened the systems popup instead.
+## It now goes to the far corner, so the guns a thumb lives on (the first three
+## buttons) share no x with it, whichever hand the controls are set up for.
+const THUMB_BUTTONS := 3
+
+
+func test_ship_button_is_clear_of_the_gun_buttons() -> void:
+	var bar: ActionBar = game.get_node("PointerControls/ActionBar")
+	for a in ActionBar.ACTIONS:
+		bar.set_shown(a.id, true)  # a fully upgraded bar: the widest it ever gets
+	var was := Settings.left_handed
+	for handed in [true, false]:
+		Settings.left_handed = handed
+		var tab := panel.tab_rect()
+		for slot in THUMB_BUTTONS:
+			var b := bar.button_rect(bar.shown_actions()[slot])
+			var label: String = ActionBar.ACTIONS[bar.shown_actions()[slot]].label
+			assert_true(tab.end.x <= b.position.x or b.end.x <= tab.position.x,
+				"SHIP shares no x with %s (left_handed %s)" % [label, handed])
+	Settings.left_handed = was
 
 
 func test_closed_only_the_button_blocks_steering() -> void:
